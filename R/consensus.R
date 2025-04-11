@@ -252,14 +252,25 @@ print.consensus <- function(x, ...) {
   print(x$call)
   cat("\nMaximum log-likelihood:", format(x$MaxLL, digits = 4), "\n\n")
   cat("Coefficients (Kappa estimates):\n")
+
   coefmat <- x$parameters
   stars <- ifelse(coefmat[, "P(|z|>.)"] < 0.001, "***",
                   ifelse(coefmat[, "P(|z|>.)"] < 0.01, "**",
                          ifelse(coefmat[, "P(|z|>.)"] < 0.05, "*",
                                 ifelse(coefmat[, "P(|z|>.)"] < 0.1, ".", " "))))
-  coefmat_char <- cbind(format(coefmat), Signif = stars)
-  stats::printCoefmat(coefmat_char, quote = FALSE)
-  cat("---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n")
+
+  # Transformation en matrice numérique pour printCoefmat
+  mat_numeric <- cbind(
+    Estimate = as.numeric(coefmat[, 1]),
+    `Robust std` = as.numeric(coefmat[, 2]),
+    `z value` = as.numeric(coefmat[, 3]),
+    `P(|z|>.)` = as.numeric(coefmat[, 4])
+  )
+
+  rownames(mat_numeric) <- rownames(coefmat)
+
+  # Impression avec printCoefmat
+  stats::printCoefmat(mat_numeric, P.values = TRUE, has.Pvalue = TRUE)
   invisible(x)
 }
 

@@ -318,7 +318,12 @@ print.summary.angular <- function(x, ...) {
   cat("Residuals:\n")
   print(x$residuals)
   cat("\nParameters:\n")
-  stats::printCoefmat(x$parameters, signif.legend = TRUE, ...)
+  stats::printCoefmat(
+    x$parameters,
+    signif.stars = TRUE,
+    signif.legend = TRUE,
+    ...
+  )
   cat("\nNumber of observations:", x$nobs, "\n")
   invisible(x)
 }
@@ -352,7 +357,7 @@ plot.angular <- function(x, ...) {
     ggplot2::geom_hline(ggplot2::aes(yintercept = 0), linetype = "dashed") +
     ggplot2::labs(title = "Residuals vs Fitted", x = "Fitted Values", y = "Residuals")
 
-  res <- residuals.angular(x)
+  res <- as.numeric(residuals.angular(x))
   res_mean <- mean(res)
   res_sd <- stats::sd(res)
   p2 <- ggplot2::ggplot(data = data.frame(Residual = res),

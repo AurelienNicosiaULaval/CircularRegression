@@ -362,7 +362,7 @@ plot.angular <- function(x, ...) {
   res_sd <- stats::sd(res)
   p2 <- ggplot2::ggplot(data = data.frame(Residual = res),
                         ggplot2::aes(x = Residual)) +
-    ggplot2::geom_histogram(ggplot2::aes(y = ..density..), bins = 12, color = "black", fill = "gray") +
+    ggplot2::geom_histogram(ggplot2::aes(y = after_stat(density)), bins = 12, color = "black", fill = "gray") +
     ggplot2::stat_function(fun = stats::dnorm, args = list(mean = res_mean, sd = res_sd),
                            color = "red", size = 1) +
     ggplot2::labs(title = "Histogram of Residuals", x = "Residuals", y = "Density")

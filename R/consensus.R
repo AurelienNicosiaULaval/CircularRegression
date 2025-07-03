@@ -343,7 +343,12 @@ print.summary.consensus <- function(x, ...) {
   cat("Residuals:\n")
   print(x$residuals)
   cat("\nCoefficients:\n")
-  stats::printCoefmat(x$coefficients, signif.legend = TRUE, ...)
+  stats::printCoefmat(
+    x$coefficients,
+    signif.stars = TRUE,
+    signif.legend = TRUE,
+    ...
+  )
   cat("\nNumber of observations:", x$nobs, "\n")
   invisible(x)
 }
@@ -378,7 +383,7 @@ plot.consensus <- function(x, ...) {
     ggplot2::geom_hline(ggplot2::aes(yintercept = 0), linetype = "dashed") +
     ggplot2::labs(title = "Residuals vs Fitted", x = "Fitted Values", y = "Residuals")
 
-  res <- residuals.consensus(x, ...)
+  res <- as.numeric(residuals.consensus(x, ...))
   res_mean <- mean(res)
   res_sd <- stats::sd(res)
   p2 <- ggplot2::ggplot(data = data.frame(Residual = res),

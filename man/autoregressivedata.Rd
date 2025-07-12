@@ -16,8 +16,9 @@ autoregressivedata(data, response, p, ID = NULL)
 \item{ID}{Optional. A character string specifying the name of a grouping variable. If provided, lags are computed within each group.}
 }
 \value{
-The input \code{data} with \code{p} additional columns named \code{response_tmk} for \eqn{k = 1,\ldots,p} containing the lagged values of \code{response}.
+The input \code{data} with \code{p} additional columns named \code{response_tmk} for \eqn{k=1,\ldots,p} containing the lagged values of \code{response}.
 }
 \description{
-Creates lagged versions of an angular response variable to facilitate the estimation of autoregressive circular regression models.
+This function augments a data frame with lagged versions of an angular response
+variable so that autoregressive circular regression models can be fitted.
 }

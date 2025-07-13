@@ -43,6 +43,8 @@ initial values found among a grid of possible values.}
 An object of class "consensus" containing:
 \describe{
   \item{MaxLL}{the maximum value of the log likelihood.}
+  \item{AIC}{the Akaike Information Criterion.}
+  \item{BIC}{the Bayesian Information Criterion.}
   \item{parameters}{the parameter estimates and their robust standard errors, z-values and associated p-values.}
   \item{varcov1}{the estimated variance covariance matrix (first definition).}
   \item{varcov2}{the estimated variance covariance matrix (second definition).}

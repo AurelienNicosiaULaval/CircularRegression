@@ -33,6 +33,8 @@ An object of class "summary.consensus", a list containing:
 \describe{
   \item{call}{The matched call.}
   \item{MaxLL}{The maximum log-likelihood value.}
+  \item{AIC}{The Akaike information criterion.}
+  \item{BIC}{The Bayesian information criterion.}
   \item{coefficients}{A matrix with the estimates, robust standard errors, z-values and associated p-values.}
   \item{residuals}{A summary of the residuals (min, 1st Qu., median, 3rd Qu., max).}
   \item{nobs}{The number of observations.}
@@ -43,7 +45,7 @@ These functions provide methods for printing, extracting coefficients,
 summarizing, and retrieving residuals from a consensus model.
 
 This function summarizes an object of class "consensus" by providing key
-diagnostic statistics including the model call, maximum log-likelihood, a summary of residuals,
+diagnostic statistics including the model call, maximum log-likelihood, AIC, BIC, a summary of residuals,
 the coefficient estimates, and the number of observations.
 
 This function prints a summary of a consensus model.

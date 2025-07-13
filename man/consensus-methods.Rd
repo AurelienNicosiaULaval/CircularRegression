@@ -36,7 +36,8 @@
 \item{...}{Additional arguments passed to or from other methods.}
 
 \item{object}{An object of class "consensus".}
-\item{k}{Numeric. Penalty term used in the definition of AIC.}
+
+\item{k}{Numeric. Penalty term used in the definition of AIC. Defaults to 2.}
 }
 \value{
 An object of class "summary.consensus", a list containing:

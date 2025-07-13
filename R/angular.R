@@ -60,7 +60,13 @@
 #'   plot(an)
 #' }
 #' @export
-angular <- function(formula, data, model = "simplified", initbeta = NULL, control = list()){
+angular <- function(
+  formula,
+  data,
+  model = "simplified",
+  initbeta = NULL,
+  control = list()
+) {
   call <- match.call()
   model <- model[1]
 
@@ -87,7 +93,7 @@ angular <- function(formula, data, model = "simplified", initbeta = NULL, contro
     noms <- noms[-1, , drop = FALSE]
   }
   matx <- as.matrix(mf[, noms[, 1], drop = FALSE])
-  if(ncol(noms) == 1){
+  if (ncol(noms) == 1) {
     matz <- matrix(1, ncol = ncol(matx), nrow = nrow(matx))
   } else {
     matz <- as.matrix(mf[, noms[, 2], drop = FALSE])
@@ -95,10 +101,10 @@ angular <- function(formula, data, model = "simplified", initbeta = NULL, contro
   }
 
   ### Model fitting: define internal function maxcos
-  maxcos <- function(beta){
-    sinmu <- sin(if (model == "simplified") x0 else beta[p+1]) +
+  maxcos <- function(beta) {
+    sinmu <- sin(if (model == "simplified") x0 else beta[p + 1]) +
       as.vector((matz * sin(matx)) %*% beta[1:p])
-    cosmu <- cos(if (model == "simplified") x0 else beta[p+1]) +
+    cosmu <- cos(if (model == "simplified") x0 else beta[p + 1]) +
       as.vector((matz * cos(matx)) %*% beta[1:p])
     long <- sqrt(sinmu^2 + cosmu^2)
     mui <- atan2(sinmu, cosmu)
@@ -106,25 +112,33 @@ angular <- function(formula, data, model = "simplified", initbeta = NULL, contro
     list(maxcos = maxcos_val, long = long, mui = mui)
   }
 
-  betaUpdate <- function(betak, long, mui){
-    matd <- cbind(matz * sin(matx - mui),
-                  if (model == "simplified") NULL else cos(betak[p+1] - mui)) / long
+  betaUpdate <- function(betak, long, mui) {
+    matd <- cbind(
+      matz * sin(matx - mui),
+      if (model == "simplified") NULL else cos(betak[p + 1] - mui)
+    ) /
+      long
     res <- sin(y - mui)
     dbeta <- as.vector(solve(t(matd) %*% matd, t(matd) %*% res))
     betak1 <- betak + dbeta
     list(betak1 = betak1, dbeta = dbeta, matd = matd, res = res)
   }
 
-  if (is.null(initbeta)){
+  if (is.null(initbeta)) {
     pginit <- if (is.null(control$pginit)) 1000 else control$pginit
-    pg <- round(pginit^(1/nparam))
+    pg <- round(pginit^(1 / nparam))
     possbeta <- rep(list(seq(-1, 1, length.out = pg + 2)[-c(1, pg + 2)]), p)
-    if (model == "complete") possbeta[[p+1]] <- seq(0, 2*pi, length.out = pg + 2)[-c(1, pg + 2)]
+    if (model == "complete")
+      possbeta[[p + 1]] <- seq(0, 2 * pi, length.out = pg + 2)[-c(1, pg + 2)]
     possVal <- cbind(expand.grid(possbeta), NA)
     colnames(possVal) <- c(betaname, "maxcosine")
     maxcos1 <- function(beta) maxcos(beta)$maxcos
-    possVal[, nparam+1] <- apply(possVal[, 1:nparam, drop = FALSE], 1, maxcos1)
-    betak <- unlist(possVal[which.max(possVal[, nparam+1]), 1:nparam])
+    possVal[, nparam + 1] <- apply(
+      possVal[, 1:nparam, drop = FALSE],
+      1,
+      maxcos1
+    )
+    betak <- unlist(possVal[which.max(possVal[, nparam + 1]), 1:nparam])
   } else {
     if (length(initbeta) != nparam)
       stop("For the requested model, 'initbeta' must be of length ", nparam)
@@ -143,7 +157,7 @@ angular <- function(formula, data, model = "simplified", initbeta = NULL, contro
   colnames(iter.detail) <- c(betaname, "maxcosine", "iter", "nitersh")
   iter.detail[1, ] <- c(betak, maxcosk, iter, iter.sh)
 
-  while(!conv && iter <= maxiter){
+  while (!conv && iter <= maxiter) {
     maj <- betaUpdate(betak = betak, long = long, mui = mui)
     betak1 <- maj$betak1
     dbeta <- maj$dbeta
@@ -152,18 +166,20 @@ angular <- function(formula, data, model = "simplified", initbeta = NULL, contro
     long <- calcul$long
     mui <- calcul$mui
     iter.sh <- 0
-    while (maxcosk1 < maxcosk){
+    while (maxcosk1 < maxcosk) {
       iter.sh <- iter.sh + 1
-      betak1 <- betak + dbeta/(2^iter.sh)
+      betak1 <- betak + dbeta / (2^iter.sh)
       calcul <- maxcos(beta = betak1)
       maxcosk1 <- calcul$maxcos
       long <- calcul$long
       mui <- calcul$mui
       if (iter.sh >= maxiter) break
     }
-    if (maxcosk1 < maxcosk){
+    if (maxcosk1 < maxcosk) {
       conv <- FALSE
-      warning("The algorithm did not converge, it failed to maximize the max-cosine")
+      warning(
+        "The algorithm did not converge, it failed to maximize the max-cosine"
+      )
       break
     } else {
       conv <- if (maxcosk1 - maxcosk > mindiff) FALSE else TRUE
@@ -173,10 +189,12 @@ angular <- function(formula, data, model = "simplified", initbeta = NULL, contro
       iter.detail[iter + 1, ] <- c(betak, maxcosk, iter, iter.sh)
     }
   }
-  if (iter > maxiter + 1){
-    warning("The algorithm did not converge, the maximum number of iterations was reached")
+  if (iter > maxiter + 1) {
+    warning(
+      "The algorithm did not converge, the maximum number of iterations was reached"
+    )
   } else {
-    iter.detail <- iter.detail[1:(iter+1), , drop = FALSE]
+    iter.detail <- iter.detail[1:(iter + 1), , drop = FALSE]
   }
 
   if (maxcosk == maxcosk1) {
@@ -191,16 +209,29 @@ angular <- function(formula, data, model = "simplified", initbeta = NULL, contro
   v0 <- solve(t(matd) %*% matd) / (Akappa * kappahat)
 
   zvalue <- abs(betak) / sqrt(diag(v0))
-  pvals <- round(2 * stats::pnorm(abs(betak)/sqrt(diag(v0)), lower.tail = FALSE), 5)
+  pvals <- round(
+    2 * stats::pnorm(abs(betak) / sqrt(diag(v0)), lower.tail = FALSE),
+    5
+  )
   parameters <- cbind(betak, sqrt(diag(v0)), zvalue, pvals)
   colnames(parameters) <- c("estimate", "stderr", "z value", "P(|z|>.)")
   rownames(parameters) <- betaname
 
   autocorr <- stats::acf(res, plot = FALSE)
 
-  out <- list(MaxCosine = maxcosk, parameters = parameters, varcov0 = v0,
-              varcov1 = NULL, autocorr = autocorr, long = long, mui = mui, y = y,
-              iter.detail = iter.detail, call = call)
+  out <- list(
+    MaxCosine = maxcosk,
+    parameters = parameters,
+    kappahat = kappahat,
+    varcov0 = v0,
+    varcov1 = NULL,
+    autocorr = autocorr,
+    long = long,
+    mui = mui,
+    y = y,
+    iter.detail = iter.detail,
+    call = call
+  )
   class(out) <- "angular"
   out
 }
@@ -223,13 +254,23 @@ angular <- function(formula, data, model = "simplified", initbeta = NULL, contro
 print.angular <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
-  cat("\nMaximum cosine:", format(x$MaxCosine, digits = 4), "\n\n")
+  cat("\nMaximum cosine:", format(x$MaxCosine, digits = 4), "")
+  cat("\nConcentration parameter:", format(x$kappahat, digits = 4), "\n\n")
   cat("Parameters:\n")
   coefmat <- x$parameters
-  stars <- ifelse(coefmat[, "P(|z|>.)"] < 0.001, "***",
-                  ifelse(coefmat[, "P(|z|>.)"] < 0.01, "**",
-                         ifelse(coefmat[, "P(|z|>.)"] < 0.05, "*",
-                                ifelse(coefmat[, "P(|z|>.)"] < 0.1, ".", " "))))
+  stars <- ifelse(
+    coefmat[, "P(|z|>.)"] < 0.001,
+    "***",
+    ifelse(
+      coefmat[, "P(|z|>.)"] < 0.01,
+      "**",
+      ifelse(
+        coefmat[, "P(|z|>.)"] < 0.05,
+        "*",
+        ifelse(coefmat[, "P(|z|>.)"] < 0.1, ".", " ")
+      )
+    )
+  )
 
   # Transformation en matrice numérique pour printCoefmat
   mat_numeric <- cbind(
@@ -256,7 +297,6 @@ coef.angular <- function(object, ...) {
 #' @rdname angular-methods
 #' @export
 residuals.angular <- function(object, ...) {
-
   angle_diff_signed <- function(a, b) {
     diff <- (a - b + pi) %% (2 * pi) - pi
     diff
@@ -295,6 +335,7 @@ summary.angular <- function(object, ...) {
     call = object$call,
     MaxCosine = object$MaxCosine,
     parameters = object$parameters,
+    kappahat = object$kappahat,
     residuals = resid_summary,
     nobs = length(object$y)
   )
@@ -314,7 +355,8 @@ summary.angular <- function(object, ...) {
 print.summary.angular <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
-  cat("\nMaximum cosine:", format(x$MaxCosine, digits = 4), "\n\n")
+  cat("\nMaximum cosine:", format(x$MaxCosine, digits = 4), "")
+  cat("\nConcentration parameter:", format(x$kappahat, digits = 4), "\n\n")
   cat("Residuals:\n")
   print(x$residuals)
   cat("\nParameters:\n")
@@ -351,30 +393,63 @@ plot.angular <- function(x, ...) {
     stop("Package 'gridExtra' is required for arranging plots.")
 
   # Use ggplot2:: functions directly instead of library()
-  p1 <- ggplot2::ggplot(data = data.frame(Fitted = x$mui, Residual = residuals.angular(x)),
-                        ggplot2::aes(x = Fitted, y = Residual)) +
+  p1 <- ggplot2::ggplot(
+    data = data.frame(Fitted = x$mui, Residual = residuals.angular(x)),
+    ggplot2::aes(x = Fitted, y = Residual)
+  ) +
     ggplot2::geom_point(color = "blue") +
     ggplot2::geom_hline(ggplot2::aes(yintercept = 0), linetype = "dashed") +
-    ggplot2::labs(title = "Residuals vs Fitted", x = "Fitted Values", y = "Residuals")
+    ggplot2::labs(
+      title = "Residuals vs Fitted",
+      x = "Fitted Values",
+      y = "Residuals"
+    )
 
   res <- as.numeric(residuals.angular(x))
   res_mean <- mean(res)
   res_sd <- stats::sd(res)
-  p2 <- ggplot2::ggplot(data = data.frame(Residual = res),
-                        ggplot2::aes(x = Residual)) +
-    ggplot2::geom_histogram(ggplot2::aes(y = after_stat(density)), bins = 12, color = "black", fill = "gray") +
-    ggplot2::stat_function(fun = stats::dnorm, args = list(mean = res_mean, sd = res_sd),
-                           color = "red", size = 1) +
-    ggplot2::labs(title = "Histogram of Residuals", x = "Residuals", y = "Density")
+  p2 <- ggplot2::ggplot(
+    data = data.frame(Residual = res),
+    ggplot2::aes(x = Residual)
+  ) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = after_stat(density)),
+      bins = 12,
+      color = "black",
+      fill = "gray"
+    ) +
+    ggplot2::stat_function(
+      fun = stats::dnorm,
+      args = list(mean = res_mean, sd = res_sd),
+      color = "red",
+      size = 1
+    ) +
+    ggplot2::labs(
+      title = "Histogram of Residuals",
+      x = "Residuals",
+      y = "Density"
+    )
 
-  p3 <- ggplot2::ggplot(data = data.frame(Residual = as.numeric(res)),
-                        ggplot2::aes(sample = Residual)) +
+  p3 <- ggplot2::ggplot(
+    data = data.frame(Residual = as.numeric(res)),
+    ggplot2::aes(sample = Residual)
+  ) +
     ggplot2::stat_qq(color = "blue") +
     ggplot2::stat_qq_line(color = "red") +
-    ggplot2::labs(title = "Normal Q-Q", x = "Theoretical Quantiles", y = "Sample Quantiles")
+    ggplot2::labs(
+      title = "Normal Q-Q",
+      x = "Theoretical Quantiles",
+      y = "Sample Quantiles"
+    )
 
-  gridExtra::grid.arrange(p1, p2, p3, ncol = 2, nrow = 2,
-                          top = "Diagnostic Plots for Angular Regression Model")
+  gridExtra::grid.arrange(
+    p1,
+    p2,
+    p3,
+    ncol = 2,
+    nrow = 2,
+    top = "Diagnostic Plots for Angular Regression Model"
+  )
 
   invisible(x)
 }

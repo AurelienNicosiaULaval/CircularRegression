@@ -7,6 +7,9 @@
 \alias{summary.consensus}
 \alias{print.summary.consensus}
 \alias{plot.consensus}
+\alias{AIC.consensus}
+\alias{BIC.consensus}
+\alias{logLik.consensus}
 \title{Methods for Consensus Objects}
 \usage{
 \method{print}{consensus}(x, ...)
@@ -20,6 +23,12 @@
 \method{print}{summary.consensus}(x, ...)
 
 \method{plot}{consensus}(x, ...)
+
+\method{AIC}{consensus}(object, ..., k = 2)
+
+\method{BIC}{consensus}(object, ...)
+
+\method{logLik}{consensus}(object, ...)
 }
 \arguments{
 \item{x}{An object of class "consensus".}

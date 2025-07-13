@@ -30,6 +30,8 @@
 #' @return An object of class "consensus" containing:
 #' \describe{
 #'   \item{MaxLL}{the maximum value of the log likelihood.}
+#'   \item{AIC}{the Akaike Information Criterion.}
+#'   \item{BIC}{the Bayesian Information Criterion.}
 #'   \item{parameters}{the parameter estimates and their robust standard errors, z-values and associated p-values.}
 #'   \item{varcov1}{the estimated variance covariance matrix (first definition).}
 #'   \item{varcov2}{the estimated variance covariance matrix (second definition).}
@@ -43,9 +45,14 @@
 #'
 #' @author Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
 #' @export
-consensus <- function(formula, data, model = "simplified", weights = NULL,
-                      initbeta = NULL, control = list()) {
-
+consensus <- function(
+  formula,
+  data,
+  model = "simplified",
+  weights = NULL,
+  initbeta = NULL,
+  control = list()
+) {
   call <- mfcall <- match.call()
   model <- model[1]
 
@@ -60,8 +67,7 @@ consensus <- function(formula, data, model = "simplified", weights = NULL,
   p <- if (model == "simplified") nterms - 1 else nterms
   nparam <- if (model == "simplified") p + 1 else p + 2
   paramname <- nomterms
-  if (model == "complete")
-    paramname <- c(paramname, paste0("beta", p + 1))
+  if (model == "complete") paramname <- c(paramname, paste0("beta", p + 1))
 
   # Response variable
   y <- as.vector(mf[, 1])
@@ -73,7 +79,7 @@ consensus <- function(formula, data, model = "simplified", weights = NULL,
     noms <- noms[-1, , drop = FALSE]
   }
   matx <- as.matrix(mf[, noms[, 1], drop = FALSE])
-  if(ncol(noms) == 1) {
+  if (ncol(noms) == 1) {
     matz <- matrix(1, ncol = ncol(matx), nrow = nrow(matx))
   } else {
     matz <- as.matrix(mf[, noms[, 2], drop = FALSE])
@@ -88,7 +94,9 @@ consensus <- function(formula, data, model = "simplified", weights = NULL,
     cosmu <- param[1] * cos(angleref) + (matz * cos(matx)) %*% param[2:(p + 1)]
     long <- as.vector(sqrt(sinmu^2 + cosmu^2))
     mui <- as.vector(atan2(sinmu, cosmu))
-    term1 <- param[1] * cos(y - angleref) + (matz * cos(y - matx)) %*% param[2:(p + 1)]
+    term1 <- param[1] *
+      cos(y - angleref) +
+      (matz * cos(y - matx)) %*% param[2:(p + 1)]
     LL_val <- sum(term1) - sum(log(besselI(long, 0, expon.scaled = FALSE)))
     list(LL = LL_val, long = long, mui = mui)
   }
@@ -98,11 +106,16 @@ consensus <- function(formula, data, model = "simplified", weights = NULL,
     angleref <- if (model == "simplified") x0 else rep(paramk[p + 2], nobs)
     matx0 <- cbind(angleref, matx)
     matz0 <- cbind(rep(1, nobs), matz)
-    Along <- as.vector(besselI(long, 1, expon.scaled = FALSE) /
-                         besselI(long, 0, expon.scaled = FALSE))
+    Along <- as.vector(
+      besselI(long, 1, expon.scaled = FALSE) /
+        besselI(long, 0, expon.scaled = FALSE)
+    )
     matu <- matz0 * (cos(y - matx0) - cos(matx0 - mui) * Along)
     if (model == "complete")
-      matu <- cbind(matu, paramk[1] * sin(y - angleref) - sin(mui - angleref) * Along)
+      matu <- cbind(
+        matu,
+        paramk[1] * sin(y - angleref) - sin(mui - angleref) * Along
+      )
     vecs <- colSums(matu)
     names(vecs) <- paramname
     Xc <- matz0 * cos(matx0 - mui)
@@ -111,8 +124,8 @@ consensus <- function(formula, data, model = "simplified", weights = NULL,
       Xc <- cbind(Xc, paramk[1] * sin(mui - paramk[p + 2]))
       Xs <- cbind(Xs, paramk[1] * cos(mui - paramk[p + 2]))
     }
-    Dc <- diag(1 - Along/long - Along^2, nrow = nobs, ncol = nobs)
-    Ds <- diag(Along/long, nrow = nobs, ncol = nobs)
+    Dc <- diag(1 - Along / long - Along^2, nrow = nobs, ncol = nobs)
+    Ds <- diag(Along / long, nrow = nobs, ncol = nobs)
     matI <- t(Xc) %*% Dc %*% Xc + t(Xs) %*% Ds %*% Xs
     colnames(matI) <- rownames(matI) <- paramname
     dparam <- as.vector(solve(matI, vecs))
@@ -122,14 +135,23 @@ consensus <- function(formula, data, model = "simplified", weights = NULL,
 
   if (is.null(initbeta)) {
     pginit <- if (is.null(control$pginit)) 1000 else control$pginit
-    pg <- round(pginit^(1/nparam))
-    possparam <- rep(list(seq(-1, 1, length.out = pg + 2)[-c(1, pg + 2)]), p + 1)
+    pg <- round(pginit^(1 / nparam))
+    possparam <- rep(
+      list(seq(-1, 1, length.out = pg + 2)[-c(1, pg + 2)]),
+      p + 1
+    )
     if (model == "complete")
       possparam[[nparam]] <- seq(0, 2 * pi, length.out = pg + 2)[-c(1, pg + 2)]
     possVal <- cbind(expand.grid(possparam), NA)
     colnames(possVal) <- c(paramname, "LL")
-    maxLLfun <- function(param) { LL(param = param)$LL }
-    possVal[, nparam + 1] <- apply(possVal[, 1:nparam, drop = FALSE], 1, maxLLfun)
+    maxLLfun <- function(param) {
+      LL(param = param)$LL
+    }
+    possVal[, nparam + 1] <- apply(
+      possVal[, 1:nparam, drop = FALSE],
+      1,
+      maxLLfun
+    )
     paramk <- unlist(possVal[which.max(possVal[, nparam + 1]), 1:nparam])
   } else {
     if (length(initbeta) != nparam)
@@ -165,12 +187,13 @@ consensus <- function(formula, data, model = "simplified", weights = NULL,
       maxLLk1 <- calcul$LL
       long <- calcul$long
       mui <- calcul$mui
-      if (iter.sh >= maxiter)
-        break
+      if (iter.sh >= maxiter) break
     }
     if (maxLLk1 < maxLLk) {
       conv <- FALSE
-      warning("The algorithm did not converge, it failed to maximize the log likelihood")
+      warning(
+        "The algorithm did not converge, it failed to maximize the log likelihood"
+      )
       break
     } else {
       conv <- if (maxLLk1 - maxLLk > mindiff) FALSE else TRUE
@@ -181,7 +204,9 @@ consensus <- function(formula, data, model = "simplified", weights = NULL,
     }
   }
   if (iter > maxiter + 1) {
-    warning("The algorithm did not converge, the maximum number of iterations was reached")
+    warning(
+      "The algorithm did not converge, the maximum number of iterations was reached"
+    )
   } else {
     iter.detail <- iter.detail[1:(iter + 1), , drop = FALSE]
   }
@@ -202,32 +227,67 @@ consensus <- function(formula, data, model = "simplified", weights = NULL,
   v2 <- v1 %*% mid %*% v1
 
   paramb <- paramk[2:(p + 1)] / paramk[1]
-  matDeriv <- rbind(-paramk[2:(p + 1)] / paramk[1]^2,
-                    diag(1 / paramk[1], nrow = p, ncol = p))
+  matDeriv <- rbind(
+    -paramk[2:(p + 1)] / paramk[1]^2,
+    diag(1 / paramk[1], nrow = p, ncol = p)
+  )
   vb <- t(matDeriv) %*% v1[1:(p + 1), 1:(p + 1)] %*% matDeriv
   vb2 <- t(matDeriv) %*% v2[1:(p + 1), 1:(p + 1)] %*% matDeriv
   names(paramb) <- colnames(vb) <- rownames(vb) <-
     colnames(vb2) <- rownames(vb2) <- paramname[-1]
 
   zvalue <- abs(paramk) / sqrt(diag(v2))
-  pvals <- round(2 * stats::pnorm(abs(paramk) / sqrt(diag(v2)), lower.tail = FALSE), 5)
+  pvals <- round(
+    2 * stats::pnorm(abs(paramk) / sqrt(diag(v2)), lower.tail = FALSE),
+    5
+  )
   parameters <- cbind(paramk, sqrt(diag(v2)), zvalue, pvals)
   colnames(parameters) <- c("estimate", "robust std", "z value", "P(|z|>.)")
   rownames(parameters) <- paramname
 
   zvaluebeta <- abs(paramb) / sqrt(diag(vb2))
-  pbeta <- round(2 * stats::pnorm(abs(paramb) / sqrt(diag(vb2)), lower.tail = FALSE), 5)
+  pbeta <- round(
+    2 * stats::pnorm(abs(paramb) / sqrt(diag(vb2)), lower.tail = FALSE),
+    5
+  )
   parambeta <- cbind(paramb, sqrt(diag(vb2)), zvaluebeta, pbeta)
   colnames(parambeta) <- c("estimate", "stderr", "z value", "P(|z|>.)")
   rownames(parambeta) <- names(paramb)
 
   # Use residuals.consensus() defined in the S3 methods below
-  autocorr <- stats::acf(residuals.consensus(object = list(y = y, mui = mui, long = long)), plot = FALSE)
-  out <- list(MaxLL = maxLLk, parameters = parameters, varcov1 = v1,
-              varcov2 = v2, parambeta = parambeta, varcovbeta1 = vb,
-              varcovbeta2 = vb2, autocorr = autocorr, matx = matx,
-              matz = matz, y = y, long = long, mui = mui,
-              iter.detail = iter.detail, call = call)
+  autocorr <- stats::acf(
+    residuals.consensus(object = list(y = y, mui = mui, long = long)),
+    plot = FALSE
+  )
+
+  # Calculate AIC and BIC as in lm/glm
+  k <- nparam
+  logLik <- maxLLk
+  AIC <- -2 * logLik + 2 * k
+  BIC <- -2 * logLik + log(nobs) * k
+
+  out <- list(
+    MaxLL = maxLLk,
+    AIC = AIC,
+    BIC = BIC,
+    parameters = parameters,
+    varcov1 = v1,
+    varcov2 = v2,
+    parambeta = parambeta,
+    varcovbeta1 = vb,
+    varcovbeta2 = vb2,
+    autocorr = autocorr,
+    matx = matx,
+    matz = matz,
+    y = y,
+    long = long,
+    mui = mui,
+    iter.detail = iter.detail,
+    call = call,
+    nobs = nobs,
+    k = k,
+    logLik = logLik
+  )
   class(out) <- "consensus"
   out
 }
@@ -248,16 +308,50 @@ consensus <- function(formula, data, model = "simplified", weights = NULL,
 #' @rdname consensus-methods
 #' @export
 print.consensus <- function(x, ...) {
-  cat("Call:\n")
+  cat(
+    "Call:
+"
+  )
   print(x$call)
-  cat("\nMaximum log-likelihood:", format(x$MaxLL, digits = 4), "\n\n")
-  cat("Coefficients (Kappa estimates):\n")
+  cat(
+    "
+Maximum log-likelihood:",
+    format(x$MaxLL, digits = 4),
+    "
+"
+  )
+  cat(
+    "AIC:",
+    format(x$AIC, digits = 4),
+    "
+"
+  )
+  cat(
+    "BIC:",
+    format(x$BIC, digits = 4),
+    "
+
+"
+  )
+  cat(
+    "Coefficients (Kappa estimates):
+"
+  )
 
   coefmat <- x$parameters
-  stars <- ifelse(coefmat[, "P(|z|>.)"] < 0.001, "***",
-                  ifelse(coefmat[, "P(|z|>.)"] < 0.01, "**",
-                         ifelse(coefmat[, "P(|z|>.)"] < 0.05, "*",
-                                ifelse(coefmat[, "P(|z|>.)"] < 0.1, ".", " "))))
+  stars <- ifelse(
+    coefmat[, "P(|z|>.)"] < 0.001,
+    "***",
+    ifelse(
+      coefmat[, "P(|z|>.)"] < 0.01,
+      "**",
+      ifelse(
+        coefmat[, "P(|z|>.)"] < 0.05,
+        "*",
+        ifelse(coefmat[, "P(|z|>.)"] < 0.1, ".", " ")
+      )
+    )
+  )
 
   # Transformation en matrice numérique pour printCoefmat
   mat_numeric <- cbind(
@@ -296,7 +390,7 @@ residuals.consensus <- function(object, ...) {
 #' Summary Method for Consensus Objects
 #'
 #' This function summarizes an object of class "consensus" by providing key
-#' diagnostic statistics including the model call, maximum log-likelihood, a summary of residuals,
+#' diagnostic statistics including the model call, maximum log-likelihood, AIC, BIC, a summary of residuals,
 #' the coefficient estimates, and the number of observations.
 #'
 #' @param object An object of class "consensus".
@@ -306,6 +400,8 @@ residuals.consensus <- function(object, ...) {
 #' \describe{
 #'   \item{call}{The matched call.}
 #'   \item{MaxLL}{The maximum log-likelihood value.}
+#'   \item{AIC}{The Akaike information criterion.}
+#'   \item{BIC}{The Bayesian information criterion.}
 #'   \item{coefficients}{A matrix with the estimates, robust standard errors, z-values and associated p-values.}
 #'   \item{residuals}{A summary of the residuals (min, 1st Qu., median, 3rd Qu., max).}
 #'   \item{nobs}{The number of observations.}
@@ -319,6 +415,8 @@ summary.consensus <- function(object, ...) {
   s <- list(
     call = object$call,
     MaxLL = object$MaxLL,
+    AIC = object$AIC,
+    BIC = object$BIC,
     coefficients = object$parameters,
     residuals = resid_summary,
     nobs = length(object$y)
@@ -337,19 +435,54 @@ summary.consensus <- function(object, ...) {
 #' @rdname consensus-methods
 #' @export
 print.summary.consensus <- function(x, ...) {
-  cat("Call:\n")
+  cat(
+    "Call:
+"
+  )
   print(x$call)
-  cat("\nMaximum log-likelihood:", format(x$MaxLL, digits = 4), "\n\n")
-  cat("Residuals:\n")
+  cat(
+    "
+Maximum log-likelihood:",
+    format(x$MaxLL, digits = 4),
+    "
+"
+  )
+  cat(
+    "AIC:",
+    format(x$AIC, digits = 4),
+    "
+"
+  )
+  cat(
+    "BIC:",
+    format(x$BIC, digits = 4),
+    "
+
+"
+  )
+  cat(
+    "Residuals:
+"
+  )
   print(x$residuals)
-  cat("\nCoefficients:\n")
+  cat(
+    "
+Coefficients:
+"
+  )
   stats::printCoefmat(
     x$coefficients,
     signif.stars = TRUE,
     signif.legend = TRUE,
     ...
   )
-  cat("\nNumber of observations:", x$nobs, "\n")
+  cat(
+    "
+Number of observations:",
+    x$nobs,
+    "
+"
+  )
   invisible(x)
 }
 
@@ -376,41 +509,110 @@ plot.consensus <- function(x, ...) {
   if (!requireNamespace("gridExtra", quietly = TRUE))
     stop("Package 'gridExtra' is required for arranging plots.")
 
-  p1 <- ggplot2::ggplot(data = data.frame(Fitted = x$mui,
-                                          Residual = residuals.consensus(x, ...)),
-                        ggplot2::aes(x = Fitted, y = Residual)) +
+  p1 <- ggplot2::ggplot(
+    data = data.frame(Fitted = x$mui, Residual = residuals.consensus(x, ...)),
+    ggplot2::aes(x = Fitted, y = Residual)
+  ) +
     ggplot2::geom_point(color = "blue") +
     ggplot2::geom_hline(ggplot2::aes(yintercept = 0), linetype = "dashed") +
-    ggplot2::labs(title = "Residuals vs Fitted", x = "Fitted Values", y = "Residuals")
+    ggplot2::labs(
+      title = "Residuals vs Fitted",
+      x = "Fitted Values",
+      y = "Residuals"
+    )
 
   res <- as.numeric(residuals.consensus(x, ...))
   res_mean <- mean(res)
   res_sd <- stats::sd(res)
-  p2 <- ggplot2::ggplot(data = data.frame(Residual = res),
-                        ggplot2::aes(x = Residual)) +
-    ggplot2::geom_histogram(ggplot2::aes(y = after_stat(density)), bins = 12,
-                            color = "black", fill = "gray") +
-    ggplot2::stat_function(fun = stats::dnorm,
-                           args = list(mean = res_mean, sd = res_sd),
-                           color = "red", size = 1) +
-    ggplot2::labs(title = "Histogram of Residuals", x = "Scaled Residuals", y = "Density")
+  p2 <- ggplot2::ggplot(
+    data = data.frame(Residual = res),
+    ggplot2::aes(x = Residual)
+  ) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = after_stat(density)),
+      bins = 12,
+      color = "black",
+      fill = "gray"
+    ) +
+    ggplot2::stat_function(
+      fun = stats::dnorm,
+      args = list(mean = res_mean, sd = res_sd),
+      color = "red",
+      size = 1
+    ) +
+    ggplot2::labs(
+      title = "Histogram of Residuals",
+      x = "Scaled Residuals",
+      y = "Density"
+    )
 
-  p3 <- ggplot2::ggplot(data = data.frame(Residual = as.numeric(res)),
-                        ggplot2::aes(sample = Residual)) +
+  p3 <- ggplot2::ggplot(
+    data = data.frame(Residual = as.numeric(res)),
+    ggplot2::aes(sample = Residual)
+  ) +
     ggplot2::stat_qq(color = "blue") +
     ggplot2::stat_qq_line(color = "red") +
-    ggplot2::labs(title = "Normal Q-Q", x = "Theoretical Quantiles", y = "Sample Quantiles")
+    ggplot2::labs(
+      title = "Normal Q-Q",
+      x = "Theoretical Quantiles",
+      y = "Sample Quantiles"
+    )
 
   p4 <- ggplot2::ggplot() +
-    ggplot2::annotate("text", x = 0.5, y = 0.5,
-                      label = paste("Spearman Correlation:\n|y - mui| vs 1/long =",
-                                    round(stats::cor(abs(res), 1/x$long, method = "spearman"), 4)),
-                      size = 5, hjust = 0.5) +
+    ggplot2::annotate(
+      "text",
+      x = 0.5,
+      y = 0.5,
+      label = paste(
+        "Spearman Correlation:\n|y - mui| vs 1/long =",
+        round(stats::cor(abs(res), 1 / x$long, method = "spearman"), 4)
+      ),
+      size = 5,
+      hjust = 0.5
+    ) +
     ggplot2::theme_void() +
     ggplot2::labs(title = "Goodness-of-Fit")
 
-  gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2,
-                          top = "Diagnostic Plots for Consensus Model")
+  gridExtra::grid.arrange(
+    p1,
+    p2,
+    p3,
+    p4,
+    ncol = 2,
+    nrow = 2,
+    top = "Diagnostic Plots for Consensus Model"
+  )
 
   invisible(x)
+}
+
+# Méthodes S3 AIC, BIC, logLik
+#' @export
+AIC.consensus <- function(object, ..., k = 2) {
+  ll <- object$logLik
+  nparam <- object$k
+  out <- -2 * ll + k * nparam
+  attr(out, "df") <- nparam
+  attr(out, "nobs") <- object$nobs
+  out
+}
+
+#' @export
+BIC.consensus <- function(object, ...) {
+  n <- object$nobs
+  nparam <- object$k
+  ll <- object$logLik
+  out <- -2 * ll + log(n) * nparam
+  attr(out, "df") <- nparam
+  attr(out, "nobs") <- n
+  out
+}
+
+#' @export
+logLik.consensus <- function(object, ...) {
+  val <- object$logLik
+  attr(val, "df") <- object$k
+  attr(val, "nobs") <- object$nobs
+  class(val) <- "logLik"
+  val
 }

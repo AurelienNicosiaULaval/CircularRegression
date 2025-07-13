@@ -588,6 +588,9 @@ plot.consensus <- function(x, ...) {
 
 # Méthodes S3 AIC, BIC, logLik
 #' @rdname consensus-methods
+#' @param object An object of class "consensus".
+#' @param k Numeric. Penalty term used in the definition of AIC. Defaults to 2.
+#' @param ... Additional arguments passed to or from other methods.
 #' @export
 AIC.consensus <- function(object, ..., k = 2) {
   ll <- object$logLik
@@ -599,6 +602,8 @@ AIC.consensus <- function(object, ..., k = 2) {
 }
 
 #' @rdname consensus-methods
+#' @param object An object of class "consensus".
+#' @param ... Additional arguments passed to or from other methods.
 #' @export
 BIC.consensus <- function(object, ...) {
   n <- object$nobs
@@ -611,6 +616,8 @@ BIC.consensus <- function(object, ...) {
 }
 
 #' @rdname consensus-methods
+#' @param object An object of class "consensus".
+#' @param ... Additional arguments passed to or from other methods.
 #' @export
 logLik.consensus <- function(object, ...) {
   val <- object$logLik

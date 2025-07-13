@@ -587,6 +587,7 @@ plot.consensus <- function(x, ...) {
 }
 
 # Méthodes S3 AIC, BIC, logLik
+#' @rdname consensus-methods
 #' @export
 AIC.consensus <- function(object, ..., k = 2) {
   ll <- object$logLik
@@ -597,6 +598,7 @@ AIC.consensus <- function(object, ..., k = 2) {
   out
 }
 
+#' @rdname consensus-methods
 #' @export
 BIC.consensus <- function(object, ...) {
   n <- object$nobs
@@ -608,6 +610,7 @@ BIC.consensus <- function(object, ...) {
   out
 }
 
+#' @rdname consensus-methods
 #' @export
 logLik.consensus <- function(object, ...) {
   val <- object$logLik

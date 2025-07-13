@@ -33,9 +33,10 @@
 \arguments{
 \item{x}{An object of class "consensus".}
 
-\item{...}{Further arguments passed to plotting functions.}
+\item{...}{Additional arguments passed to or from other methods.}
 
 \item{object}{An object of class "consensus".}
+\item{k}{Numeric. Penalty term used in the definition of AIC.}
 }
 \value{
 An object of class "summary.consensus", a list containing:

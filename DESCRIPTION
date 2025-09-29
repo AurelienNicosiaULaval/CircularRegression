@@ -18,7 +18,11 @@ Imports:
     ggplot2,
     gridExtra,
     circular
-Depends: 
+Depends:
     R (>= 3.5)
+Suggests:
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
 URL: https://github.com/AurelienNicosiaULaval/CircularRegression
 BugReports: https://github.com/AurelienNicosiaULaval/CircularRegression/issues

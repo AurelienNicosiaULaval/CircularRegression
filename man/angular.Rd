@@ -29,8 +29,7 @@ An object of class "angular" containing:
   \item{MaxCosine}{the maximum cosine value.}
   \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
   \item{varcov0}{the estimated variance-covariance matrix (first definition).}
-  \item{varcov1}{the estimated variance-covariance matrix (second definition).}
-  \item{autocorr}{the autocorrelation of the residuals \eqn{\sin(y_i - \mu_i)}.}
+  \item{varcov2}{the non-parametric estimated variance-covariance matrix (equation 14 of Rivest et al.).}
   \item{long}{the vector of predicted concentrations.}
   \item{mui}{the vector of predicted mean angles.}
   \item{y}{the response variable.}

@@ -32,12 +32,10 @@
 #'   \item{MaxLL}{the maximum value of the log likelihood.}
 #'   \item{AIC}{the Akaike Information Criterion.}
 #'   \item{BIC}{the Bayesian Information Criterion.}
-#'   \item{parameters}{the parameter estimates and their robust standard errors, z-values and associated p-values.}
-#'   \item{varcov1}{the estimated variance covariance matrix (first definition).}
-#'   \item{varcov2}{the estimated variance covariance matrix (second definition).}
+#'   \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
+#'   \item{varcov1}{the estimated variance covariance matrix.}
 #'   \item{parambeta}{the beta parameter estimates and their standard errors (obtained by linearization).}
 #'   \item{varcovbeta1}{the estimated variance covariance matrix for the beta estimates (by linearization).}
-#'   \item{varcovbeta2}{the estimated variance covariance matrix for the beta estimates (sandwich form).}
 #'   \item{autocorr}{the autocorrelation of the residuals \eqn{\sin(y_i - \mu_i)}.}
 #'   \item{iter.detail}{the iteration details.}
 #'   \item{call}{the function call.}
@@ -215,16 +213,8 @@ consensus <- function(
     maj <- betaUpdate(paramk = paramk, long = long, mui = mui)
   }
   matd <- maj$matu
-  res <- maj$res
-  Akappa <- mean(maxLLk)
-  kappahat <- circular::A1inv(Akappa)
 
-  v1 <- solve(t(matd) %*% matd)
-  mid <- matrix(0, ncol = nparam, nrow = nparam)
-  for (i in 1:nobs) {
-    mid <- mid + t(matd[i, , drop = FALSE]) %*% matd[i, , drop = FALSE]
-  }
-  v2 <- v1 %*% mid %*% v1
+  v1 <- solve(crossprod(matd))
 
   paramb <- paramk[2:(p + 1)] / paramk[1]
   matDeriv <- rbind(
@@ -232,26 +222,24 @@ consensus <- function(
     diag(1 / paramk[1], nrow = p, ncol = p)
   )
   vb <- t(matDeriv) %*% v1[1:(p + 1), 1:(p + 1)] %*% matDeriv
-  vb2 <- t(matDeriv) %*% v2[1:(p + 1), 1:(p + 1)] %*% matDeriv
-  names(paramb) <- colnames(vb) <- rownames(vb) <-
-    colnames(vb2) <- rownames(vb2) <- paramname[-1]
+  names(paramb) <- colnames(vb) <- rownames(vb) <- paramname[-1]
 
-  zvalue <- abs(paramk) / sqrt(diag(v2))
+  zvalue <- abs(paramk) / sqrt(diag(v1))
   pvals <- round(
-    2 * stats::pnorm(abs(paramk) / sqrt(diag(v2)), lower.tail = FALSE),
+    2 * stats::pnorm(abs(paramk) / sqrt(diag(v1)), lower.tail = FALSE),
     5
   )
-  parameters <- cbind(paramk, sqrt(diag(v2)), zvalue, pvals)
-  colnames(parameters) <- c("estimate", "robust std", "z value", "P(|z|>.)")
+  parameters <- cbind(paramk, sqrt(diag(v1)), zvalue, pvals)
+  colnames(parameters) <- c("estimate", "Std. Error", "z value", "P(|z|>.)")
   rownames(parameters) <- paramname
 
-  zvaluebeta <- abs(paramb) / sqrt(diag(vb2))
+  zvaluebeta <- abs(paramb) / sqrt(diag(vb))
   pbeta <- round(
-    2 * stats::pnorm(abs(paramb) / sqrt(diag(vb2)), lower.tail = FALSE),
+    2 * stats::pnorm(abs(paramb) / sqrt(diag(vb)), lower.tail = FALSE),
     5
   )
-  parambeta <- cbind(paramb, sqrt(diag(vb2)), zvaluebeta, pbeta)
-  colnames(parambeta) <- c("estimate", "stderr", "z value", "P(|z|>.)")
+  parambeta <- cbind(paramb, sqrt(diag(vb)), zvaluebeta, pbeta)
+  colnames(parambeta) <- c("estimate", "Std. Error", "z value", "P(|z|>.)")
   rownames(parambeta) <- names(paramb)
 
   # Use residuals.consensus() defined in the S3 methods below
@@ -272,10 +260,8 @@ consensus <- function(
     BIC = BIC,
     parameters = parameters,
     varcov1 = v1,
-    varcov2 = v2,
     parambeta = parambeta,
     varcovbeta1 = vb,
-    varcovbeta2 = vb2,
     autocorr = autocorr,
     matx = matx,
     matz = matz,
@@ -356,7 +342,7 @@ Maximum log-likelihood:",
   # Transformation en matrice numérique pour printCoefmat
   mat_numeric <- cbind(
     Estimate = as.numeric(coefmat[, 1]),
-    `Robust std` = as.numeric(coefmat[, 2]),
+    `Std. Error` = as.numeric(coefmat[, 2]),
     `z value` = as.numeric(coefmat[, 3]),
     `P(|z|>.)` = as.numeric(coefmat[, 4])
   )
@@ -402,7 +388,7 @@ residuals.consensus <- function(object, ...) {
 #'   \item{MaxLL}{The maximum log-likelihood value.}
 #'   \item{AIC}{The Akaike information criterion.}
 #'   \item{BIC}{The Bayesian information criterion.}
-#'   \item{coefficients}{A matrix with the estimates, robust standard errors, z-values and associated p-values.}
+#'   \item{coefficients}{A matrix with the estimates, standard errors, z-values and associated p-values.}
 #'   \item{residuals}{A summary of the residuals (min, 1st Qu., median, 3rd Qu., max).}
 #'   \item{nobs}{The number of observations.}
 #' }

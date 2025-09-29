@@ -47,13 +47,9 @@
 #' @references L.-P. Rivest, T. Duchesne, A. Nicosia & D. Fortin. A general angular regression model for the analysis of data on animal movement in ecology. Journal of the Royal Statistical Society, series C, to appear.
 #' @examples
 #' \dontrun{
-#'   # Example with fictitious data
-#'   data(wind)
-#'   n <- length(wind)
-#'   dat.hom <- data.frame(wind.t = wind[-c(1,2)],
-#'                         wind.t_1 = wind[-c(1, n)],
-#'                         wind.t_2 = wind[-c(n-1, n)])
-#'   an <- angular(wind.t ~ wind.t_1 + wind.t_2, data = dat.hom)
+#'   # Example with the bison data set included in the package
+#'   data(bison)
+#'   an <- angular(y.dir ~ y.prec + y.prec2, data = bison)
 #'   print(an)
 #'   summary(an)
 #'   plot(an)

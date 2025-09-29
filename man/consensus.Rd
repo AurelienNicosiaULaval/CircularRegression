@@ -58,6 +58,14 @@ An object of class "consensus" containing:
 Function that fits a consensus model for angular variables along with its print,
 summary, and diagnostic plot methods.
 }
+\examples{
+\dontrun{
+  data(bison)
+  fit <- consensus(y.dir ~ y.prec + y.prec2, data = bison)
+  print(fit)
+  summary(fit)
+}
+}
 \author{
 Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
 }

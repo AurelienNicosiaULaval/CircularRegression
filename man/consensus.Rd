@@ -45,12 +45,10 @@ An object of class "consensus" containing:
   \item{MaxLL}{the maximum value of the log likelihood.}
   \item{AIC}{the Akaike Information Criterion.}
   \item{BIC}{the Bayesian Information Criterion.}
-  \item{parameters}{the parameter estimates and their robust standard errors, z-values and associated p-values.}
-  \item{varcov1}{the estimated variance covariance matrix (first definition).}
-  \item{varcov2}{the estimated variance covariance matrix (second definition).}
+  \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
+  \item{varcov1}{the estimated variance covariance matrix.}
   \item{parambeta}{the beta parameter estimates and their standard errors (obtained by linearization).}
   \item{varcovbeta1}{the estimated variance covariance matrix for the beta estimates (by linearization).}
-  \item{varcovbeta2}{the estimated variance covariance matrix for the beta estimates (sandwich form).}
   \item{autocorr}{the autocorrelation of the residuals \eqn{\sin(y_i - \mu_i)}.}
   \item{iter.detail}{the iteration details.}
   \item{call}{the function call.}

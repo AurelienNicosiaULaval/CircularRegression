@@ -35,8 +35,7 @@
 #'   \item{MaxCosine}{the maximum cosine value.}
 #'   \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
 #'   \item{varcov0}{the estimated variance-covariance matrix (first definition).}
-#'   \item{varcov1}{the estimated variance-covariance matrix (second definition).}
-#'   \item{autocorr}{the autocorrelation of the residuals \eqn{\sin(y_i - \mu_i)}.}
+#'   \item{varcov2}{the non-parametric estimated variance-covariance matrix (equation 14 of Rivest et al.).}
 #'   \item{long}{the vector of predicted concentrations.}
 #'   \item{mui}{the vector of predicted mean angles.}
 #'   \item{y}{the response variable.}
@@ -206,7 +205,13 @@ angular <- function(
   kappahat <- circular::A1inv(Akappa)
 
   # Compute variance-covariance matrix v0
-  v0 <- solve(t(matd) %*% matd) / (Akappa * kappahat)
+  XtX <- crossprod(matd)
+  XtX_inv <- solve(XtX)
+  v0 <- XtX_inv / (Akappa * kappahat)
+
+  res_sq <- res^2
+  matd_res <- matd * matrix(res_sq, nrow = nrow(matd), ncol = ncol(matd))
+  v2 <- XtX_inv %*% crossprod(matd, matd_res) %*% XtX_inv
 
   zvalue <- abs(betak) / sqrt(diag(v0))
   pvals <- round(
@@ -217,15 +222,12 @@ angular <- function(
   colnames(parameters) <- c("estimate", "stderr", "z value", "P(|z|>.)")
   rownames(parameters) <- betaname
 
-  autocorr <- stats::acf(res, plot = FALSE)
-
   out <- list(
     MaxCosine = maxcosk,
     parameters = parameters,
     kappahat = kappahat,
     varcov0 = v0,
-    varcov1 = NULL,
-    autocorr = autocorr,
+    varcov2 = v2,
     long = long,
     mui = mui,
     y = y,

@@ -1,0 +1,101 @@
+---
+title: "Getting Started with CircularRegression"
+author: "CircularRegression Team"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with CircularRegression}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+
+`CircularRegression` provides tools to fit regression models designed for circular
+responses. This vignette introduces the main functionality of the package using
+the `bison` data set included with the package. The demonstrations highlight
+how to fit and interpret both the angular and consensus regression models.
+
+# Loading the package and data
+
+```{r load-data}
+library(CircularRegression)
+
+data(bison)
+str(bison)
+```
+
+The `bison` data frame contains directional observations (`y.dir`) along with
+predictor summaries (`y.prec` and `y.prec2`) that characterize preceding animal
+headings. The formulas used in this vignette follow the convention of placing the
+circular response on the left-hand side.
+
+# Angular regression model
+
+The angular regression model links the response direction to previous directions
+through trigonometric transformations. The example below fits the simplified
+angular regression model with `y.dir` as the response and two predictors that
+capture previous movement directions.
+
+```{r angular-fit}
+ang_fit <- angular(y.dir ~ y.prec + y.prec2, data = bison)
+ang_fit
+```
+
+A summary provides parameter estimates and associated inference information.
+
+```{r angular-summary}
+summary(ang_fit)
+```
+
+Diagnostic plots help assess the adequacy of the model by visualizing residuals
+and fitted directions.
+
+```{r angular-plot, fig.width=7, fig.height=6}
+plot(ang_fit)
+```
+
+# Consensus regression model
+
+The consensus model extends the angular regression framework by explicitly
+modelling the concentration parameter. The following example fits a consensus
+model using the same predictors.
+
+```{r consensus-fit}
+cons_fit <- consensus(y.dir ~ y.prec + y.prec2, data = bison)
+cons_fit
+```
+
+You can inspect the estimated parameters and goodness-of-fit criteria via the
+summary method.
+
+```{r consensus-summary}
+summary(cons_fit)
+```
+
+For a more detailed diagnostic assessment, the plotting method provides a suite
+of charts similar to those available for linear models.
+
+```{r consensus-plot, fig.width=7, fig.height=6}
+plot(cons_fit)
+```
+
+# Additional models and utilities
+
+Besides the angular and consensus models, the package exposes additional
+regression frameworks such as the decentered predictor model, Presnell model,
+and mean direction model. Refer to the function documentation for these
+methods for more examples (`?decentredPredictorModel`, `?presnellModel`,
+etc.).
+
+# Session information
+
+```{r session-info}
+sessionInfo()
+```

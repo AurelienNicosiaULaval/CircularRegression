@@ -42,6 +42,13 @@
 #' }
 #'
 #' @author Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
+#' @examples
+#' \dontrun{
+#'   data(bison)
+#'   fit <- consensus(y.dir ~ y.prec + y.prec2, data = bison)
+#'   print(fit)
+#'   summary(fit)
+#' }
 #' @export
 consensus <- function(
   formula,

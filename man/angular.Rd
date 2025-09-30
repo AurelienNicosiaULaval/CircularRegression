@@ -4,68 +4,64 @@
 \alias{angular}
 \title{Angular Regression Model}
 \usage{
-angular(formula, data, model = "simplified", initbeta = NULL, control = list())
+angular(
+  formula,
+  data,
+  model = "simplified",
+  initbeta = NULL,
+  control = list(),
+  random = NULL,
+  cluster = NULL,
+  alternate = TRUE
+)
 }
 \arguments{
 \item{formula}{A formula with the dependent angle on the left of the ~ operator and terms specifying
-the explanatory variables on the right. These terms must be written \code{x:z}, where
-\code{x} is an explanatory angle whose relative importance might depend on the
-positive variable \code{z}. For \code{model = "simplified"}, the first explanatory angle is
-the reference direction (any provided \code{z} for this angle is ignored).}
+the explanatory variables on the right. These terms must be written \code{x:z}.}
 
 \item{data}{An optional data frame, list or environment containing the variables in the model formula.}
 
-\item{model}{A character string, either \code{"complete"} for the complete model with an intercept (the default)
-or \code{"simplified"} for the simplified model without an intercept.}
+\item{model}{A character string, either \code{"complete"} (with intercept) or \code{"simplified"} (no intercept).}
 
-\item{initbeta}{A numerical vector of initial beta parameter values. The default is to use the best initial
-values found among a grid of possible values.}
+\item{initbeta}{Optional numeric vector of initial beta values.}
 
 \item{control}{A list of control parameters. See Details.}
+
+\item{random}{Optional one-sided formula of the form \code{~ 1 | id} to enable a VM random intercept per id.}
+
+\item{cluster}{Optional factor giving the cluster for each row (ignored if \code{random} is supplied).}
+
+\item{alternate}{Logical; if TRUE (default), alternates once between updating \eqn{\beta} on \eqn{y-\hat a}
+and re-estimating \eqn{(\kappa_e,\kappa_a)}.}
 }
 \value{
 An object of class "angular" containing:
 \describe{
   \item{MaxCosine}{the maximum cosine value.}
-  \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
-  \item{varcov0}{the asymptotic estimated variance-covariance matrix.}
-  \item{varcov1}{the non-parametric estimated variance-covariance matrix (sandwich).}
-  \item{long}{the vector of predicted concentrations.}
-  \item{mui}{the vector of predicted mean angles.}
+  \item{parameters}{matrix of estimates, std. errors, z-values and p-values for beta.}
+  \item{varcov0}{model-based variance-covariance for beta.}
+  \item{varcov1}{robust (sandwich-like) variance-covariance for beta.}
+  \item{long}{vector of predicted concentrations.}
+  \item{mui}{vector of predicted mean angles.}
   \item{y}{the response variable.}
-  \item{iter.detail}{the iteration details.}
+  \item{iter.detail}{iteration details.}
   \item{call}{the function call.}
+  \item{kappa_e}{(if random intercept) estimated residual concentration.}
+  \item{kappa_a}{(if random intercept) estimated random-intercept concentration.}
+  \item{a_i}{(if random intercept) empirical Bayes predictors per observation (length n).}
+  \item{cluster}{(if random intercept) factor of cluster membership.}
 }
 }
 \description{
 Function that fits a regression model for angular variables along with its
-associated S3 methods.
+associated S3 methods. Optionally, a random intercept a_i ~ VM(0, kappa_a)
+may be estimated for clustered data (Rivest et al., 2019).
 }
 \details{
 The control argument is a list that can supply any of the following components:
 \describe{
-  \item{\code{pginit}}{The approximate number of points on the grid of possible initial beta values tried when
-                        \code{initbeta} is not given. The default is 1000, which runs quickly. A large value of
-                        \code{pginit} makes the function slower.}
-  \item{\code{maxiter}}{The maximum number of iterations. The default is 1000.}
-  \item{\code{mindiff}}{The minimum difference between two max cosine values to be reached. It defines the convergence criteria:
-                         if the difference between the max cosine for the updated parameter values and the previous
-                         one is below \code{mindiff}, convergence is reached. The default is 0.000001.}
+  \item{\code{pginit}}{Grid size for initial beta search when \code{initbeta} is missing. Default 1000.}
+  \item{\code{maxiter}}{Maximum number of iterations. Default 1000.}
+  \item{\code{mindiff}}{Convergence tolerance on max-cosine improvement. Default 1e-6.}
 }
-}
-\examples{
-\dontrun{
-  # Example with the bison data set included in the package
-  data(bison)
-  an <- angular(y.dir ~ y.prec + y.prec2, data = bison)
-  print(an)
-  summary(an)
-  plot(an)
-}
-}
-\references{
-L.-P. Rivest, T. Duchesne, A. Nicosia & D. Fortin. A general angular regression model for the analysis of data on animal movement in ecology. Journal of the Royal Statistical Society, series C, to appear.
-}
-\author{
-Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
 }

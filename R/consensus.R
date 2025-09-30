@@ -269,7 +269,7 @@ consensus <- function(
     varcov1 = v1,
     parambeta = parambeta,
     varcovbeta1 = vb,
-    autocorr = autocorr,
+    #   autocorr = autocorr,
     matx = matx,
     matz = matz,
     y = y,

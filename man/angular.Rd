@@ -28,8 +28,8 @@ An object of class "angular" containing:
 \describe{
   \item{MaxCosine}{the maximum cosine value.}
   \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
-  \item{varcov0}{the estimated variance-covariance matrix (first definition).}
-  \item{varcov2}{the non-parametric estimated variance-covariance matrix (equation 14 of Rivest et al.).}
+  \item{varcov0}{the asymptotic estimated variance-covariance matrix.}
+  \item{varcov1}{the non-parametric estimated variance-covariance matrix (sandwich).}
   \item{long}{the vector of predicted concentrations.}
   \item{mui}{the vector of predicted mean angles.}
   \item{y}{the response variable.}

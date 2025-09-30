@@ -46,7 +46,7 @@ An object of class "summary.consensus", a list containing:
   \item{MaxLL}{The maximum log-likelihood value.}
   \item{AIC}{The Akaike information criterion.}
   \item{BIC}{The Bayesian information criterion.}
-  \item{coefficients}{A matrix with the estimates, robust standard errors, z-values and associated p-values.}
+  \item{coefficients}{A matrix with the estimates, standard errors, z-values and associated p-values.}
   \item{residuals}{A summary of the residuals (min, 1st Qu., median, 3rd Qu., max).}
   \item{nobs}{The number of observations.}
 }

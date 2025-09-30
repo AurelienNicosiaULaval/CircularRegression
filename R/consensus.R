@@ -370,14 +370,21 @@ coef.consensus <- function(object, ...) {
 #' @rdname consensus-methods
 #' @export
 residuals.consensus <- function(object, ...) {
-  angle_diff_signed <- function(a, b) {
-    diff <- (a - b + pi) %% (2 * pi) - pi
-    diff
-  }
-  angle1 <- circular::circular(object$y)
-  angle2 <- circular::circular(object$mui)
-  res <- angle_diff_signed(angle1, angle2)
-  res
+  # tout en radians pour éviter les ambiguïtés
+  y <- circular::conversion.circular(
+    circular::as.circular(object$y),
+    units = "radians"
+  )
+  mu <- circular::conversion.circular(
+    circular::as.circular(object$mui),
+    units = "radians"
+  )
+
+  # différence angulaire signée minimale dans (-pi, pi]
+  d <- atan2(sin(y - mu), cos(y - mu))
+
+  # renvoyer un 'circular' en radians (convertis ensuite si tu veux)
+  circular::as.circular(d, units = "radians", modulo = "asis")
 }
 
 #' Summary Method for Consensus Objects

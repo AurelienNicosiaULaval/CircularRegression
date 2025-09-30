@@ -1,0 +1,44 @@
+#' Sandhopper Escape Orientation Data
+#'
+#' This dataset contains repeated measurements on the escape orientation
+#' of 59 sandhoppers (*Talitrus saltator*) in a circular arena experiment
+#' with a diameter of 120 cm. Each individual was released five times, and
+#' its escape angle with respect to the north was recorded. Several
+#' explanatory variables were also measured during the experiment.
+#'
+#' The dataset was originally presented and analyzed by D’Elia (2001) and
+#' later used in Rivest & Kato (2016) to illustrate angular regression
+#' models with repeated measures.
+#'
+#' @format A data frame with 72 rows and 22 variables:
+#' \describe{
+#'   \item{Anim}{Individual identifier (integer).}
+#'   \item{Day}{Day of the experiment.}
+#'   \item{Daytime}{Part of the day (character, e.g. `"mor"`, `"aft"`).}
+#'   \item{Azimuth}{Sun azimuth at release (in degrees).}
+#'   \item{LN1}{Escape orientation, trial 1 (in degrees).}
+#'   \item{LN2}{Escape orientation, trial 2 (in degrees).}
+#'   \item{LN3}{Escape orientation, trial 3 (in degrees).}
+#'   \item{LN4}{Escape orientation, trial 4 (in degrees).}
+#'   \item{LN5}{Escape orientation, trial 5 (in degrees).}
+#'   \item{Umidity}{Relative humidity (%).}
+#'   \item{Temp}{Air temperature (°C).}
+#'   \item{Tsab}{Sand temperature (°C).}
+#'   \item{DirW}{Wind direction (in degrees).}
+#'   \item{SpeedW}{Wind speed (in unknown units).}
+#'   \item{Sex}{Sex of the sandhopper (`"f"` or `"m"`).}
+#'   \item{Weight}{Weight of the sandhopper (grams).}
+#'   \item{Odmx}{Morphometric measurement.}
+#'   \item{Odmn}{Morphometric measurement.}
+#'   \item{Osmx}{Morphometric measurement.}
+#'   \item{Osmn}{Morphometric measurement.}
+#'   \item{Artdx}{Morphometric measurement.}
+#'   \item{Artsx}{Morphometric measurement.}
+#' }
+#'
+#' @references
+#' D’Elia, G. (2001). Orientation in sandhoppers. *Behavioural Ecology*.
+#' Rivest, L.-P., & Kato, S. (2016). A random effects model for clustered circular data.
+#'   *The Canadian Journal of Statistics*.
+#'
+"Sandhopper"

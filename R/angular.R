@@ -1,65 +1,69 @@
 ###############################################################################
-# Angular Regression Model (minimal changes + random intercept κ_a)
+# Angular Regression Model
 ###############################################################################
 
 #' Angular Regression Model
 #'
 #' Function that fits a regression model for angular variables along with its
-#' associated S3 methods. Optionally, a random intercept a_i ~ VM(0, kappa_a)
-#' may be estimated for clustered data (Rivest et al., 2019).
+#' associated S3 methods.
 #'
 #' The control argument is a list that can supply any of the following components:
 #' \describe{
-#'   \item{\code{pginit}}{Grid size for initial beta search when \code{initbeta} is missing. Default 1000.}
-#'   \item{\code{maxiter}}{Maximum number of iterations. Default 1000.}
-#'   \item{\code{mindiff}}{Convergence tolerance on max-cosine improvement. Default 1e-6.}
+#'   \item{\code{pginit}}{The approximate number of points on the grid of possible initial beta values tried when
+#'                         \code{initbeta} is not given. The default is 1000, which runs quickly. A large value of
+#'                         \code{pginit} makes the function slower.}
+#'   \item{\code{maxiter}}{The maximum number of iterations. The default is 1000.}
+#'   \item{\code{mindiff}}{The minimum difference between two max cosine values to be reached. It defines the convergence criteria:
+#'                          if the difference between the max cosine for the updated parameter values and the previous
+#'                          one is below \code{mindiff}, convergence is reached. The default is 0.000001.}
 #' }
 #'
 #' @param formula A formula with the dependent angle on the left of the ~ operator and terms specifying
-#'                the explanatory variables on the right. These terms must be written \code{x:z}.
+#'                the explanatory variables on the right. These terms must be written \code{x:z}, where
+#'                \code{x} is an explanatory angle whose relative importance might depend on the
+#'                positive variable \code{z}. For \code{model = "simplified"}, the first explanatory angle is
+#'                the reference direction (any provided \code{z} for this angle is ignored).
 #' @param data An optional data frame, list or environment containing the variables in the model formula.
-#' @param model A character string, either \code{"complete"} (with intercept) or \code{"simplified"} (no intercept).
-#' @param initbeta Optional numeric vector of initial beta values.
+#' @param model A character string, either \code{"complete"} for the complete model with an intercept (the default)
+#'              or \code{"simplified"} for the simplified model without an intercept.
+#' @param initbeta A numerical vector of initial beta parameter values. The default is to use the best initial
+#'                 values found among a grid of possible values.
 #' @param control A list of control parameters. See Details.
-#' @param random Optional one-sided formula of the form \code{~ 1 | id} to enable a VM random intercept per id.
-#' @param cluster Optional factor giving the cluster for each row (ignored if \code{random} is supplied).
-#' @param alternate Logical; if TRUE (default), alternates once between updating \eqn{\beta} on \eqn{y-\hat a}
-#'        and re-estimating \eqn{(\kappa_e,\kappa_a)}.
 #'
 #' @return An object of class "angular" containing:
 #' \describe{
 #'   \item{MaxCosine}{the maximum cosine value.}
-#'   \item{parameters}{matrix of estimates, std. errors, z-values and p-values for beta.}
-#'   \item{varcov0}{model-based variance-covariance for beta.}
-#'   \item{varcov1}{robust (sandwich-like) variance-covariance for beta.}
-#'   \item{long}{vector of predicted concentrations.}
-#'   \item{mui}{vector of predicted mean angles.}
+#'   \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
+#'   \item{varcov0}{the asymptotic estimated variance-covariance matrix.}
+#'   \item{varcov1}{the non-parametric estimated variance-covariance matrix (sandwich).}
+#'   \item{long}{the vector of predicted concentrations.}
+#'   \item{mui}{the vector of predicted mean angles.}
 #'   \item{y}{the response variable.}
-#'   \item{iter.detail}{iteration details.}
+#'   \item{iter.detail}{the iteration details.}
 #'   \item{call}{the function call.}
-#'   \item{kappa_e}{(if random intercept) estimated residual concentration.}
-#'   \item{kappa_a}{(if random intercept) estimated random-intercept concentration.}
-#'   \item{a_i}{(if random intercept) empirical Bayes predictors per observation (length n).}
-#'   \item{cluster}{(if random intercept) factor of cluster membership.}
 #' }
 #'
+#' @author Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
+#' @references L.-P. Rivest, T. Duchesne, A. Nicosia & D. Fortin. A general angular regression model for the analysis of data on animal movement in ecology. Journal of the Royal Statistical Society, series C, to appear.
+#' @examples
+#' \dontrun{
+#'   # Example with the bison data set included in the package
+#'   data(bison)
+#'   an <- angular(y.dir ~ y.prec + y.prec2, data = bison)
+#'   print(an)
+#'   summary(an)
+#'   plot(an)
+#' }
 #' @export
 angular <- function(
   formula,
   data,
   model = "simplified",
   initbeta = NULL,
-  control = list(),
-  random = NULL,
-  cluster = NULL,
-  alternate = TRUE
+  control = list()
 ) {
   call <- match.call()
   model <- model[1]
-
-  # helpers
-  A1inv <- circular::A1inv
-  A1 <- function(k) ifelse(k == 0, 0, besselI(k, 1) / besselI(k, 0))
 
   ### Extraction of the model.frame
   mfargs <- match(c("formula", "data"), names(call), 0L)
@@ -73,20 +77,6 @@ angular <- function(
   p <- if (model == "simplified") nterms - 1 else nterms
   nparam <- if (model == "simplified") p else p + 1
   betaname <- if (length(paramname) > 1) paramname[-1] else character(0)
-
-  # clusters (minimal API change)
-  if (!is.null(random)) {
-    # expect ~ 1 | id
-    rhs <- random[[3L]]
-    if (length(rhs) == 3L && as.character(rhs[[1L]]) == "|") {
-      idname <- as.character(rhs[[3L]])
-      cluster <- as.factor(data[[idname]])
-    } else stop("'random' must be of the form ~ 1 | id")
-  } else if (!is.null(cluster)) {
-    cluster <- as.factor(cluster)
-    if (length(cluster) != nobs) stop("'cluster' must have same length as data")
-  }
-  has_re <- !is.null(cluster)
 
   # Response variable
   y <- mf[, 1]
@@ -106,28 +96,24 @@ angular <- function(
   }
 
   ### Model fitting: define internal function maxcos
-  maxcos <- function(
-    beta,
-    yi = y,
-    x0i = if (model == "simplified") x0 else NULL
-  ) {
-    sinmu <- sin(if (model == "simplified") x0i else beta[p + 1]) +
+  maxcos <- function(beta) {
+    sinmu <- sin(if (model == "simplified") x0 else beta[p + 1]) +
       as.vector((matz * sin(matx)) %*% beta[1:p])
-    cosmu <- cos(if (model == "simplified") x0i else beta[p + 1]) +
+    cosmu <- cos(if (model == "simplified") x0 else beta[p + 1]) +
       as.vector((matz * cos(matx)) %*% beta[1:p])
     long <- sqrt(sinmu^2 + cosmu^2)
     mui <- atan2(sinmu, cosmu)
-    maxcos_val <- mean(cos(yi - mui))
+    maxcos_val <- mean(cos(y - mui))
     list(maxcos = maxcos_val, long = long, mui = mui)
   }
 
-  betaUpdate <- function(betak, long, mui, yi = y) {
+  betaUpdate <- function(betak, long, mui) {
     matd <- cbind(
       matz * sin(matx - mui),
       if (model == "simplified") NULL else cos(betak[p + 1] - mui)
     ) /
       long
-    res <- sin(yi - mui)
+    res <- sin(y - mui)
     dbeta <- as.vector(solve(t(matd) %*% matd, t(matd) %*% res))
     betak1 <- betak + dbeta
     list(betak1 = betak1, dbeta = dbeta, matd = matd, res = res)
@@ -206,15 +192,15 @@ angular <- function(
     iter.detail <- iter.detail[1:(iter + 1), , drop = FALSE]
   }
 
-  if (exists("maxcosk1") && maxcosk == maxcosk1) {
+  if (maxcosk == maxcosk1) {
     maj <- betaUpdate(betak = betak, long = long, mui = mui)
   }
   matd <- maj$matd
   res <- maj$res
   Akappa <- mean(maxcosk)
-  kappahat <- A1inv(Akappa)
+  kappahat <- circular::A1inv(Akappa)
 
-  # Base SEs as before (for no-RE case and as fallback)
+  # Compute variance-covariance matrix v0
   XtX <- crossprod(matd)
   XtX_inv <- solve(XtX)
   v0 <- XtX_inv / (Akappa * kappahat)
@@ -222,110 +208,6 @@ angular <- function(
   res_sq <- res^2
   matd_res <- matd * matrix(res_sq, nrow = nrow(matd), ncol = ncol(matd))
   v2 <- XtX_inv %*% crossprod(matd, matd_res) %*% XtX_inv
-
-  # -------- Random intercept branch (minimal, optional) --------
-  kappa_e <- kappa_a <- NA_real_
-  a_i <- rep(0, nobs)
-  if (has_re) {
-    eps <- y - mui
-    eps <- atan2(sin(eps), cos(eps))
-    lev <- levels(cluster)
-    n_i <- as.integer(table(cluster)[lev])
-
-    sumC <- tapply(eps, cluster, function(e) sum(cos(e)))
-    sumS <- tapply(eps, cluster, function(e) sum(sin(e)))
-
-    loglik_vm_marg <- function(par) {
-      ke <- pmax(par[1], 0)
-      ka <- pmax(par[2], 0)
-      sig <- sqrt((ka + ke * sumC)^2 + (ke * sumS)^2)
-      sum(
-        log(besselI(sig, 0)) -
-          log(besselI(ka, 0)) -
-          n_i * log(besselI(ke, 0)) -
-          n_i * log(2 * pi)
-      )
-    }
-
-    # crude inits via moments
-    Rbar <- mean(cos(eps))
-    ke0 <- max(kappahat, 1e-1)
-    ka0 <- max(A1inv(pmin(pmax(Rbar / pmax(A1(ke0), 1e-8), 1e-6), 1 - 1e-6)), 0)
-
-    fitK <- optim(
-      c(ke0, ka0),
-      fn = function(p) -loglik_vm_marg(p),
-      method = "L-BFGS-B",
-      lower = c(0, 0)
-    )
-    kappa_e <- max(fitK$par[1], 0)
-    kappa_a <- max(fitK$par[2], 0)
-
-    # EB predictors per cluster, then per obs
-    a_hat_lev <- atan2(kappa_e * sumS, kappa_a + kappa_e * sumC)
-    a_i <- as.numeric(a_hat_lev[cluster])
-
-    if (isTRUE(alternate)) {
-      # one alternation: refit beta on tilted response and re-opt κ
-      y_t <- atan2(sin(y - a_i), cos(y - a_i))
-      # re-run short maxcos updates
-      calcul2 <- maxcos(beta = betak, yi = y_t)
-      maxcosk2 <- calcul2$maxcos
-      long2 <- calcul2$long
-      mui2 <- calcul2$mui
-      iter2 <- 0
-      repeat {
-        maj2 <- betaUpdate(betak = betak, long = long2, mui = mui2, yi = y_t)
-        betak_n <- maj2$betak1
-        calc_n <- maxcos(beta = betak_n, yi = y_t)
-        if ((calc_n$maxcos - maxcosk2) <= mindiff || iter2 >= 50) {
-          betak <- betak_n
-          mui <- calc_n$mui
-          long <- calc_n$long
-          break
-        } else {
-          betak <- betak_n
-          mui <- calc_n$mui
-          long <- calc_n$long
-          maxcosk2 <- calc_n$maxcos
-          iter2 <- iter2 + 1
-        }
-      }
-      # update eps and sums, then κ
-      eps <- atan2(sin(y - mui), cos(y - mui))
-      sumC <- tapply(eps, cluster, function(e) sum(cos(e)))
-      sumS <- tapply(eps, cluster, function(e) sum(sin(e)))
-      loglik2 <- function(par) {
-        ke <- pmax(par[1], 0)
-        ka <- pmax(par[2], 0)
-        sig <- sqrt((ka + ke * sumC)^2 + (ke * sumS)^2)
-        sum(
-          log(besselI(sig, 0)) -
-            log(besselI(ka, 0)) -
-            n_i * log(besselI(ke, 0)) -
-            n_i * log(2 * pi)
-        )
-      }
-      fitK2 <- optim(
-        c(kappa_e, kappa_a),
-        fn = function(p) -loglik2(p),
-        method = "L-BFGS-B",
-        lower = c(0, 0)
-      )
-      kappa_e <- max(fitK2$par[1], 0)
-      kappa_a <- max(fitK2$par[2], 0)
-      a_hat_lev <- atan2(kappa_e * sumS, kappa_a + kappa_e * sumC)
-      a_i <- as.numeric(a_hat_lev[cluster])
-    }
-
-    # recompute SEs for beta conditionally on κ_e using conditional residuals
-    res_cond <- sin(y - mui - a_i)
-    XtX <- crossprod(matd)
-    XtX_inv <- solve(XtX)
-    v0 <- XtX_inv / (pmax(A1(kappa_e), 1e-8) * pmax(kappa_e, 1e-8))
-    matd_res <- matd * matrix(res_cond^2, nrow = nrow(matd), ncol = ncol(matd))
-    v2 <- XtX_inv %*% crossprod(matd, matd_res) %*% XtX_inv
-  }
 
   zvalue <- abs(betak) / sqrt(diag(v0))
   pvals <- round(
@@ -346,18 +228,14 @@ angular <- function(
     mui = mui,
     y = y,
     iter.detail = iter.detail,
-    call = call,
-    kappa_e = if (has_re) kappa_e else NULL,
-    kappa_a = if (has_re) kappa_a else NULL,
-    a_i = if (has_re) a_i else NULL,
-    cluster = if (has_re) cluster else NULL
+    call = call
   )
   class(out) <- "angular"
   out
 }
 
 ###############################################################################
-### S3 Methods for Angular Regression Objects (minimal edits)
+### S3 Methods for Angular Regression Objects
 ###############################################################################
 
 #' Methods for Angular Regression Objects
@@ -375,25 +253,34 @@ print.angular <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
   cat("\nMaximum cosine:", format(x$MaxCosine, digits = 4), "")
-  cat("\nConcentration parameter:", format(x$kappahat, digits = 4), "\n")
-  if (!is.null(x$kappa_e) && !is.null(x$kappa_a)) {
-    cat(
-      "Random-intercept concentrations: kappa_e =",
-      format(x$kappa_e, digits = 4),
-      ", kappa_a =",
-      format(x$kappa_a, digits = 4),
-      "\n\n"
-    )
-  } else cat("\n")
+  cat("\nConcentration parameter:", format(x$kappahat, digits = 4), "\n\n")
   cat("Parameters:\n")
   coefmat <- x$parameters
+  stars <- ifelse(
+    coefmat[, "P(|z|>.)"] < 0.001,
+    "***",
+    ifelse(
+      coefmat[, "P(|z|>.)"] < 0.01,
+      "**",
+      ifelse(
+        coefmat[, "P(|z|>.)"] < 0.05,
+        "*",
+        ifelse(coefmat[, "P(|z|>.)"] < 0.1, ".", " ")
+      )
+    )
+  )
+
+  # Transformation en matrice numérique pour printCoefmat
   mat_numeric <- cbind(
     Estimate = as.numeric(coefmat[, 1]),
     `Robust std` = as.numeric(coefmat[, 2]),
     `z value` = as.numeric(coefmat[, 3]),
     `P(|z|>.)` = as.numeric(coefmat[, 4])
   )
+
   rownames(mat_numeric) <- rownames(coefmat)
+
+  # Impression avec printCoefmat
   stats::printCoefmat(mat_numeric, P.values = TRUE, has.Pvalue = TRUE)
   invisible(x)
 }
@@ -408,35 +295,40 @@ coef.angular <- function(object, ...) {
 #' @rdname angular-methods
 #' @export
 residuals.angular <- function(object, ...) {
-  # work entirely in radians and return a circular object (radians)
-  as_circ_rad <- function(x)
-    circular::conversion.circular(
-      circular::as.circular(x),
-      units = "radians"
-    )
+  # tout en radians pour éviter les ambiguïtés
+  y <- circular::conversion.circular(
+    circular::as.circular(object$y),
+    units = "radians"
+  )
+  mu <- circular::conversion.circular(
+    circular::as.circular(object$mui),
+    units = "radians"
+  )
 
-  y <- as_circ_rad(object$y)
-  mu <- as_circ_rad(object$mui)
+  # différence angulaire signée minimale dans (-pi, pi]
+  d <- atan2(sin(y - mu), cos(y - mu))
 
-  if (!is.null(object$a_i)) {
-    ai <- as_circ_rad(object$a_i)
-    delta <- y - (mu + ai)
-  } else {
-    delta <- y - mu
-  }
-
-  d <- atan2(sin(delta), cos(delta))
+  # renvoyer un 'circular' en radians (convertis ensuite si tu veux)
   circular::as.circular(d, units = "radians", modulo = "asis")
 }
 
 #' Summary Method for Angular Regression Objects
 #'
-#' Summarizes an object of class "angular" by providing key diagnostic statistics.
+#' This function summarizes an object of class "angular" by providing key
+#' diagnostic statistics including the model call, maximum cosine, a summary of residuals,
+#' the parameter estimates, and the number of observations.
 #'
 #' @param object An object of class "angular".
 #' @param ... Further arguments (currently ignored).
 #'
-#' @return An object of class "summary.angular".
+#' @return An object of class "summary.angular", a list containing:
+#' \describe{
+#'   \item{call}{The matched call.}
+#'   \item{MaxCosine}{The maximum cosine value.}
+#'   \item{parameters}{A matrix with the estimates, standard errors, z-values and associated p-values.}
+#'   \item{residuals}{A summary of the residuals (min, 1st Qu., median, 3rd Qu., max).}
+#'   \item{nobs}{The number of observations.}
+#' }
 #'
 #' @rdname angular-methods
 #' @export
@@ -448,8 +340,6 @@ summary.angular <- function(object, ...) {
     MaxCosine = object$MaxCosine,
     parameters = object$parameters,
     kappahat = object$kappahat,
-    kappa_e = object$kappa_e,
-    kappa_a = object$kappa_a,
     residuals = resid_summary,
     nobs = length(object$y)
   )
@@ -458,6 +348,8 @@ summary.angular <- function(object, ...) {
 }
 
 #' Print Method for Summary of Angular Regression Objects
+#'
+#' This function prints a summary of an angular regression model.
 #'
 #' @param x An object of class "summary.angular".
 #' @param ... Further arguments passed to printing functions.
@@ -468,17 +360,8 @@ print.summary.angular <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
   cat("\nMaximum cosine:", format(x$MaxCosine, digits = 4), "")
-  cat("\nConcentration parameter:", format(x$kappahat, digits = 4), "\n")
-  if (!is.null(x$kappa_e) && !is.null(x$kappa_a)) {
-    cat(
-      "Random-intercept: kappa_e =",
-      format(x$kappa_e, digits = 4),
-      ", kappa_a =",
-      format(x$kappa_a, digits = 4),
-      "\n"
-    )
-  }
-  cat("\nResiduals:\n")
+  cat("\nConcentration parameter:", format(x$kappahat, digits = 4), "\n\n")
+  cat("Residuals:\n")
   print(x$residuals)
   cat("\nParameters:\n")
   stats::printCoefmat(
@@ -493,7 +376,14 @@ print.summary.angular <- function(x, ...) {
 
 #' Diagnostic Plots for Angular Regression Model
 #'
-#' This function produces diagnostic plots for an object of class "angular".
+#' This function produces a set of diagnostic plots for an object of class "angular"
+#' in a layout similar to that of \code{plot.lm}. The diagnostics include:
+#' \enumerate{
+#'   \item Residuals vs Fitted values.
+#'   \item Histogram of residuals with a normal density overlay.
+#'   \item Normal Q-Q plot.
+#'   \item A text display of a goodness-of-fit measure.
+#' }
 #'
 #' @param x An object of class "angular".
 #' @param ... Further arguments passed to plotting functions.
@@ -506,10 +396,9 @@ plot.angular <- function(x, ...) {
   if (!requireNamespace("gridExtra", quietly = TRUE))
     stop("Package 'gridExtra' is required for arranging plots.")
 
-  res <- as.numeric(residuals.angular(x))
-
+  # Use ggplot2:: functions directly instead of library()
   p1 <- ggplot2::ggplot(
-    data = data.frame(Fitted = x$mui, Residual = res),
+    data = data.frame(Fitted = x$mui, Residual = residuals.angular(x)),
     ggplot2::aes(x = Fitted, y = Residual)
   ) +
     ggplot2::geom_point(color = "blue") +
@@ -520,6 +409,7 @@ plot.angular <- function(x, ...) {
       y = "Residuals"
     )
 
+  res <- as.numeric(residuals.angular(x))
   res_mean <- mean(res)
   res_sd <- stats::sd(res)
   p2 <- ggplot2::ggplot(

@@ -96,6 +96,90 @@ print(lrt_result)
 anova(fit_full, fit_reduced, test = "LRT")
 ```
 
+# random effect
+
+```{r, eval=FALSE}
+dat <- data("Sandhopper")
+to_rad <- function(x) x * pi/180
+for (v in c("LN1","LN2","LN3","LN4","LN5","Azimuth","DirW")) dat[[v]] <- to_rad(dat[[v]])
+dat$Eye <- log(dat$Odmx*dat$Odmn) - log(dat$Osmx*dat$Osmn)
+
+# Retenir les 59 individus sans NA comme dans l'annexe
+keep <- c(1:14,16:49,51:53,57:64)
+dat2 <- dat[keep, ]
+
+# "Long" : 5 lignes par individu
+long <- do.call(rbind, lapply(seq_len(nrow(dat2)), function(i) {
+  data.frame(
+    id   = i,
+    Azimuth = dat2$Azimuth[i],
+    DirW    = dat2$DirW[i],
+    SpeedW  = dat2$SpeedW[i],
+    Eye     = dat2$Eye[i],
+    Rep     = 0:4,
+    LN      = as.numeric(dat2[i, paste0("LN", 1:5)])
+  )
+}))
+
+# Modèle final de l'article (Eq. (11) et modèle restreint) :
+# y ~ Azimuth + DirW + 0 + DirW:SpeedW + 0:Eye + (pi/2):Eye + (pi/2):Rep
+# On réutilise la grammaire "x:z" de angular()
+long$Zero   <- 0
+long$Pi2    <- pi/2
+
+fit <- angular_re(
+  LN ~ Azimuth + DirW + Zero + DirW:SpeedW + Zero:Eye + Pi2:Eye + Pi2:Rep,
+  data = long,
+  cluster = long$id,
+  model = "simplified"
+)
+print(fit)
+
+# Résumés utiles
+coef(fit)
+vcov(fit)                 # SE modèle
+vcov(fit, robust = TRUE)  # SE sandwich
+head(ranef(fit))          # prédicteurs a_hat
+
+
+# flèches avec longueur A1(kappa_a) (interprétable)
+plot_ranef.angular_re(fit)
+
+# longueur unitaire + labels de grappes
+plot_ranef.angular_re(fit, scale = "unit", labels = TRUE)
+
+## Rosaces (deux panneaux)
+plot(fit, which = "both")             # fixed + conditional
+plot(fit, which = "fixed")
+plot(fit, which = "conditional", points = FALSE)
+
+## Prédictions
+library(CircStats)
+new_df <- data.frame(
+  LN = rvonmises(5, mu = 0, kappa = 1), # ex: 5 valeurs aléatoires
+  Azimuth = rep(to_rad(45), 5),       # ex: 45° en radians
+  DirW    = rep(to_rad(90), 5),       # ex: 90°
+  Zero    = 0,                        # variable "constante"
+  SpeedW  = rep(0.5, 5),              # ex: vitesse du vent
+  Eye     = rep(mean(long$Eye), 5),   # ex: utiliser moyenne observée
+  Pi2     = pi/2,
+  Rep     = 0:4                       # répétitions
+)
+# marginales (nouvelle grappe)
+mu_new <- predict(fit, newdata = new_df, type = "marginal")
+
+# conditionnelles pour des observations appartenant à des grappes connues
+mu_cond <- predict(fit, newdata = df_existing, cluster = df_existing$id,
+                   type = "conditional")
+
+# conditionnelles avec un a_hat imposé (p.ex. scénario)
+mu_scenario <- predict(fit, newdata = new_df, type = "conditional", a_hat = 0.3)
+
+
+
+
+
+```
 
 
 # Additional models and utilities

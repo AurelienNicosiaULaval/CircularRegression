@@ -1,0 +1,10 @@
+citHeader("To cite CircularRegression in publications, please use:")
+
+citEntry(
+  entry = "Manual",
+  title = "CircularRegression: Circular Regression Models",
+  author = person("Aurelien", "Nicosia"),
+  year = "2024",
+  note = "R package version 0.1.1",
+  url = "https://github.com/AurelienNicosiaULaval/CircularRegression"
+)

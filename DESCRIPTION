@@ -22,7 +22,10 @@ Depends:
     R (>= 3.5)
 Suggests:
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0),
+    CircStats
 VignetteBuilder: knitr
 URL: https://github.com/AurelienNicosiaULaval/CircularRegression
 BugReports: https://github.com/AurelienNicosiaULaval/CircularRegression/issues
+Config/testthat/edition: 3

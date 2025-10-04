@@ -24,17 +24,18 @@
 #'
 #' @export
 meanDirectionModel <- function(data, response, mu0 = NULL, ...) {
+  data_aug <- data
   if (is.null(mu0)) {
-    data$mu0 <- 0
-    data$tan_mu <- pi / 2
+    data_aug$mu0 <- 0
+    data_aug$tan_mu <- pi / 2
   } else {
-    data$mu0 <- mu0
-    data$tan_mu <- mu0 + pi / 2
+    data_aug$mu0 <- mu0
+    data_aug$tan_mu <- mu0 + pi / 2
   }
 
   modelFormula <- stats::as.formula(paste(response, "~ mu0 + tan_mu"))
 
-  fit <- angular(formula = modelFormula, data = data, ...)
+  fit <- angular(formula = modelFormula, data = data_aug, ...)
 
   return(fit)
 }
@@ -67,13 +68,14 @@ decentredPredictorModel <- function(data, response, w, ...) {
     stop("The explanatory variable specified in 'w' is not present in the data.")
   }
 
-  data$w_plus_pi2 <- data[[w]] + pi / 2
-  data$zero <- 0
-  data$pi2 <- pi / 2
+  data_aug <- data
+  data_aug$w_plus_pi2 <- data_aug[[w]] + pi / 2
+  data_aug$zero <- 0
+  data_aug$pi2 <- pi / 2
 
   modelFormula <- stats::as.formula(paste(response, "~", w, "+ w_plus_pi2 + zero + pi2"))
 
-  fit <- angular(formula = modelFormula, data = data, ...)
+  fit <- angular(formula = modelFormula, data = data_aug, ...)
 
   return(fit)
 }
@@ -111,12 +113,13 @@ presnellModel <- function(data, response, w, ...) {
     stop("The variable specified in 'w' is not present in the data.")
   }
 
-  data$zero <- 0
-  data$pi2 <- pi / 2
+  data_aug <- data
+  data_aug$zero <- 0
+  data_aug$pi2 <- pi / 2
 
   modelFormula <- stats::as.formula(paste(response, "~ zero + pi2 + zero:", w, " + pi2:", w, sep = ""))
 
-  fit <- angular(formula = modelFormula, data = data, ...)
+  fit <- angular(formula = modelFormula, data = data_aug, ...)
 
   return(fit)
 }
@@ -152,18 +155,19 @@ jammalamadakaModel <- function(data, response, w, ...) {
     stop("The explanatory variable specified in 'w' is not present in the data.")
   }
 
-  data$const0    <- 0
-  data$constPi2  <- pi / 2
-  data$w_orig    <- data[[w]]
-  data$neg_w     <- -data[[w]]
-  data$w_pi2     <- data[[w]] + pi / 2
-  data$neg_w_pi2 <- -data[[w]] + pi / 2
+  data_aug <- data
+  data_aug$const0    <- 0
+  data_aug$constPi2  <- pi / 2
+  data_aug$w_orig    <- data_aug[[w]]
+  data_aug$neg_w     <- -data_aug[[w]]
+  data_aug$w_pi2     <- data_aug[[w]] + pi / 2
+  data_aug$neg_w_pi2 <- -data_aug[[w]] + pi / 2
 
   modelFormula <- stats::as.formula(
     paste(response, "~ const0 + constPi2 + w_orig + neg_w + w_pi2 + neg_w_pi2")
   )
 
-  fit <- angular(formula = modelFormula, data = data, ...)
+  fit <- angular(formula = modelFormula, data = data_aug, ...)
 
   return(fit)
 }

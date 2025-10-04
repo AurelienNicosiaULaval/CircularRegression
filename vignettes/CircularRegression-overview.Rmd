@@ -99,7 +99,8 @@ anova(fit_full, fit_reduced, test = "LRT")
 # random effect
 
 ```{r, eval=FALSE}
-dat <- data("Sandhopper")
+data("Sandhopper", package = "CircularRegression")
+dat <- Sandhopper
 to_rad <- function(x) x * pi/180
 for (v in c("LN1","LN2","LN3","LN4","LN5","Azimuth","DirW")) dat[[v]] <- to_rad(dat[[v]])
 dat$Eye <- log(dat$Odmx*dat$Odmn) - log(dat$Osmx*dat$Osmn)
@@ -130,8 +131,7 @@ long$Pi2    <- pi/2
 fit <- angular_re(
   LN ~ Azimuth + DirW + Zero + DirW:SpeedW + Zero:Eye + Pi2:Eye + Pi2:Rep,
   data = long,
-  cluster = long$id,
-  model = "simplified"
+  cluster = long$id
 )
 print(fit)
 

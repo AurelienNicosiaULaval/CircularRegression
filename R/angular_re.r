@@ -1,17 +1,26 @@
 #' Angular mixed-effects regression with von Mises random intercepts
 #'
-#' Fits the homogeneous angular regression of Rivest et al. (2016)
-#' augmented with a cluster-specific random intercept a_i ~ VM(0, kappa_a)
-#' and unit-errors e_ij ~ VM(0, kappa_e), following Rivest & Kato (2019).
+#' Fits the homogeneous angular regression of Rivest et al. (2016) augmented
+#' with a cluster-specific random intercept \eqn{a_i \sim \mathrm{VM}(0, \kappa_a)}
+#' and unit-errors \eqn{e_{ij} \sim \mathrm{VM}(0, \kappa_e)}, following Rivest
+#' & Kato (2019). The fixed-effects component shares the simplified syntax of
+#' \code{angular()}, where the first term provides the reference direction and
+#' subsequent terms are written \code{x:z}.
 #'
-#' @param formula Same syntax as \code{angular()}: y ~ x1:z1 + x2:z2 + ...
-#'        The first angular covariate is the reference if \code{model="simplified"}.
-#' @param data data.frame
-#' @param cluster factor or vector of cluster IDs (same length as response)
-#' @param model "simplified" (default) or "complete" (as in \code{angular()})
-#' @param init list with optional entries: beta (numeric), kappa_e, kappa_a
-#' @param control list: maxit (default 2000), reltol (1e-8), trace (0/1), hessian (TRUE),
-#'        start_from_angular (TRUE) uses \code{angular()} for beta init.
+#' @param formula Model formula of the form \code{y ~ x1:z1 + x2:z2 + ...}. The
+#'   first angular covariate supplies the reference direction whose coefficient
+#'   is fixed to one.
+#' @param data A data frame containing the variables used in \code{formula}.
+#' @param cluster Factor or vector of cluster identifiers (must have the same
+#'   length as the response).
+#' @param init Optional list with components \code{beta}, \code{kappa_e}, and
+#'   \code{kappa_a} providing starting values. Missing entries are filled with
+#'   moment-based estimates.
+#' @param control Optional list controlling the optimisation with components
+#'   \code{maxit} (default 2000), \code{reltol} (1e-8), \code{trace} (0/1),
+#'   \code{hessian} (\code{TRUE}), and \code{start_from_angular} (\code{TRUE})
+#'   indicating whether \code{angular()} should be used to initialise the fixed
+#'   effects.
 #' @return object of class \code{"angular_re"}
 #' @importFrom stats model.frame optim pnorm
 #' @examples
@@ -21,13 +30,11 @@ angular_re <- function(
   formula,
   data,
   cluster,
-  model = "simplified",
   init = list(),
   control = list()
 ) {
   stopifnot(!missing(cluster))
   call <- match.call()
-  model <- model[1]
 
   ## ---- Parse model frame exactly like angular() ----
   mfargs <- match(c("formula", "data"), names(call), 0L)
@@ -42,28 +49,55 @@ angular_re <- function(
   id <- as.factor(cluster)
   lev <- levels(id)
   m <- length(lev)
+  cluster_index <- split(seq_len(n), id)
 
-  nomterms <- attr(attr(mf, "terms"), "term.labels")
-  nterms <- length(nomterms)
-  p <- if (model == "simplified") nterms - 1 else nterms
-  nparam <- if (model == "simplified") p else p + 1
-  betaname <- if (nterms > 1) nomterms[-1] else character(0)
-
-  # Split "x:z" pairs
-  sp <- strsplit(nomterms, split = ":")
-  sp <- do.call(rbind, sp)
-  if (model == "simplified") {
-    x0 <- mf[[sp[1, 1]]]
-    sp <- sp[-1, , drop = FALSE]
+  term_labels <- attr(attr(mf, "terms"), "term.labels")
+  if (length(term_labels) == 0) {
+    stop("The model must include at least one term specifying the reference direction.")
   }
-  matx <- as.matrix(mf[, sp[, 1], drop = FALSE])
-  if (ncol(sp) == 1) {
-    matz <- matrix(1, nrow = nrow(matx), ncol = ncol(matx))
+  split_terms <- strsplit(term_labels, ":", fixed = TRUE)
+  term_matrix <- t(vapply(split_terms, function(x) {
+    if (length(x) == 1) {
+      c(x, x)
+    } else if (length(x) == 2) {
+      x
+    } else {
+      stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
+    }
+  }, character(2)))
+
+  ref_name <- term_matrix[1, 1]
+  if (!ref_name %in% names(mf)) {
+    stop(
+      sprintf("Reference direction '%s' not found in the supplied data.", ref_name),
+      call. = FALSE
+    )
+  }
+  x0 <- mf[[ref_name]]
+
+  betaname <- if (length(term_labels) > 1) term_labels[-1] else character(0)
+  p <- length(betaname)
+  if (p > 0) {
+    x_names <- term_matrix[-1, 1]
+    z_names <- term_matrix[-1, 2]
+    matx <- as.matrix(mf[, x_names, drop = FALSE])
+    matz <- matrix(1, nrow = n, ncol = p)
+    for (j in seq_len(p)) {
+      if (!identical(z_names[j], x_names[j])) {
+        if (!z_names[j] %in% names(mf)) {
+          stop(
+            sprintf("Modifier '%s' not found in the supplied data.", z_names[j]),
+            call. = FALSE
+          )
+        }
+        matz[, j] <- mf[[z_names[j]]]
+      }
+    }
   } else {
-    matz <- as.matrix(mf[, sp[, 2], drop = FALSE])
-    # if someone wrote x:x, its z is forced to 1 as in angular()
-    matz[, sp[, 2] == sp[, 1]] <- 1
+    matx <- matrix(0, nrow = n, ncol = 0)
+    matz <- matrix(0, nrow = n, ncol = 0)
   }
+  nparam <- p
 
   ## ---- helpers ----
   wrap <- function(a) atan2(sin(a), cos(a))
@@ -103,12 +137,11 @@ angular_re <- function(
   logI0 <- function(k) log(besselI(k, 0, expon.scaled = TRUE)) + k
 
   compute_mu <- function(beta) {
-    # as in angular(): builds mean direction and its length
-    sinmu <- if (model == "simplified") sin(x0) else sin(beta[p + 1])
-    cosmu <- if (model == "simplified") cos(x0) else cos(beta[p + 1])
+    sinmu <- sin(x0)
+    cosmu <- cos(x0)
     if (p > 0) {
-      sinmu <- sinmu + as.vector((matz * sin(matx)) %*% beta[1:p])
-      cosmu <- cosmu + as.vector((matz * cos(matx)) %*% beta[1:p])
+      sinmu <- sinmu + as.vector((matz * sin(matx)) %*% beta)
+      cosmu <- cosmu + as.vector((matz * cos(matx)) %*% beta)
     }
     long <- sqrt(sinmu^2 + cosmu^2)
     mu <- atan2(sinmu, cosmu)
@@ -116,12 +149,11 @@ angular_re <- function(
   }
 
   dmu_dbeta <- function(beta, mu, long) {
-    # derivative matrix per obs (n x nparam) as in angular()
-    D <- cbind(
-      matz * sin(matx - mu),
-      if (model == "simplified") NULL else cos(beta[p + 1] - mu)
-    )
-    D / as.vector(long)
+    if (p == 0) {
+      return(matrix(0, nrow = length(mu), ncol = 0))
+    }
+    denom <- ifelse(long > 0, long, 1)
+    (matz * sin(matx - mu)) / as.vector(denom)
   }
 
   ## ---- initial values ----
@@ -136,50 +168,50 @@ angular_re <- function(
     control
   )
 
-  if (isTRUE(ctrl$start_from_angular) && is.null(init$beta)) {
+  coalesce_null <- function(x, default) if (is.null(x)) default else x
+
+  if (p == 0) {
+    beta0 <- numeric(0)
+  } else if (isTRUE(ctrl$start_from_angular) && is.null(init$beta)) {
     if (!exists("angular", mode = "function")) {
       warning("angular() not found; starting beta at zeros.")
-      beta0 <- rep(0, nparam)
-      if (model == "complete") beta0[p + 1] <- 0
+      beta0 <- rep(0, p)
     } else {
-      # reuse angular() to get preliminary beta (iid von Mises)
-      an0 <- angular(formula, data = data, model = model)
-      beta0 <- as.numeric(an0$parameters[, "estimate"])
+      an0 <- angular(formula, data = data)
+      beta0 <- as.numeric(an0$parameters[betaname, "estimate"])
     }
   } else {
-    beta0 <- init$beta %||% rep(0, nparam)
+    beta0 <- coalesce_null(init$beta, rep(0, p))
+    if (length(beta0) != p) {
+      stop(sprintf("'init$beta' must have length %d", p), call. = FALSE)
+    }
   }
 
   mu0 <- compute_mu(beta0)$mu
   r0 <- wrap(y - mu0)
 
   # moment estimators for kappas (Sec 3.1 RK2019)
-  # pairwise cos over all clusters, variable ni allowed
-  sum_cosdiff <- 0
-  n_pairs <- 0
-  for (g in seq_len(m)) {
-    idx <- which(id == lev[g])
-    if (length(idx) >= 2) {
+  pair_sum <- 0
+  pair_count <- 0
+  for (idx in cluster_index) {
+    ni <- length(idx)
+    if (ni >= 2) {
       rr <- r0[idx]
-      # all unordered pairs
-      k <- combn(rr, 2, FUN = function(v) cos(v[1] - v[2]))
-      sum_cosdiff <- sum_cosdiff + sum(k)
-      n_pairs <- n_pairs + length(k)
+      cos_sum <- sum(cos(rr))
+      sin_sum <- sum(sin(rr))
+      pair_sum <- pair_sum + (cos_sum^2 + sin_sum^2 - ni)
+      pair_count <- pair_count + ni * (ni - 1)
     }
   }
-  mean_cosdiff <- if (n_pairs > 0) sum_cosdiff / n_pairs else 0
+  mean_cosdiff <- if (pair_count > 0) pair_sum / pair_count else 0
   A1_ke <- sqrt(pmax(mean_cosdiff, 0))
-  kappa_e0 <- init$kappa_e %||% A1inv(A1_ke)
-  A1_ka <- mean(cos(r0), na.rm = TRUE) / pmax(A1_ke, 1e-8)
-  kappa_a0 <- init$kappa_a %||% if (A1_ka >= 0.999999) 50 else A1inv(A1_ka)
+  kappa_e0 <- coalesce_null(init$kappa_e, A1inv(A1_ke))
+  A1_ka <- if (A1_ke < 1e-8) mean(cos(r0), na.rm = TRUE) else mean(cos(r0), na.rm = TRUE) / A1_ke
+  A1_ka <- pmin(pmax(A1_ka, 0), 0.999999)
+  kappa_a0 <- coalesce_null(init$kappa_a, if (A1_ka >= 0.999999) 50 else A1inv(A1_ka))
 
   par0 <- c(beta0, kappa_e0, kappa_a0)
-  names(par0) <- c(
-    betaname,
-    if (model == "complete") "intercept",
-    "kappa_e",
-    "kappa_a"
-  )
+  names(par0) <- c(betaname, "kappa_e", "kappa_a")
 
   ## ---- loglik + score (by cluster) ----
   pack_par <- function(par) {
@@ -188,6 +220,17 @@ angular_re <- function(
       kappa_e = par[nparam + 1],
       kappa_a = par[nparam + 2]
     )
+  }
+
+  invert_hessian <- function(M) {
+    M_sym <- (M + t(M)) / 2
+    chol_res <- tryCatch(chol(M_sym), error = function(e) NULL)
+    if (is.null(chol_res)) {
+      warning("Observed information matrix is not positive definite; returning NA variances.")
+      matrix(NA_real_, nrow = nrow(M_sym), ncol = ncol(M_sym))
+    } else {
+      chol2inv(chol_res)
+    }
   }
 
   objective <- function(par) {
@@ -199,8 +242,7 @@ angular_re <- function(
 
     # cluster loop
     val <- 0
-    for (g in seq_len(m)) {
-      idx <- which(id == lev[g])
+    for (idx in cluster_index) {
       ni <- length(idx)
       if (ni == 0) next
       cg <- sum(cos(r[idx]))
@@ -223,8 +265,8 @@ angular_re <- function(
     # store cluster scores for sandwich
     S_by_cluster <- matrix(0, nrow = m, ncol = nparam + 2)
 
-    for (g in seq_len(m)) {
-      idx <- which(id == lev[g])
+    for (g in seq_along(cluster_index)) {
+      idx <- cluster_index[[g]]
       ni <- length(idx)
       rr <- r[idx]
       Dg <- D[idx, , drop = FALSE]
@@ -235,7 +277,11 @@ angular_re <- function(
       a_tilde <- atan2(pa$kappa_e * sg, pa$kappa_a + pa$kappa_e * cg)
 
       # components
-      s_beta <- pa$kappa_e * A1sig * colSums(Dg * (sin(rr - a_tilde)))
+      s_beta <- if (p > 0) {
+        pa$kappa_e * A1sig * colSums(Dg * (sin(rr - a_tilde)))
+      } else {
+        numeric(0)
+      }
       s_ke <- A1sig * sum(cos(rr - a_tilde)) - ni * A1(pa$kappa_e)
       s_ka <- A1sig * cos(a_tilde) - A1(pa$kappa_a)
 
@@ -269,35 +315,37 @@ angular_re <- function(
   # observed Fisher (negative Hessian)
   if (isTRUE(ctrl$hessian)) {
     H <- opt$hessian
-    V_model <- tryCatch(solve(H), error = function(e) {
-      matrix(NA, nrow(H), ncol(H))
-    })
+    V_model <- invert_hessian(H)
   } else {
-    H <- matrix(NA, length(par_hat), length(par_hat))
+    H <- matrix(NA_real_, length(par_hat), length(par_hat))
     V_model <- H
   }
 
   # robust sandwich (cluster scores)
-  # recompute to get scores at optimum
   sc <- attr(gradient(par_hat), "cluster_scores")
-  bread <- tryCatch(solve(H), error = function(e) {
-    matrix(NA, nrow(H), ncol(H))
-  })
-  meat <- crossprod(sc) # sum_i s_i s_i^T
-  V_robust <- tryCatch(bread %*% meat %*% bread, error = function(e) {
-    matrix(NA, nrow(H), ncol(H))
-  })
+  if (isTRUE(ctrl$hessian)) {
+    bread <- invert_hessian(H)
+    if (all(is.finite(bread))) {
+      meat <- crossprod(sc)
+      V_robust <- bread %*% meat %*% bread
+    } else {
+      V_robust <- matrix(NA_real_, nrow(H), ncol(H))
+    }
+  } else {
+    V_robust <- matrix(NA_real_, nrow(H), ncol(H))
+  }
 
   # extract components and diagnostics
   pa_hat <- pack_par(par_hat)
+  names(pa_hat$beta) <- betaname
   cmh <- compute_mu(pa_hat$beta)
   mu_hat <- cmh$mu
   r_fix <- wrap(y - mu_hat)
 
   # random effects predictors per cluster
   a_hat <- numeric(m)
-  for (g in seq_len(m)) {
-    idx <- which(id == lev[g])
+  for (g in seq_along(cluster_index)) {
+    idx <- cluster_index[[g]]
     rr <- r_fix[idx]
     cg <- sum(cos(rr))
     sg <- sum(sin(rr))
@@ -307,8 +355,10 @@ angular_re <- function(
 
   # conditional residuals
   r_cond <- r_fix
-  for (g in seq_len(m))
-    r_cond[id == lev[g]] <- wrap(r_fix[id == lev[g]] - a_hat[lev[g]])
+  for (g in seq_along(cluster_index)) {
+    idx <- cluster_index[[g]]
+    r_cond[idx] <- wrap(r_fix[idx] - a_hat[g])
+  }
 
   # table of parameters with both SEs
   se_model <- sqrt(diag(V_model))
@@ -323,12 +373,7 @@ angular_re <- function(
     z_model = z_model,
     `Pr(>|z|)` = p_model
   )
-  rownames(tab) <- c(
-    betaname,
-    if (model == "complete") "intercept",
-    "kappa_e",
-    "kappa_a"
-  )
+  rownames(tab) <- c(betaname, "kappa_e", "kappa_a")
 
   # intra-cluster sine-sine correlation (rho_SS)
   A2 <- function(k) {
@@ -346,6 +391,7 @@ angular_re <- function(
     vcov_model = V_model,
     vcov_robust = V_robust,
     beta = pa_hat$beta,
+    betaname = betaname,
     kappa_e = pa_hat$kappa_e,
     kappa_a = pa_hat$kappa_a,
     rho_SS = as.numeric(rho_SS),
@@ -521,8 +567,11 @@ plot.angular_re <- function(
 #' @param object an \code{angular_re} fit.
 #' @param newdata data.frame; if NULL, uses model frame from the original call.
 #' @param cluster optional vector/factor of cluster IDs for newdata.
-#' @param type "marginal" (mu) or "conditional" (mu + a_hat). "auto" chooses
-#'        "conditional" if \code{cluster} is supplied and matches known clusters, else "marginal".
+#' @param type One of \code{"auto"} (default), \code{"marginal"} (mean
+#'        direction) or \code{"conditional"} (mean direction plus the predicted
+#'        random intercept). With \code{"auto"} the conditional mean is returned
+#'        whenever cluster information is provided; otherwise the marginal mean
+#'        is used.
 #' @param a_hat optional numeric vector of random-intercept predictions to use
 #'        for \code{cluster} (same length as newdata). Ignored unless \code{type="conditional"}.
 #' @param se.fit not implemented (reserved).
@@ -533,7 +582,7 @@ predict.angular_re <- function(
   object,
   newdata = NULL,
   cluster = NULL,
-  type = c("marginal", "conditional", "auto"),
+  type = c("auto", "marginal", "conditional"),
   a_hat = NULL,
   se.fit = FALSE,
   ...
@@ -541,96 +590,124 @@ predict.angular_re <- function(
   type <- match.arg(type)
   if (isTRUE(se.fit)) stop("se.fit not implemented for angular_re.")
 
-  # retrieve model flavor used at fit time
-  mdl <- tryCatch(
-    as.character(object$call$model),
-    error = function(e) "simplified"
-  )
-  if (length(mdl) == 0 || is.na(mdl)) mdl <- "simplified"
-  mdl <- tolower(mdl)
-
-  # rebuild model.frame like in angular_re()
   form <- eval(object$call$formula)
-  if (is.null(newdata)) {
-    # reconstruct from the original call environment
-    env <- parent.frame()
-    mf <- model.frame(form, data = eval(object$call$data, env))
-  } else {
-    mf <- model.frame(form, data = newdata)
-  }
 
-  y_dummy <- as.numeric(mf[[1]]) # not used but keeps indexing
-  nomterms <- attr(attr(mf, "terms"), "term.labels")
-  sp <- do.call(rbind, strsplit(nomterms, split = ":"))
-
-  if (mdl == "simplified") {
-    x0 <- mf[[sp[1, 1]]]
-    sp <- sp[-1, , drop = FALSE]
-  }
-
-  matx <- as.matrix(mf[, sp[, 1], drop = FALSE])
-  if (ncol(sp) == 1) {
-    matz <- matrix(1, nrow = nrow(matx), ncol = ncol(matx))
-  } else {
-    matz <- as.matrix(mf[, sp[, 2], drop = FALSE])
-    matz[, sp[, 2] == sp[, 1]] <- 1
-  }
-
-  beta <- object$beta
-  wrap <- function(a) atan2(sin(a), cos(a))
-
-  compute_mu <- function(beta) {
-    sinmu <- if (mdl == "simplified") sin(x0) else sin(beta[length(beta)])
-    cosmu <- if (mdl == "simplified") cos(x0) else cos(beta[length(beta)])
-    p <- if (mdl == "simplified") length(beta) else length(beta) - 1
+  parse_design <- function(formula, data) {
+    mf <- model.frame(formula, data = data)
+    term_labels <- attr(attr(mf, "terms"), "term.labels")
+    if (length(term_labels) == 0) {
+      stop("The formula must include at least one term for the reference direction.")
+    }
+    split_terms <- strsplit(term_labels, ":", fixed = TRUE)
+    term_matrix <- t(vapply(split_terms, function(x) {
+      if (length(x) == 1) {
+        c(x, x)
+      } else if (length(x) == 2) {
+        x
+      } else {
+        stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
+      }
+    }, character(2)))
+    ref_name <- term_matrix[1, 1]
+    x0 <- mf[[ref_name]]
+    betaname <- if (length(term_labels) > 1) term_labels[-1] else character(0)
+    p <- length(betaname)
     if (p > 0) {
-      sinmu <- sinmu + as.vector((matz * sin(matx)) %*% beta[1:p])
-      cosmu <- cosmu + as.vector((matz * cos(matx)) %*% beta[1:p])
+      x_names <- term_matrix[-1, 1]
+      z_names <- term_matrix[-1, 2]
+      matx <- as.matrix(mf[, x_names, drop = FALSE])
+      matz <- matrix(1, nrow = nrow(mf), ncol = p)
+      for (j in seq_len(p)) {
+        if (!identical(z_names[j], x_names[j])) {
+          if (!z_names[j] %in% names(mf)) {
+            stop(
+              sprintf("Modifier '%s' not found in the supplied data.", z_names[j]),
+              call. = FALSE
+            )
+          }
+          matz[, j] <- mf[[z_names[j]]]
+        }
+      }
+    } else {
+      matx <- matrix(0, nrow = nrow(mf), ncol = 0)
+      matz <- matrix(0, nrow = nrow(mf), ncol = 0)
+    }
+    list(x0 = x0, matx = matx, matz = matz, betaname = betaname, nobs = nrow(mf))
+  }
+
+  data_source <- if (is.null(newdata)) {
+    if ("data" %in% names(object$call)) {
+      eval(object$call$data, parent.frame())
+    } else {
+      NULL
+    }
+  } else {
+    newdata
+  }
+
+  design <- parse_design(form, data_source)
+  beta <- object$beta
+  if (length(beta) != ncol(design$matz)) {
+    stop("The supplied data are incompatible with the fitted fixed effects.")
+  }
+
+  compute_mu_new <- function(beta, x0, matx, matz) {
+    sinmu <- sin(x0)
+    cosmu <- cos(x0)
+    if (length(beta) > 0) {
+      sinmu <- sinmu + as.vector((matz * sin(matx)) %*% beta)
+      cosmu <- cosmu + as.vector((matz * cos(matx)) %*% beta)
     }
     atan2(sinmu, cosmu)
   }
 
-  mu <- compute_mu(beta)
+  mu <- compute_mu_new(beta, design$x0, design$matx, design$matz)
+  wrap <- function(a) atan2(sin(a), cos(a))
 
-  # Decide conditional vs marginal
   if (type == "auto") {
-    type <- if (!is.null(cluster)) "conditional" else "marginal"
+    type <- if (!is.null(cluster) || !is.null(a_hat)) "conditional" else "marginal"
   }
 
   if (type == "marginal") {
     return(mu)
   }
 
-  # conditional
   if (is.null(cluster) && is.null(a_hat)) {
-    stop("For conditional predictions, provide 'cluster' or 'a_hat'.")
+    if (is.null(newdata)) {
+      cluster <- object$cluster
+    } else {
+      stop("For conditional predictions, provide 'cluster' or 'a_hat'.")
+    }
   }
 
-  # build a_used for each row
-  a_used <- rep(0, length(mu))
+  n_pred <- length(mu)
+  a_used <- rep(0, n_pred)
   if (!is.null(a_hat)) {
-    if (length(a_hat) == 1) a_used[] <- a_hat else if (
-      length(a_hat) == length(mu)
-    )
-      a_used <- a_hat else
-      stop("Length of 'a_hat' must be 1 or equal to nrow(newdata).")
+    if (length(a_hat) == 1) {
+      a_used[] <- a_hat
+    } else if (length(a_hat) == n_pred) {
+      a_used <- a_hat
+    } else {
+      stop("Length of 'a_hat' must be 1 or equal to the number of predictions.")
+    }
   } else {
-    # use object's ranef if cluster matches
-    cl <- as.factor(cluster)
-    known <- intersect(levels(cl), names(object$ranef))
+    cl <- cluster
+    if (length(cl) != n_pred) {
+      stop("Length of 'cluster' does not match the number of rows in the data.")
+    }
+    cl_fac <- as.factor(cl)
+    known <- intersect(levels(cl_fac), names(object$ranef))
     if (length(known) == 0) {
-      warning("No matching clusters found in the fit; using a = 0 for all.")
+      warning("No matching clusters found; using random intercept equal to zero.")
     } else {
       a_map <- object$ranef[known]
-      a_used <- a_map[as.character(cl)]
+      a_used <- a_map[as.character(cl_fac)]
       a_used[is.na(a_used)] <- 0
     }
   }
 
   wrap(mu + a_used)
 }
-
-
 #' Plot random-intercept directions for an angular_re fit
 #'
 #' Draws one arrow per cluster pointing in the direction of the estimated

@@ -8,34 +8,36 @@ angular_re(
   formula,
   data,
   cluster,
-  model = "simplified",
   init = list(),
   control = list()
 )
 }
 \arguments{
-\item{formula}{Same syntax as \code{angular()}: y ~ x1:z1 + x2:z2 + ...
-The first angular covariate is the reference if \code{model="simplified"}.}
+\item{formula}{Model formula with the simplified \code{x:z} syntax used by
+\code{angular()}. The first term supplies the reference direction whose
+coefficient is fixed to one.}
 
-\item{data}{data.frame}
+\item{data}{A data frame containing the variables used in \code{formula}.}
 
-\item{cluster}{factor or vector of cluster IDs (same length as response)}
+\item{cluster}{Factor or vector of cluster identifiers (must have the same
+length as the response).}
 
-\item{model}{"simplified" (default) or "complete" (as in \code{angular()})}
+\item{init}{Optional list with components \code{beta}, \code{kappa_e}, and
+\code{kappa_a} providing starting values. Missing entries are filled with
+moment-based estimates.}
 
-\item{init}{list with optional entries: beta (numeric), kappa_e, kappa_a}
-
-\item{control}{list: maxit (default 2000), reltol (1e-8), trace (0/1), hessian (TRUE),
-start_from_angular (TRUE) uses \code{angular()} for beta init.}
+\item{control}{Optional list controlling the optimisation with components
+\code{maxit} (default 2000), \code{reltol} (1e-8), \code{trace} (0/1),
+\code{hessian} (\code{TRUE}) and \code{start_from_angular} (\code{TRUE}).}
 }
 \value{
-object of class \code{"angular_re"}
+An object of class \code{"angular_re"} containing coefficient summaries,
+variance estimates (model-based and robust), random-intercept predictions,
+fitted mean directions, residual diagnostics and optimisation details.
 }
 \description{
-Fits the homogeneous angular regression of Rivest et al. (2016)
-augmented with a cluster-specific random intercept a_i ~ VM(0, kappa_a)
-and unit-errors e_ij ~ VM(0, kappa_e), following Rivest & Kato (2019).
-}
-\examples{
-# See README example below with Sandhopper data
+Fits the homogeneous angular regression of Rivest et al. (2016) augmented with
+cluster-specific random intercepts \eqn{a_i \sim \mathrm{VM}(0, \kappa_a)} and
+unit-errors \eqn{e_{ij} \sim \mathrm{VM}(0, \kappa_e)}, following Rivest &
+Kato (2019).
 }

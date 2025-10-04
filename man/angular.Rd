@@ -7,61 +7,48 @@
 angular(
   formula,
   data,
-  model = "simplified",
   initbeta = NULL,
-  control = list(),
-  random = NULL,
-  cluster = NULL,
-  alternate = TRUE
+  control = list()
 )
 }
 \arguments{
-\item{formula}{A formula with the dependent angle on the left of the ~ operator and terms specifying
-the explanatory variables on the right. These terms must be written \code{x:z}.}
+\item{formula}{A formula with the dependent angle on the left of the \code{~}
+operator and terms specifying the explanatory variables on the right. The first
+term provides the reference direction. Additional terms must be written
+\code{x:z} where \code{x} is an angular covariate and \code{z} is a
+non-negative scaling variable (a value of one is assumed when \code{z} is
+omitted or identical to \code{x}).}
 
-\item{data}{An optional data frame, list or environment containing the variables in the model formula.}
+\item{data}{An optional data frame, list or environment containing the
+variables in the model formula.}
 
-\item{model}{A character string, either \code{"complete"} (with intercept) or \code{"simplified"} (no intercept).}
+\item{initbeta}{A numeric vector of initial beta parameter values. When
+\code{NULL} (default) a quasi-uniform grid search is used to select starting
+values. The required length equals the number of \code{x:z} terms after the
+reference direction.}
 
-\item{initbeta}{Optional numeric vector of initial beta values.}
-
-\item{control}{A list of control parameters. See Details.}
-
-\item{random}{Optional one-sided formula of the form \code{~ 1 | id} to enable a VM random intercept per id.}
-
-\item{cluster}{Optional factor giving the cluster for each row (ignored if \code{random} is supplied).}
-
-\item{alternate}{Logical; if TRUE (default), alternates once between updating \eqn{\beta} on \eqn{y-\hat a}
-and re-estimating \eqn{(\kappa_e,\kappa_a)}.}
+\item{control}{A list of control parameters. The following components can be
+supplied: \code{pginit} (grid size for starting values, default 1000),
+\code{maxiter} (maximum number of iterations, default 1000) and \code{mindiff}
+(convergence tolerance on the increase of the mean cosine, default 1e-6).}
 }
 \value{
-An object of class "angular" containing:
-\describe{
-  \item{MaxCosine}{the maximum cosine value.}
-  \item{parameters}{matrix of estimates, std. errors, z-values and p-values for beta.}
-  \item{varcov0}{model-based variance-covariance for beta.}
-  \item{varcov1}{robust (sandwich-like) variance-covariance for beta.}
-  \item{long}{vector of predicted concentrations.}
-  \item{mui}{vector of predicted mean angles.}
-  \item{y}{the response variable.}
-  \item{iter.detail}{iteration details.}
-  \item{call}{the function call.}
-  \item{kappa_e}{(if random intercept) estimated residual concentration.}
-  \item{kappa_a}{(if random intercept) estimated random-intercept concentration.}
-  \item{a_i}{(if random intercept) empirical Bayes predictors per observation (length n).}
-  \item{cluster}{(if random intercept) factor of cluster membership.}
-}
+An object of class \code{"angular"} containing the maximised mean cosine,
+coefficient table, model- and robust-variance estimates, fitted mean directions,
+predicted concentrations, residual summaries and iteration history.
 }
 \description{
-Function that fits a regression model for angular variables along with its
-associated S3 methods. Optionally, a random intercept a_i ~ VM(0, kappa_a)
-may be estimated for clustered data (Rivest et al., 2019).
+Fit the simplified angular regression model of Rivest et al. (2016) where the
+first term acts as the reference direction and subsequent terms follow the
+\code{x:z} grammar.
 }
-\details{
-The control argument is a list that can supply any of the following components:
-\describe{
-  \item{\code{pginit}}{Grid size for initial beta search when \code{initbeta} is missing. Default 1000.}
-  \item{\code{maxiter}}{Maximum number of iterations. Default 1000.}
-  \item{\code{mindiff}}{Convergence tolerance on max-cosine improvement. Default 1e-6.}
+\examples{
+\dontrun{
+# Example with the bison data set included in the package
+data(bison)
+an <- angular(y.dir ~ y.prec + y.prec2, data = bison)
+print(an)
+summary(an)
+plot(an)
 }
 }

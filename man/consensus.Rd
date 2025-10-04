@@ -7,56 +7,42 @@
 consensus(
   formula,
   data,
-  model = "simplified",
   weights = NULL,
   initbeta = NULL,
   control = list()
 )
 }
 \arguments{
-\item{formula}{A formula with the dependent angle on the left of the \code{~} operator and terms specifying
-the explanatory variables on the right. These terms must be written as \code{x:z}, where
-\code{x} is an explanatory angle whose relative importance may depend on the positive variable
-\code{z}. For \code{model = "simplified"}, the first explanatory angle listed is the reference
-direction (any provided \code{z} for this angle is ignored).}
+\item{formula}{A formula with the dependent angle on the left of the
+\code{~} operator and terms specifying the explanatory variables on the right.
+The first term provides the reference direction. Additional terms must be
+written \code{x:z} where \code{x} is an angular covariate and \code{z} is an
+optional non-negative scaling variable.}
 
-\item{data}{An optional data frame, list or environment containing the variables in the model formula.
-If not found in \code{data}, the variables are taken from \code{environment(formula)}.}
+\item{data}{An optional data frame, list or environment containing the
+variables in the model formula.}
 
-\item{model}{A character string, either \code{"complete"} for the complete model with an intercept (default)
-or \code{"simplified"} for the simplified model without an intercept.}
+\item{weights}{Optional non-negative observation weights. If supplied, they
+must have the same length as the response.}
 
-\item{weights}{Optional vector of weights to be used in the estimation.}
+\item{initbeta}{A numeric vector of initial parameter values. When
+\code{NULL} (default) a quasi-uniform grid search is used to obtain starting
+values. The required length equals the number of \code{x:z} terms plus one.}
 
-\item{initbeta}{A numerical vector of initial values for the parameters. The default is to use the best
-initial values found among a grid of possible values.}
-
-\item{control}{A list of control parameters. The following components can be supplied:
-\describe{
-  \item{\code{pginit}}{The approximate number of points on the grid of possible initial beta values (default 1000).}
-  \item{\code{maxiter}}{The maximum number of iterations (default 1000).}
-  \item{\code{mindiff}}{The minimum difference between two max cosine values to be reached for convergence
-                         (default 1e-06).}
-}}
+\item{control}{A list of control parameters. The following components can be
+supplied: \code{pginit} (grid size for starting values, default 1000),
+\code{maxiter} (maximum number of iterations, default 1000) and \code{mindiff}
+(convergence tolerance on the log-likelihood increase, default 1e-6).}
 }
 \value{
-An object of class "consensus" containing:
-\describe{
-  \item{MaxLL}{the maximum value of the log likelihood.}
-  \item{AIC}{the Akaike Information Criterion.}
-  \item{BIC}{the Bayesian Information Criterion.}
-  \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
-  \item{varcov1}{the estimated variance covariance matrix.}
-  \item{parambeta}{the beta parameter estimates and their standard errors (obtained by linearization).}
-  \item{varcovbeta1}{the estimated variance covariance matrix for the beta estimates (by linearization).}
-  \item{autocorr}{the autocorrelation of the residuals \eqn{\sin(y_i - \mu_i)}.}
-  \item{iter.detail}{the iteration details.}
-  \item{call}{the function call.}
-}
+An object of class \code{"consensus"} containing the maximised log-likelihood,
+information criteria, coefficient tables (for the \eqn{\kappa} parameters and
+for the derived \eqn{\beta} parameters), variance-covariance matrices, residual
+summaries and iteration history.
 }
 \description{
-Function that fits a consensus model for angular variables along with its print,
-summary, and diagnostic plot methods.
+Fit the simplified consensus regression model for angular data as described by
+Rivest et al. (2016).
 }
 \examples{
 \dontrun{

@@ -4,29 +4,33 @@
 
 #' Consensus Model
 #'
-#' Function that fits a consensus model for angular variables along with its print,
-#' summary, and diagnostic plot methods.
+#' Fit the simplified consensus regression model for angular data as described
+#' by Rivest et al. (2016). The first term in the formula supplies the reference
+#' direction with coefficient fixed to one. Subsequent terms must be written
+#' \code{x:z} where \code{x} is an angular covariate and \code{z} is an optional
+#' non-negative scaling variable (a value of one is assumed when \code{z} is
+#' omitted or identical to \code{x}).
 #'
-#' @param formula A formula with the dependent angle on the left of the \code{~} operator and terms specifying
-#'                the explanatory variables on the right. These terms must be written as \code{x:z}, where
-#'                \code{x} is an explanatory angle whose relative importance may depend on the positive variable
-#'                \code{z}. For \code{model = "simplified"}, the first explanatory angle listed is the reference
-#'                direction (any provided \code{z} for this angle is ignored).
-#' @param data An optional data frame, list or environment containing the variables in the model formula.
-#'             If not found in \code{data}, the variables are taken from \code{environment(formula)}.
-#' @param model A character string, either \code{"complete"} for the complete model with an intercept (default)
-#'              or \code{"simplified"} for the simplified model without an intercept.
-#' @param initbeta A numerical vector of initial values for the parameters. The default is to use the best
-#'                 initial values found among a grid of possible values.
-#' @param weights Optional vector of weights to be used in the estimation.
-#' @param control A list of control parameters. The following components can be supplied:
-#' \describe{
-#'   \item{\code{pginit}}{The approximate number of points on the grid of possible initial beta values (default 1000).}
-#'   \item{\code{maxiter}}{The maximum number of iterations (default 1000).}
-#'   \item{\code{mindiff}}{The minimum difference between two max cosine values to be reached for convergence
-#'                          (default 1e-06).}
-#' }
-#'
+#' @param formula A formula with the dependent angle on the left of the
+#'   \code{~} operator and terms specifying the explanatory variables on the
+#'   right. The first term provides the reference direction.
+#' @param data An optional data frame, list or environment containing the
+#'   variables in the model formula.
+#' @param weights Optional non-negative observation weights. If supplied, they
+#'   must have the same length as the response.
+#' @param initbeta A numeric vector of initial parameter values. When
+#'   \code{NULL} (default) a quasi-uniform grid search is used to obtain starting
+#'   values. The required length equals the number of \code{x:z} terms plus one.
+#' @param control A list of control parameters. The following components can be
+#'   supplied:
+#'   \describe{
+#'     \item{\code{pginit}}{Approximate number of grid points used to obtain
+#'       starting values when \code{initbeta} is not provided (default 1000).}
+#'     \item{\code{maxiter}}{Maximum number of Gauss--Newton iterations
+#'       (default 1000).}
+#'     \item{\code{mindiff}}{Convergence tolerance on the increase of the log
+#'       likelihood (default 1e-6).}
+#'   }
 #' @return An object of class "consensus" containing:
 #' \describe{
 #'   \item{MaxLL}{the maximum value of the log likelihood.}
@@ -53,134 +57,169 @@
 consensus <- function(
   formula,
   data,
-  model = "simplified",
   weights = NULL,
   initbeta = NULL,
   control = list()
 ) {
   call <- mfcall <- match.call()
-  model <- model[1]
 
-  ### Extract model.frame using stats::as.formula
   mfargs <- match(c("formula", "data"), names(mfcall), 0L)
   mfcall <- mfcall[c(1L, mfargs)]
-  mfcall[[1L]] <- as.name("model.frame")
+  mfcall[[1L]] <- quote(model.frame)
   mf <- eval(mfcall, parent.frame())
   nobs <- nrow(mf)
-  nomterms <- attr(attr(mf, "terms"), "term.labels")
-  nterms <- length(nomterms)
-  p <- if (model == "simplified") nterms - 1 else nterms
-  nparam <- if (model == "simplified") p + 1 else p + 2
-  paramname <- nomterms
-  if (model == "complete") paramname <- c(paramname, paste0("beta", p + 1))
+  if (nobs == 0) stop("No observations available.")
 
-  # Response variable
-  y <- as.vector(mf[, 1])
-  # Split explanatory variables (assumes format x:z)
-  noms <- strsplit(nomterms, split = ":")
-  noms <- do.call(rbind, noms)
-  if (model == "simplified") {
-    x0 <- mf[, noms[1, 1]]
-    noms <- noms[-1, , drop = FALSE]
-  }
-  matx <- as.matrix(mf[, noms[, 1], drop = FALSE])
-  if (ncol(noms) == 1) {
-    matz <- matrix(1, ncol = ncol(matx), nrow = nrow(matx))
-  } else {
-    matz <- as.matrix(mf[, noms[, 2], drop = FALSE])
-    matz[, noms[, 2] == noms[, 1]] <- 1
-  }
-  weight <- rep(1, nobs) * (is.null(weights)) + (!is.null(weights)) * weights
-
-  ### Define log-likelihood function
-  LL <- function(param) {
-    angleref <- if (model == "simplified") x0 else rep(param[p + 2], nobs)
-    sinmu <- param[1] * sin(angleref) + (matz * sin(matx)) %*% param[2:(p + 1)]
-    cosmu <- param[1] * cos(angleref) + (matz * cos(matx)) %*% param[2:(p + 1)]
-    long <- as.vector(sqrt(sinmu^2 + cosmu^2))
-    mui <- as.vector(atan2(sinmu, cosmu))
-    term1 <- param[1] *
-      cos(y - angleref) +
-      (matz * cos(y - matx)) %*% param[2:(p + 1)]
-    LL_val <- sum(term1) - sum(log(besselI(long, 0, expon.scaled = FALSE)))
-    list(LL = LL_val, long = long, mui = mui)
+  y <- as.numeric(mf[[1]])
+  term_labels <- attr(attr(mf, "terms"), "term.labels")
+  if (length(term_labels) == 0) {
+    stop("The model must include at least one term specifying the reference direction.")
   }
 
-  # Parameter update function
-  betaUpdate <- function(paramk, long, mui) {
-    angleref <- if (model == "simplified") x0 else rep(paramk[p + 2], nobs)
-    matx0 <- cbind(angleref, matx)
-    matz0 <- cbind(rep(1, nobs), matz)
-    Along <- as.vector(
-      besselI(long, 1, expon.scaled = FALSE) /
-        besselI(long, 0, expon.scaled = FALSE)
+  split_terms <- strsplit(term_labels, ":", fixed = TRUE)
+  term_matrix <- t(vapply(split_terms, function(x) {
+    if (length(x) == 1) {
+      c(x, x)
+    } else if (length(x) == 2) {
+      x
+    } else {
+      stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
+    }
+  }, character(2)))
+
+  ref_name <- term_matrix[1, 1]
+  if (!ref_name %in% names(mf)) {
+    stop(
+      sprintf("Reference direction '%s' not found in the supplied data.", ref_name),
+      call. = FALSE
     )
+  }
+  x0 <- mf[[ref_name]]
+
+  paramname <- term_labels
+  betaname <- if (length(term_labels) > 1) term_labels[-1] else character(0)
+  p <- length(betaname)
+  if (p > 0) {
+    x_names <- term_matrix[-1, 1]
+    z_names <- term_matrix[-1, 2]
+    matx <- as.matrix(mf[, x_names, drop = FALSE])
+    matz <- matrix(1, nrow = nobs, ncol = p)
+    for (j in seq_len(p)) {
+      if (!identical(z_names[j], x_names[j])) {
+        if (!z_names[j] %in% names(mf)) {
+          stop(
+            sprintf("Modifier '%s' not found in the supplied data.", z_names[j]),
+            call. = FALSE
+          )
+        }
+        matz[, j] <- mf[[z_names[j]]]
+      }
+    }
+  } else {
+    matx <- matrix(0, nrow = nobs, ncol = 0)
+    matz <- matrix(0, nrow = nobs, ncol = 0)
+  }
+
+  weight <- if (is.null(weights)) rep(1, nobs) else as.numeric(weights)
+  if (length(weight) != nobs) {
+    stop("'weights' must have the same length as the response.", call. = FALSE)
+  }
+  if (any(!is.finite(weight)) || any(weight < 0)) {
+    stop("'weights' must be finite and non-negative.", call. = FALSE)
+  }
+  if (all(weight == 0)) {
+    stop("'weights' cannot be all zero.", call. = FALSE)
+  }
+
+  pginit <- if (is.null(control$pginit)) 1000 else control$pginit
+  maxiter <- if (is.null(control$maxiter)) 1000 else control$maxiter
+  mindiff <- if (is.null(control$mindiff)) 1e-06 else control$mindiff
+
+  compute_components <- function(param) {
+    kappa0 <- param[1]
+    sinmu <- kappa0 * sin(x0)
+    cosmu <- kappa0 * cos(x0)
+    if (p > 0) {
+      beta <- param[2:(p + 1)]
+      sinmu <- sinmu + as.vector((matz * sin(matx)) %*% beta)
+      cosmu <- cosmu + as.vector((matz * cos(matx)) %*% beta)
+    }
+    long <- sqrt(sinmu^2 + cosmu^2)
+    mui <- atan2(sinmu, cosmu)
+    list(long = long, mui = mui)
+  }
+
+  loglik_components <- function(param) {
+    comp <- compute_components(param)
+    long <- comp$long
+    mui <- comp$mui
+    term1 <- param[1] * cos(y - x0)
+    if (p > 0) {
+      term1 <- term1 + as.vector((matz * cos(y - matx)) %*% param[2:(p + 1)])
+    }
+    LL <- sum(weight * term1) - sum(weight * log(besselI(long, 0, expon.scaled = FALSE)))
+    list(LL = LL, long = long, mui = mui)
+  }
+
+  betaUpdate <- function(paramk, long, mui) {
+    matx0 <- if (p > 0) cbind(x0, matx) else matrix(x0, ncol = 1)
+    matz0 <- if (p > 0) cbind(rep(1, nobs), matz) else matrix(1, ncol = 1, nrow = nobs)
+    ratio_num <- besselI(long, 1, expon.scaled = FALSE)
+    ratio_den <- besselI(long, 0, expon.scaled = FALSE)
+    Along <- ratio_num / ratio_den
+    Along[!is.finite(Along)] <- 0
+    Along_over_long <- ifelse(long > 0, Along / long, 0)
     matu <- matz0 * (cos(y - matx0) - cos(matx0 - mui) * Along)
-    if (model == "complete")
-      matu <- cbind(
-        matu,
-        paramk[1] * sin(y - angleref) - sin(mui - angleref) * Along
-      )
-    vecs <- colSums(matu)
-    names(vecs) <- paramname
+    vecs <- colSums(weight * matu)
     Xc <- matz0 * cos(matx0 - mui)
     Xs <- matz0 * sin(matx0 - mui)
-    if (model == "complete") {
-      Xc <- cbind(Xc, paramk[1] * sin(mui - paramk[p + 2]))
-      Xs <- cbind(Xs, paramk[1] * cos(mui - paramk[p + 2]))
+    Dc_vec <- 1 - Along_over_long - Along^2
+    Ds_vec <- Along_over_long
+    sqrt_Dc <- sqrt(pmax(weight * Dc_vec, 0))
+    sqrt_Ds <- sqrt(pmax(weight * Ds_vec, 0))
+    matI <- crossprod(Xc * sqrt_Dc, Xc) + crossprod(Xs * sqrt_Ds, Xs)
+    matI <- (matI + t(matI)) / 2
+    qrI <- qr(matI)
+    if (qrI$rank < ncol(matI)) {
+      stop("Information matrix is singular; cannot update parameters.", call. = FALSE)
     }
-    Dc <- diag(1 - Along / long - Along^2, nrow = nobs, ncol = nobs)
-    Ds <- diag(Along / long, nrow = nobs, ncol = nobs)
-    matI <- t(Xc) %*% Dc %*% Xc + t(Xs) %*% Ds %*% Xs
-    colnames(matI) <- rownames(matI) <- paramname
-    dparam <- as.vector(solve(matI, vecs))
-    paramk1 <- paramk + dparam
-    list(paramk1 = paramk1, dparam = dparam, matu = matu, matI = matI)
+    dparam <- as.vector(qr.coef(qrI, vecs))
+    list(paramk1 = paramk + dparam, dparam = dparam, matu = matu, matI = matI)
   }
 
+  nparam <- p + 1
   if (is.null(initbeta)) {
-    pginit <- if (is.null(control$pginit)) 1000 else control$pginit
-    pg <- round(pginit^(1 / nparam))
-    possparam <- rep(
-      list(seq(-1, 1, length.out = pg + 2)[-c(1, pg + 2)]),
-      p + 1
-    )
-    if (model == "complete")
-      possparam[[nparam]] <- seq(0, 2 * pi, length.out = pg + 2)[-c(1, pg + 2)]
-    possVal <- cbind(expand.grid(possparam), NA)
+    pg <- max(1L, round(pginit^(1 / nparam)))
+    grid_vals <- rep(list(seq(-1, 1, length.out = pg + 2)[-c(1, pg + 2)]), nparam)
+    possVal <- cbind(expand.grid(grid_vals), NA_real_)
     colnames(possVal) <- c(paramname, "LL")
-    maxLLfun <- function(param) {
-      LL(param = param)$LL
-    }
-    possVal[, nparam + 1] <- apply(
-      possVal[, 1:nparam, drop = FALSE],
-      1,
-      maxLLfun
-    )
-    paramk <- unlist(possVal[which.max(possVal[, nparam + 1]), 1:nparam])
+    possVal[, nparam + 1] <- apply(possVal[, seq_len(nparam), drop = FALSE], 1, function(par) {
+      loglik_components(as.numeric(par))$LL
+    })
+    paramk <- as.numeric(possVal[which.max(possVal[, nparam + 1]), seq_len(nparam), drop = TRUE])
   } else {
-    if (length(initbeta) != nparam)
-      stop("For the requested model, 'initbeta' must be of length ", nparam)
+    if (length(initbeta) != nparam) {
+      stop(sprintf("'initbeta' must have length %d for this model.", nparam), call. = FALSE)
+    }
     paramk <- initbeta
   }
 
-  calcul <- LL(param = paramk)
+  calcul <- loglik_components(paramk)
   maxLLk <- calcul$LL
   long <- calcul$long
   mui <- calcul$mui
   iter <- iter.sh <- 0
-  maxiter <- if (is.null(control$maxiter)) 1000 else control$maxiter
-  mindiff <- if (is.null(control$mindiff)) 1e-06 else control$mindiff
   conv <- FALSE
-  iter.detail <- matrix(NA, nrow = maxiter + 1, ncol = nparam + 3)
+  iter.detail <- matrix(NA_real_, nrow = maxiter + 1, ncol = nparam + 3)
   colnames(iter.detail) <- c(paramname, "LL", "iter", "nitersh")
   iter.detail[1, ] <- c(paramk, maxLLk, iter, iter.sh)
+  maxLLk1 <- maxLLk
 
   while (!conv && iter <= maxiter) {
     maj <- betaUpdate(paramk = paramk, long = long, mui = mui)
     paramk1 <- maj$paramk1
     dparam <- maj$dparam
-    calcul <- LL(param = paramk1)
+    calcul <- loglik_components(paramk1)
     maxLLk1 <- calcul$LL
     long <- calcul$long
     mui <- calcul$mui
@@ -188,20 +227,18 @@ consensus <- function(
     while (maxLLk1 < maxLLk) {
       iter.sh <- iter.sh + 1
       paramk1 <- paramk + dparam / (2^iter.sh)
-      calcul <- LL(param = paramk1)
+      calcul <- loglik_components(paramk1)
       maxLLk1 <- calcul$LL
       long <- calcul$long
       mui <- calcul$mui
       if (iter.sh >= maxiter) break
     }
     if (maxLLk1 < maxLLk) {
+      warning("The algorithm did not converge; it failed to maximise the log-likelihood.")
       conv <- FALSE
-      warning(
-        "The algorithm did not converge, it failed to maximize the log likelihood"
-      )
       break
     } else {
-      conv <- if (maxLLk1 - maxLLk > mindiff) FALSE else TRUE
+      conv <- (maxLLk1 - maxLLk) <= mindiff
       paramk <- paramk1
       maxLLk <- maxLLk1
       iter <- iter + 1
@@ -209,57 +246,77 @@ consensus <- function(
     }
   }
   if (iter > maxiter + 1) {
-    warning(
-      "The algorithm did not converge, the maximum number of iterations was reached"
-    )
+    warning("The algorithm did not converge: maximum number of iterations reached.")
   } else {
-    iter.detail <- iter.detail[1:(iter + 1), , drop = FALSE]
+    iter.detail <- iter.detail[seq_len(iter + 1), , drop = FALSE]
   }
 
-  if (maxLLk == maxLLk1) {
-    maj <- betaUpdate(paramk = paramk, long = long, mui = mui)
+  maj <- betaUpdate(paramk = paramk, long = long, mui = mui)
+  matI <- maj$matI
+
+  invert_information <- function(M) {
+    M_sym <- (M + t(M)) / 2
+    chol_res <- tryCatch(chol(M_sym), error = function(e) NULL)
+    if (is.null(chol_res)) {
+      warning("Information matrix is not positive definite; returning NA variances.")
+      matrix(NA_real_, nrow = nrow(M_sym), ncol = ncol(M_sym))
+    } else {
+      chol2inv(chol_res)
+    }
   }
-  matd <- maj$matu
 
-  v1 <- solve(crossprod(matd))
+  v1 <- invert_information(matI)
 
-  paramb <- paramk[2:(p + 1)] / paramk[1]
-  matDeriv <- rbind(
-    -paramk[2:(p + 1)] / paramk[1]^2,
-    diag(1 / paramk[1], nrow = p, ncol = p)
+  if (p > 0) {
+    paramb <- paramk[2:(p + 1)] / paramk[1]
+    matDeriv <- rbind(
+      -paramk[2:(p + 1)] / paramk[1]^2,
+      diag(1 / paramk[1], nrow = p, ncol = p)
+    )
+    vb <- t(matDeriv) %*% v1[1:(p + 1), 1:(p + 1), drop = FALSE] %*% matDeriv
+    names(paramb) <- colnames(vb) <- rownames(vb) <- betaname
+  } else {
+    paramb <- numeric(0)
+    vb <- matrix(numeric(0), nrow = 0, ncol = 0)
+  }
+
+  se_param <- sqrt(diag(v1))
+  zvalue <- paramk / se_param
+  pvals <- 2 * stats::pnorm(abs(zvalue), lower.tail = FALSE)
+  parameters <- cbind(
+    estimate = paramk,
+    `Std. Error` = se_param,
+    `z value` = zvalue,
+    `P(|z|>.)` = pvals
   )
-  vb <- t(matDeriv) %*% v1[1:(p + 1), 1:(p + 1)] %*% matDeriv
-  names(paramb) <- colnames(vb) <- rownames(vb) <- paramname[-1]
-
-  zvalue <- abs(paramk) / sqrt(diag(v1))
-  pvals <- round(
-    2 * stats::pnorm(abs(paramk) / sqrt(diag(v1)), lower.tail = FALSE),
-    5
-  )
-  parameters <- cbind(paramk, sqrt(diag(v1)), zvalue, pvals)
-  colnames(parameters) <- c("estimate", "Std. Error", "z value", "P(|z|>.)")
   rownames(parameters) <- paramname
 
-  zvaluebeta <- abs(paramb) / sqrt(diag(vb))
-  pbeta <- round(
-    2 * stats::pnorm(abs(paramb) / sqrt(diag(vb)), lower.tail = FALSE),
-    5
-  )
-  parambeta <- cbind(paramb, sqrt(diag(vb)), zvaluebeta, pbeta)
-  colnames(parambeta) <- c("estimate", "Std. Error", "z value", "P(|z|>.)")
-  rownames(parambeta) <- names(paramb)
+  if (p > 0) {
+    se_beta <- sqrt(diag(vb))
+    zbeta <- paramb / se_beta
+    pbeta <- 2 * stats::pnorm(abs(zbeta), lower.tail = FALSE)
+    parambeta <- cbind(
+      estimate = paramb,
+      `Std. Error` = se_beta,
+      `z value` = zbeta,
+      `P(|z|>.)` = pbeta
+    )
+  } else {
+    parambeta <- matrix(
+      numeric(0),
+      nrow = 0,
+      ncol = 4,
+      dimnames = list(NULL, c("estimate", "Std. Error", "z value", "P(|z|>.)"))
+    )
+  }
 
-  # Use residuals.consensus() defined in the S3 methods below
-  autocorr <- stats::acf(
-    residuals.consensus(object = list(y = y, mui = mui, long = long)),
-    plot = FALSE
-  )
+  residual_obj <- list(y = y, mui = mui, long = long)
+  autocorr <- stats::acf(residuals.consensus(object = residual_obj), plot = FALSE)
 
-  # Calculate AIC and BIC as in lm/glm
   k <- nparam
   logLik <- maxLLk
   AIC <- -2 * logLik + 2 * k
-  BIC <- -2 * logLik + log(nobs) * k
+  BIC <- -2 * logLik + log(sum(weight)) * k
 
   out <- list(
     MaxLL = maxLLk,
@@ -269,12 +326,13 @@ consensus <- function(
     varcov1 = v1,
     parambeta = parambeta,
     varcovbeta1 = vb,
-    #   autocorr = autocorr,
+    autocorr = autocorr,
     matx = matx,
     matz = matz,
     y = y,
     long = long,
     mui = mui,
+    weights = weight,
     iter.detail = iter.detail,
     call = call,
     nobs = nobs,
@@ -284,7 +342,6 @@ consensus <- function(
   class(out) <- "consensus"
   out
 }
-
 ###############################################################################
 ### S3 Methods for Consensus Objects
 ###############################################################################

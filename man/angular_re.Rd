@@ -4,18 +4,12 @@
 \alias{angular_re}
 \title{Angular mixed-effects regression with von Mises random intercepts}
 \usage{
-angular_re(
-  formula,
-  data,
-  cluster,
-  init = list(),
-  control = list()
-)
+angular_re(formula, data, cluster, init = list(), control = list())
 }
 \arguments{
-\item{formula}{Model formula with the simplified \code{x:z} syntax used by
-\code{angular()}. The first term supplies the reference direction whose
-coefficient is fixed to one.}
+\item{formula}{Model formula of the form \code{y ~ x1:z1 + x2:z2 + ...}. The
+first angular covariate supplies the reference direction whose coefficient
+is fixed to one.}
 
 \item{data}{A data frame containing the variables used in \code{formula}.}
 
@@ -28,16 +22,21 @@ moment-based estimates.}
 
 \item{control}{Optional list controlling the optimisation with components
 \code{maxit} (default 2000), \code{reltol} (1e-8), \code{trace} (0/1),
-\code{hessian} (\code{TRUE}) and \code{start_from_angular} (\code{TRUE}).}
+\code{hessian} (\code{TRUE}), and \code{start_from_angular} (\code{TRUE})
+indicating whether \code{angular()} should be used to initialise the fixed
+effects.}
 }
 \value{
-An object of class \code{"angular_re"} containing coefficient summaries,
-variance estimates (model-based and robust), random-intercept predictions,
-fitted mean directions, residual diagnostics and optimisation details.
+object of class \code{"angular_re"}
 }
 \description{
-Fits the homogeneous angular regression of Rivest et al. (2016) augmented with
-cluster-specific random intercepts \eqn{a_i \sim \mathrm{VM}(0, \kappa_a)} and
-unit-errors \eqn{e_{ij} \sim \mathrm{VM}(0, \kappa_e)}, following Rivest &
-Kato (2019).
+Fits the homogeneous angular regression of Rivest et al. (2016) augmented
+with a cluster-specific random intercept \eqn{a_i \sim \mathrm{VM}(0, \kappa_a)}
+and unit-errors \eqn{e_{ij} \sim \mathrm{VM}(0, \kappa_e)}, following Rivest
+& Kato (2019). The fixed-effects component shares the simplified syntax of
+\code{angular()}, where the first term provides the reference direction and
+subsequent terms are written \code{x:z}.
+}
+\examples{
+# See README example below with Sandhopper data
 }

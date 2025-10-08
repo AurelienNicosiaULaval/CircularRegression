@@ -8,7 +8,7 @@
   object,
   newdata = NULL,
   cluster = NULL,
-  type = c("marginal", "conditional", "auto"),
+  type = c("auto", "marginal", "conditional"),
   a_hat = NULL,
   se.fit = FALSE,
   ...
@@ -21,8 +21,11 @@
 
 \item{cluster}{optional vector/factor of cluster IDs for newdata.}
 
-\item{type}{"marginal" (mu) or "conditional" (mu + a_hat). "auto" chooses
-"conditional" if \code{cluster} is supplied and matches known clusters, else "marginal".}
+\item{type}{One of \code{"auto"} (default), \code{"marginal"} (mean
+direction) or \code{"conditional"} (mean direction plus the predicted
+random intercept). With \code{"auto"} the conditional mean is returned
+whenever cluster information is provided; otherwise the marginal mean
+is used.}
 
 \item{a_hat}{optional numeric vector of random-intercept predictions to use
 for \code{cluster} (same length as newdata). Ignored unless \code{type="conditional"}.}

@@ -4,20 +4,12 @@
 \alias{consensus}
 \title{Consensus Model}
 \usage{
-consensus(
-  formula,
-  data,
-  weights = NULL,
-  initbeta = NULL,
-  control = list()
-)
+consensus(formula, data, weights = NULL, initbeta = NULL, control = list())
 }
 \arguments{
 \item{formula}{A formula with the dependent angle on the left of the
-\code{~} operator and terms specifying the explanatory variables on the right.
-The first term provides the reference direction. Additional terms must be
-written \code{x:z} where \code{x} is an angular covariate and \code{z} is an
-optional non-negative scaling variable.}
+\code{~} operator and terms specifying the explanatory variables on the
+right. The first term provides the reference direction.}
 
 \item{data}{An optional data frame, list or environment containing the
 variables in the model formula.}
@@ -30,19 +22,38 @@ must have the same length as the response.}
 values. The required length equals the number of \code{x:z} terms plus one.}
 
 \item{control}{A list of control parameters. The following components can be
-supplied: \code{pginit} (grid size for starting values, default 1000),
-\code{maxiter} (maximum number of iterations, default 1000) and \code{mindiff}
-(convergence tolerance on the log-likelihood increase, default 1e-6).}
+supplied:
+\describe{
+  \item{\code{pginit}}{Approximate number of grid points used to obtain
+    starting values when \code{initbeta} is not provided (default 1000).}
+  \item{\code{maxiter}}{Maximum number of Gauss--Newton iterations
+    (default 1000).}
+  \item{\code{mindiff}}{Convergence tolerance on the increase of the log
+    likelihood (default 1e-6).}
+}}
 }
 \value{
-An object of class \code{"consensus"} containing the maximised log-likelihood,
-information criteria, coefficient tables (for the \eqn{\kappa} parameters and
-for the derived \eqn{\beta} parameters), variance-covariance matrices, residual
-summaries and iteration history.
+An object of class "consensus" containing:
+\describe{
+  \item{MaxLL}{the maximum value of the log likelihood.}
+  \item{AIC}{the Akaike Information Criterion.}
+  \item{BIC}{the Bayesian Information Criterion.}
+  \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
+  \item{varcov1}{the estimated variance covariance matrix.}
+  \item{parambeta}{the beta parameter estimates and their standard errors (obtained by linearization).}
+  \item{varcovbeta1}{the estimated variance covariance matrix for the beta estimates (by linearization).}
+  \item{autocorr}{the autocorrelation of the residuals \eqn{\sin(y_i - \mu_i)}.}
+  \item{iter.detail}{the iteration details.}
+  \item{call}{the function call.}
+}
 }
 \description{
-Fit the simplified consensus regression model for angular data as described by
-Rivest et al. (2016).
+Fit the simplified consensus regression model for angular data as described
+by Rivest et al. (2016). The first term in the formula supplies the reference
+direction with coefficient fixed to one. Subsequent terms must be written
+\code{x:z} where \code{x} is an angular covariate and \code{z} is an optional
+non-negative scaling variable (a value of one is assumed when \code{z} is
+omitted or identical to \code{x}).
 }
 \examples{
 \dontrun{

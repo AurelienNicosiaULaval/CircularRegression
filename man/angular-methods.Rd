@@ -29,13 +29,31 @@
 \item{object}{An object of class "angular".}
 }
 \value{
-An object of class "summary.angular".
+An object of class "summary.angular", a list containing:
+\describe{
+  \item{call}{The matched call.}
+  \item{MaxCosine}{The maximum cosine value.}
+  \item{parameters}{A matrix with the estimates, standard errors, z-values and associated p-values.}
+  \item{residuals}{A summary of the residuals (min, 1st Qu., median, 3rd Qu., max).}
+  \item{nobs}{The number of observations.}
+}
 }
 \description{
 These functions provide methods for printing, extracting coefficients,
 summarizing, and retrieving residuals from an angular regression model.
 
-Summarizes an object of class "angular" by providing key diagnostic statistics.
+This function summarizes an object of class "angular" by providing key
+diagnostic statistics including the model call, maximum cosine, a summary of residuals,
+the parameter estimates, and the number of observations.
 
-This function produces diagnostic plots for an object of class "angular".
+This function prints a summary of an angular regression model.
+
+This function produces a set of diagnostic plots for an object of class
+"angular" in a layout similar to that of \code{plot.lm}. Three panels are
+displayed:
+\enumerate{
+  \item Residuals vs fitted values.
+  \item Histogram of residuals with a normal density overlay.
+  \item Normal Q-Q plot.
+}
 }

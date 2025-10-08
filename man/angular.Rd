@@ -4,51 +4,70 @@
 \alias{angular}
 \title{Angular Regression Model}
 \usage{
-angular(
-  formula,
-  data,
-  initbeta = NULL,
-  control = list()
-)
+angular(formula, data, initbeta = NULL, control = list())
 }
 \arguments{
-\item{formula}{A formula with the dependent angle on the left of the \code{~}
-operator and terms specifying the explanatory variables on the right. The first
-term provides the reference direction. Additional terms must be written
-\code{x:z} where \code{x} is an angular covariate and \code{z} is a
-non-negative scaling variable (a value of one is assumed when \code{z} is
-omitted or identical to \code{x}).}
+\item{formula}{A formula with the dependent angle on the left of the
+\code{~} operator and terms specifying the explanatory variables on the
+right. The first term provides the reference direction.}
 
 \item{data}{An optional data frame, list or environment containing the
 variables in the model formula.}
 
 \item{initbeta}{A numeric vector of initial beta parameter values. When
-\code{NULL} (default) a quasi-uniform grid search is used to select starting
-values. The required length equals the number of \code{x:z} terms after the
-reference direction.}
+\code{NULL} (default) a quasi-uniform grid search is used to select
+starting values. The required length equals the number of \code{x:z} terms
+after the reference direction.}
 
-\item{control}{A list of control parameters. The following components can be
-supplied: \code{pginit} (grid size for starting values, default 1000),
-\code{maxiter} (maximum number of iterations, default 1000) and \code{mindiff}
-(convergence tolerance on the increase of the mean cosine, default 1e-6).}
+\item{control}{A list of control parameters. See Details.}
 }
 \value{
-An object of class \code{"angular"} containing the maximised mean cosine,
-coefficient table, model- and robust-variance estimates, fitted mean directions,
-predicted concentrations, residual summaries and iteration history.
+An object of class "angular" containing:
+\describe{
+  \item{MaxCosine}{the maximum cosine value.}
+  \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
+  \item{varcov0}{the asymptotic estimated variance-covariance matrix.}
+  \item{varcov1}{the non-parametric estimated variance-covariance matrix (sandwich).}
+  \item{long}{the vector of predicted concentrations.}
+  \item{mui}{the vector of predicted mean angles.}
+  \item{y}{the response variable.}
+  \item{iter.detail}{the iteration details.}
+  \item{call}{the function call.}
+}
 }
 \description{
-Fit the simplified angular regression model of Rivest et al. (2016) where the
-first term acts as the reference direction and subsequent terms follow the
-\code{x:z} grammar.
+Fit the simplified angular regression model of Rivest et al. (2016). The
+first term in the formula provides the reference direction whose coefficient
+is fixed to one. Subsequent terms must be written \code{x:z}, where
+\code{x} is an angular covariate and \code{z} is a non-negative scaling
+variable. When \code{z} is omitted (or equal to \code{x}), a value of one is
+assumed. A reference-only model is obtained by including only the reference
+term on the right-hand side.
+}
+\details{
+The control argument is a list that can supply any of the following components:
+\describe{
+  \item{\code{pginit}}{Approximate number of points on the grid of possible
+    initial beta values when \code{initbeta} is not supplied (default 1000).}
+  \item{\code{maxiter}}{Maximum number of iterations for the Gauss--Newton
+    updates (default 1000).}
+  \item{\code{mindiff}}{Convergence tolerance on the increase of the mean
+    cosine (default 1e-6).}
+}
 }
 \examples{
 \dontrun{
-# Example with the bison data set included in the package
-data(bison)
-an <- angular(y.dir ~ y.prec + y.prec2, data = bison)
-print(an)
-summary(an)
-plot(an)
+  # Example with the bison data set included in the package
+  data(bison)
+  an <- angular(y.dir ~ y.prec + y.prec2, data = bison)
+  print(an)
+  summary(an)
+  plot(an)
 }
+}
+\references{
+L.-P. Rivest, T. Duchesne, A. Nicosia & D. Fortin. A general angular regression model for the analysis of data on animal movement in ecology. Journal of the Royal Statistical Society, series C, to appear.
+}
+\author{
+Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
 }

@@ -28,7 +28,7 @@
 }
 \description{
 Draws rose/circular plots of residuals: fixed (y - mu) and conditional
-(y - mu - a_hat[cluster]) as in Rivest & Kato (2019), Fig. 1–2.
+(y - mu - a_hat[cluster]) as in Rivest & Kato (2019), Fig. 1-2.
 If the 'circular' package is available, uses it; otherwise falls back
 to a simple polar scatter with density ticks.
 }

@@ -45,7 +45,7 @@
 #'   \item{call}{the function call.}
 #' }
 #'
-#' @author Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
+#' @author Sophie Baillargeon, Louis-Paul Rivest, and Aurelien Nicosia
 #' @examples
 #' \dontrun{
 #'   data(bison)
@@ -443,7 +443,7 @@ Maximum log-likelihood:",
     )
   )
 
-  # Transformation en matrice numérique pour printCoefmat
+  # Coerce to a numeric matrix for printCoefmat
   mat_numeric <- cbind(
     Estimate = as.numeric(coefmat[, 1]),
     `Std. Error` = as.numeric(coefmat[, 2]),
@@ -467,7 +467,7 @@ coef.consensus <- function(object, ...) {
 #' @rdname consensus-methods
 #' @export
 residuals.consensus <- function(object, ...) {
-  # tout en radians pour éviter les ambiguïtés
+  # keep everything in radians to avoid ambiguity
   y <- circular::conversion.circular(
     circular::as.circular(object$y),
     units = "radians"
@@ -477,7 +477,7 @@ residuals.consensus <- function(object, ...) {
     units = "radians"
   )
 
-  # différence angulaire signée minimale dans (-pi, pi]
+  # signed angular difference in (-pi, pi]
   d <- atan2(sin(y - mu), cos(y - mu))
 
   # renvoyer un 'circular' en radians (convertis ensuite si tu veux)
@@ -686,7 +686,7 @@ plot.consensus <- function(x, ...) {
   invisible(x)
 }
 
-# Méthodes S3 AIC, BIC, logLik
+# S3 methods AIC, BIC, logLik
 #' @rdname consensus-methods
 #' @param object An object of class "consensus".
 #' @param k Numeric. Penalty term used in the definition of AIC. Defaults to 2.

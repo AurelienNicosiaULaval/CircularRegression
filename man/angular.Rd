@@ -69,5 +69,5 @@ The control argument is a list that can supply any of the following components:
 L.-P. Rivest, T. Duchesne, A. Nicosia & D. Fortin. A general angular regression model for the analysis of data on animal movement in ecology. Journal of the Royal Statistical Society, series C, to appear.
 }
 \author{
-Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
+Sophie Baillargeon, Louis-Paul Rivest, and Aurelien Nicosia
 }

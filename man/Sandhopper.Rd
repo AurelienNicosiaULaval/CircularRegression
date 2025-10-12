@@ -48,6 +48,6 @@ models with repeated measures.
 }
 \references{
 D'Elia, G. (2001). Orientation in sandhoppers. *Behavioural Ecology*.
-Rivest, L.-P., & Kato, S. (2019). A random-effects model for clustered circular data. *Canadian Journal of Statistics*, 47(4), 712–728.
+Rivest, L.-P., & Kato, S. (2019). A random-effects model for clustered circular data. *Canadian Journal of Statistics*, 47(4), 712-728.
 }
 \keyword{datasets}

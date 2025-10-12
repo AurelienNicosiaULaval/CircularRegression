@@ -75,24 +75,33 @@ angular <- function(
   y <- mf[[1]]
   term_labels <- attr(attr(mf, "terms"), "term.labels")
   if (length(term_labels) == 0) {
-    stop("The model must include at least one term specifying the reference direction.")
+    stop(
+      "The model must include at least one term specifying the reference direction."
+    )
   }
 
   split_terms <- strsplit(term_labels, ":", fixed = TRUE)
-  term_matrix <- t(vapply(split_terms, function(x) {
-    if (length(x) == 1) {
-      c(x, x)
-    } else if (length(x) == 2) {
-      x
-    } else {
-      stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
-    }
-  }, character(2)))
+  term_matrix <- t(vapply(
+    split_terms,
+    function(x) {
+      if (length(x) == 1) {
+        c(x, x)
+      } else if (length(x) == 2) {
+        x
+      } else {
+        stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
+      }
+    },
+    character(2)
+  ))
 
   ref_name <- term_matrix[1, 1]
   if (!ref_name %in% names(mf)) {
     stop(
-      sprintf("Reference direction '%s' not found in the supplied data.", ref_name),
+      sprintf(
+        "Reference direction '%s' not found in the supplied data.",
+        ref_name
+      ),
       call. = FALSE
     )
   }
@@ -109,7 +118,10 @@ angular <- function(
       if (!identical(z_names[j], x_names[j])) {
         if (!z_names[j] %in% names(mf)) {
           stop(
-            sprintf("Modifier '%s' not found in the supplied data.", z_names[j]),
+            sprintf(
+              "Modifier '%s' not found in the supplied data.",
+              z_names[j]
+            ),
             call. = FALSE
           )
         }
@@ -144,7 +156,10 @@ angular <- function(
     res <- sin(y - mui)
     qr_obj <- qr(matd)
     if (qr_obj$rank < ncol(matd)) {
-      stop("Design matrix is rank deficient; cannot update coefficients.", call. = FALSE)
+      stop(
+        "Design matrix is rank deficient; cannot update coefficients.",
+        call. = FALSE
+      )
     }
     dbeta <- as.vector(qr.coef(qr_obj, res))
     betak1 <- betak + dbeta
@@ -161,7 +176,11 @@ angular <- function(
     colnames(possVal) <- c(betaname, "maxcosine")
     maxcos1 <- function(beta) maxcos(beta)$maxcos
     possVal[, p + 1] <- apply(possVal[, seq_len(p), drop = FALSE], 1, maxcos1)
-    betak <- as.numeric(possVal[which.max(possVal[, p + 1]), seq_len(p), drop = TRUE])
+    betak <- as.numeric(possVal[
+      which.max(possVal[, p + 1]),
+      seq_len(p),
+      drop = TRUE
+    ])
   } else {
     if (length(initbeta) != p) {
       stop(
@@ -205,7 +224,9 @@ angular <- function(
         if (iter.sh >= maxiter) break
       }
       if (maxcosk1 < maxcosk) {
-        warning("The algorithm did not converge; it failed to maximise the mean cosine.")
+        warning(
+          "The algorithm did not converge; it failed to maximise the mean cosine."
+        )
         conv <- FALSE
         break
       } else {
@@ -217,7 +238,9 @@ angular <- function(
       }
     }
     if (iter > maxiter + 1) {
-      warning("The algorithm did not converge: maximum number of iterations reached.")
+      warning(
+        "The algorithm did not converge: maximum number of iterations reached."
+      )
     } else {
       iter.detail <- iter.detail[seq_len(iter + 1), , drop = FALSE]
     }
@@ -448,7 +471,8 @@ plot.angular <- function(x, ...) {
       title = "Residuals vs Fitted",
       x = "Fitted Values",
       y = "Residuals"
-    )
+    ) +
+    ggplot2::theme_minimal()
 
   res_mean <- mean(residuals_num)
   res_sd <- stats::sd(residuals_num)
@@ -472,7 +496,8 @@ plot.angular <- function(x, ...) {
       title = "Histogram of Residuals",
       x = "Residuals",
       y = "Density"
-    )
+    ) +
+    ggplot2::theme_minimal()
 
   p3 <- ggplot2::ggplot(
     data = data.frame(Residual = residuals_num),
@@ -484,7 +509,8 @@ plot.angular <- function(x, ...) {
       title = "Normal Q-Q",
       x = "Theoretical Quantiles",
       y = "Sample Quantiles"
-    )
+    ) +
+    ggplot2::theme_minimal()
 
   layout <- rbind(c(1, 2), c(3, 3))
   gridExtra::grid.arrange(

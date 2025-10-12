@@ -1,42 +1,363 @@
 ---
-title: "Getting Started with CircularRegression"
-author: "CircularRegression Team"
-output: rmarkdown::html_vignette
+title: "CircularRegression: An R Package for Regressing an Angle on Explanatory Variables"
+subtitle: "Getting Started with CircularRegression"
+author:
+- "Aurélien Nicosia"
+- "Louis‑Paul Rivest"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    fig_caption: true
+    latex_engine: xelatex
 vignette: >
   %\VignetteIndexEntry{Getting Started with CircularRegression}
+  %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
-  \usepackage[utf8]{inputenc}
+  bibliography: references.bib
+editor_options:
+chunk_output_type: console
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE
 )
+library(CircularRegression)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(tibble)
+library(circular)     # pour objets angulaires et outils de base
 ```
 
 # Introduction
 
-`CircularRegression` provides tools to fit regression models designed for circular
-responses. This vignette introduces the main functionality of the package using
-the `bison` data set included with the package. The demonstrations highlight
-how to fit and interpret both the angular and consensus regression models.
+# The regression model of @Rivest2015
 
-# Loading the package and data
+## The conditional mean direction
 
-```{r load-data}
-library(CircularRegression)
+Let $y$ denote the dependent angle and $x_1, \ldots, x_p$ represent explanatory angles. To angle $x_j$ is associated a positive real variable $z_j$. The proposed model is
+\begin{equation}
+y = \mu(\boldsymbol{\beta}, x, z) + \varepsilon, \tag{1}
+\end{equation}
+where $\mu(\boldsymbol{\beta}, x, z)$ is the conditional mean direction of $y$ given $x$ and $z$ that depends on unknown parameters $\boldsymbol{\beta}$, and $\varepsilon$ is a random error term with a von Mises distribution centered at $0$ with concentration parameter $\kappa$, possibly dependent on $x$ and $z$.
 
-data(bison)
-str(bison)
+The vector
+\begin{equation}
+\sum_{j=1}^{p} \beta_j z_j
+\begin{pmatrix}
+\cos(x_j)\\[4pt]
+\sin(x_j)
+\end{pmatrix},
+\qquad \beta_j \in \mathbb{R}, \; j=1,\ldots,p,
+\tag{2}
+\end{equation}
+
+plays a crucial role in defining the model. Its length is
+
+\begin{equation}
+\ell =
+\left[
+  \left\{ \sum_j \beta_j z_j \sin(x_j) \right\}^2
+  + \left\{ \sum_j \beta_j z_j \cos(x_j) \right\}^2
+\right]^{1/2},
+\tag{3}
+\end{equation}
+
+while its orientation is the predicted angle in :
+\[
+\mu(\boldsymbol{\beta}, x, z)
+= \operatorname{arctan2}
+\!\left(
+  \sum_{j=1}^{p} \beta_j z_j \sin(x_j),
+  \sum_{j=1}^{p} \beta_j z_j \cos(x_j)
+\right),
+\label{eq:mu}
+\]
+
+where $\operatorname{arctan2}(a,b)=\tan^{-1}(a/b)$ if $b>0$ and $\tan^{-1}(a/b)+\pi$ if $b<0$. Multiplying all parameters $\beta_j$ in \eqref{eq:mu} by a positive constant does not change the orientation. To obtain identifiable parameters, we set $\beta_1 = 1$, making $x_1$ the reference explanatory direction.
+
+A synthetic expression for the mean direction~(4) is
+\begin{equation}
+y = 1 \times x_1\! :\! z_1 + x_2\! :\! z_2 + \dots + x_p\! :\! z_p, \tag{5}
+\end{equation}
+where the operator ``:'' denotes an interaction between an explanatory angle $x$
+and its associated positive variable $z$.
+When $z_k = 1$, one writes $x_k\! :\! z_k$ simply as $x_k$.
+
+## The asymptotic distribution of $\hat{\beta}$ under homogeneous errors
+
+For the homogeneous error model, the error concentration $\kappa>0$ does not
+depend on $x$ and $y$. The estimator $\hat{\beta}$ is the parameter vector that maximizes
+the von Mises log-likelihood,
+\[
+L(\beta,\kappa)=\kappa\sum_{i=1}^{n}\cos\{y_i-\mu(\beta,x_i,z_i)\}
+\;-\; n\log\{I_0(\kappa)\},
+\]
+where $I_\nu(\kappa)$ is a modified Bessel function of integer order $\nu\ge0$.
+The so-called \emph{MaxCosine},
+\[
+MC=\frac{1}{n}\sum_{i=1}^n \cos\{y_i-\mu(\hat{\beta},x_i,z_i)\},
+\]
+is a measure of fit of the model; values close to 1 are associated with small residuals and a good
+fit. The maximum likelihood estimator for $\kappa$ is $\hat{\kappa}=A^{-1}(MC)$ where
+$A(\kappa)=I_1(\kappa)/I_0(\kappa)$ gives the mean resultant length of a von Mises distribution
+as a function of the concentration parameter~$\kappa$. The maximized log-likelihood is denoted
+$L_h(\hat{\beta},\hat{\kappa})$.
+
+\medskip
+The robust estimator of the asymptotic variance of $\hat{\beta}$ proposed in Rivest et al.\ (2016)
+depends on the $(p-1)\times1$ vectors $S_i$ and $C_i$ (the first coefficient $\beta_1=1$ is not estimated),
+defined by
+\[
+S_i=\begin{pmatrix}
+z_{i2}\,\sin\{x_{i2}-\mu(\hat{\beta},x_i,z_i)\}\\
+\vdots\\
+z_{ip}\,\sin\{x_{ip}-\mu(\hat{\beta},x_i,z_i)\}
+\end{pmatrix},
+\qquad
+C_i=\begin{pmatrix}
+z_{i2}\,\cos\{x_{i2}-\mu(\hat{\beta},x_i,z_i)\}\\
+\vdots\\
+z_{ip}\,\cos\{x_{ip}-\mu(\hat{\beta},x_i,z_i)\}
+\end{pmatrix}.
+\]
+It uses a sandwich variance formula. Let $\hat{\ell}_i$ be the length given in~(3) for unit $i$,
+evaluated at $\hat{\beta}$ (i.e., the norm of the mean vector before projection).
+The matrix of second-order partial derivatives of $\sum_i \cos\{y_i-\mu(\beta,x_i,z_i)\}$
+with respect to $\beta$, evaluated at $\hat{\beta}$, is
+\begin{equation}
+\hat{B}
+\;=\;
+\sum_{i=1}^{n}
+\frac{\cos\{y_i-\mu(\hat{\beta},x_i,z_i)\}}{\hat{\ell}_i^{\,2}}\; S_i S_i^{\!\top}
+\;-\;
+\sum_{i=1}^{n}
+\frac{\sin\{y_i-\mu(\hat{\beta},x_i,z_i)\}}{\hat{\ell}_i^{\,2}}\; \bigl(S_i C_i^{\!\top}+C_i S_i^{\!\top}\bigr).
+\tag{6}
+\end{equation}
+The sandwich estimator of the covariance matrix of $\hat{\beta}$ is then
+\begin{equation}
+v_1(\hat{\beta})
+\;=\;
+\hat{B}^{-1}
+\left\{
+\sum_{i=1}^{n}
+\frac{\,\hat{S}_i \hat{S}_i^{\!\top}\,}{\hat{\ell}_i^{\,2}}\;
+\sin^{2}\!\bigl(y_i-\hat{\mu}_i\bigr)
+\right\}
+\hat{B}^{-1},
+\tag{7}
+\end{equation}
+where $\hat{\mu}_i=\mu(\hat{\beta},x_i,z_i)$ and $\hat{S}_i$ denotes $S_i$ evaluated at $\hat{\beta}$.
+
+## The asymptotic distribution of $\hat{\beta}$ under consensus errors
+
+In the consensus–error specification, the error concentration depends on the agreement among the explanatory angles. It is convenient to reparameterize the model by a vector of **positive** parameters
+$\kappa = (\kappa_1,\ldots,\kappa_p)^\top$, with the mean direction
+\[
+\mu(\kappa; x, z)
+= \operatorname{atan2}\Big( \sum_{j=1}^p \kappa_j z_j \sin x_j,\ \sum_{j=1}^p \kappa_j z_j \cos x_j \Big).
+\]
+For unit $i$, denote by $\ell_{i,\kappa}$ the length of the two–dimensional vector inside the $\operatorname{atan2}$ above,
+\[
+\ell_{i,\kappa} 
+= \Big[\Big\{\sum_{j=1}^p \kappa_j z_{ij}\sin(x_{ij})\Big\}^2+\Big\{\sum_{j=1}^p \kappa_j z_{ij}\cos(x_{ij})\Big\}^2\Big]^{1/2}.
+\]
+The (concentrated) log–likelihood for $\kappa$ is
+\[
+L(\kappa_1,\ldots,\kappa_p)
+= \sum_{j=1}^p \kappa_j \sum_{i=1}^n z_{ij}\,\cos(y_i-x_{ij})
+\; - \; \sum_{i=1}^n \log\{ I_0(\ell_{i,\kappa}) \},
+\]
+where $I_\nu(\cdot)$ is the modified Bessel function of the first kind of order $\nu$ and $A(\kappa)=I_1(\kappa)/I_0(\kappa)$.
+
+Let $\mu_i = \mu(\kappa;x_i,z_i)$ and recall the sine/cosine vectors (length $p$)
+\[
+S_i = (z_{i1}\sin(x_{i1}-\mu_i),\ldots, z_{ip}\sin(x_{ip}-\mu_i))^\top,
+\qquad
+C_i = (z_{i1}\cos(x_{i1}-\mu_i),\ldots, z_{ip}\cos(x_{ip}-\mu_i))^\top.
+\]
+Then the Fisher information for $\kappa$ is (element–wise, for $j,k=1,\ldots,p$)
+\[
+I(\kappa)
+= \sum_{i=1}^n \Bigg[ \frac{A(\ell_{i,\kappa})}{\ell_{i,\kappa}}\, S_i S_i^{\top}
+\; + \; \Big\{ 1 - \frac{A(\ell_{i,\kappa})}{\ell_{i,\kappa}} - A(\ell_{i,\kappa})^2 \Big\} \, C_i C_i^{\top} \Bigg].
+\]
+Let $\hat\kappa$ be the maximizer of $L(\kappa)$. A robust (sandwich) covariance estimator for $\hat\kappa$ is
+\[
+\widehat{\operatorname{Var}}\,(\hat\kappa)
+= I(\hat\kappa)^{-1}\,\Big( \sum_{i=1}^n \hat v_i\, \hat v_i^{\top} \Big)\, I(\hat\kappa)^{-1},
+\]
+with unit–level score contributions (length $p$)
+\[
+\hat v_i = \Big( v_{i1},\ldots,v_{ip} \Big)^{\top}, \qquad
+v_{ij} = z_{ij}\Big\{ \cos(y_i-x_{ij}) - \cos(x_{ij}-\hat\mu_i)\, A(\hat\ell_{i,\hat\kappa}) \Big\},
+\]
+where $\hat\mu_i = \mu(\hat\kappa;x_i,z_i)$ and $\hat\ell_{i,\hat\kappa}=\ell_{i,\kappa}$ evaluated at $\hat\kappa$.
+
+To make the consensus–parameter estimates comparable to those under homogeneous errors, define
+\[
+\hat\beta_c = \big(\hat\kappa_2,\ldots,\hat\kappa_p\big)^{\top}/\,|\hat\kappa_1|.
+\]
+By linearization, the covariance of $\hat\beta_c$ is
+\[
+\widehat{\operatorname{Var}}\,(\hat\beta_c) = A^{\top}\, \widehat{\operatorname{Var}}\,(\hat\kappa)\, A,
+\]
+with the $p\times (p-1)$ Jacobian matrix
+\[
+A = \begin{pmatrix}
+-\hat\kappa_2/\hat\kappa_1^2 & -\hat\kappa_3/\hat\kappa_1^2 & \cdots & -\hat\kappa_p/\hat\kappa_1^2 \\
+1/|\hat\kappa_1| & 0 & \cdots & 0 \\
+0 & 1/|\hat\kappa_1| & \cdots & 0 \\
+\vdots & \vdots & \ddots & \vdots \\
+0 & 0 & \cdots & 1/|\hat\kappa_1|
+\end{pmatrix}.
+\]
+
+
+
+
+# Special cases
+
+
+
+Table 1 expresses in the general framework of equation (5) several circular
+regression models proposed in the literature when there are either a single
+auxiliary variable, either angle $x$ or covariate $z$. 
+
+```{r, echo=FALSE, results='asis'}
+library(knitr)
+
+# Create the table content as in Table 1 of pack07
+models <- data.frame(
+  `0` = c('1', '', '', '', '', '', ''),
+  `π/2` = c('', '1', '', '✓', '✓', '✓', '✓'),
+  `x` = c('', '', '1', '✓', '✓', '✓', ''),
+  `x + π/2` = c('', '', '', '✓', '✓', '✓', ''),
+  `-x` = c('', '', '', '', '', '✓', '✓'),
+  `-x + π/2` = c('', '', '', '', '', '✓', '✓'),
+  `0 : z` = c('', '', '', '', '', '', '✓'),
+  `π/2 : z` = c('', '', '', '', '', '', '✓'),
+  row.names = c('MeanDir', 'RotMod', 'NRotMod', 'Decentred', 'NDecentred', 'JamSen', 'Presnell')
+)
+
+# Render the table using kable
+kable(models, caption = 'Table 1: Some models for y, expressed using (5) constructed using a univariate predictor, either x or z. The reference direction is identified by a 1 while ✓ is used for additional explanatory variables.', align = 'c')
 ```
+
+
+The mean direction model, MeanDir, model $y = \mu + \epsilon$ for $\mu \in [-\pi, \pi)$. It can be written using expression (5) as long as $\mu \in [-\pi/2, \pi/2)$ the corresponding parameter is $\beta_2 = \tan(\mu)$.
+
+
+When $\mu$ is not in this interval one needs to change the reference angle to
+$x + \pi$. In a similar way the rotation regression model, RotMod, $y = x + \mu + \epsilon$
+for $\mu \in [-\pi, \pi)$ can be expressed using (5) as long as $\mu \in [-\pi/2, \pi/2)$ and $\beta_2$
+is then equal to $\tan(\mu)$. When $x$ is an explanatory angle, adding $x + \pi/2$ to
+the model changes the explanatory angle into $x + \theta$, for some angle $\theta$. Indeed
+one has
+
+
+$$
+\beta_2
+\begin{pmatrix}
+\cos x \\
+\sin x
+\end{pmatrix}
++ \beta_3
+\begin{pmatrix}
+\cos(x + \pi/2) \\
+\sin(x + \pi/2)
+\end{pmatrix}
+=
+\begin{pmatrix}
+\cos x & -\sin x \\
+\sin x & \cos x
+\end{pmatrix}
+\begin{pmatrix}
+\beta_2 \\
+\beta_3
+\end{pmatrix}
+= \sqrt{\beta_2^2 + \beta_3^2}
+\begin{pmatrix}
+\cos(x + \theta) \\
+\sin(x + \theta)
+\end{pmatrix},
+$$
+
+
+where $\theta = \arctan2(\beta_3, \beta_2)$.
+
+
+Changing the explanatory angle from $x$ to $-x$ leads to the negative rotation
+model, NRotMod in Table 1. The decentred predictor of Rivest (1997) constructed
+with $x$, Decentred, or with $-x$, NDecentred, can also be expressed in terms of
+the explanatory angles of Table 1. Model Presnell corresponds to the proposal of
+Presnell et al. (1998) for a single continuous explanatory variable $z$.
+
+
+The circular regression models of Table 1 are special of the proposal in
+(Jammalamadaka and Sengupta, 2001, chap. 8) (JamSen in Table 1), whose
+predicted angle
+
+
+$$
+\mu(\beta, x) = \arctan2\{\beta_2 + (\beta_3 - \beta_5)\sin x + (\beta_4 + \beta_6)\cos x,
+1 + (\beta_3 + \beta_5)\cos x + (\beta_6 - \beta_4)\sin x\}.
+$$
+
+
+The Möbius regression model of Downs and Mardia (2002) is also a special case
+of JamSen. According to Polsen and Taylor (2015) it involves two angles $\phi$, $\alpha \in [0, 2\pi)$ and a dependence parameter $\omega \in (-1, 1)$. Considering Table
+5.1 of Polsen and Taylor (2015) the JamSen parameters in (8) for the Möbius
+regression model are
+
+
+$$
+\beta_2 = \tan \phi, \quad
+\beta_3 = \frac{1 + \omega}{1 - \omega} \frac{\cos(\alpha - \phi)}{2\cos(\phi)}, \quad
+\beta_4 = \frac{1 + \omega}{1 - \omega} \frac{\cos(\alpha + \phi)}{2\cos(\phi)}, \quad
+\beta_5 = \frac{1 - \omega}{1 + \omega} \frac{\cos(\alpha + \phi)}{2\cos(\phi)}, \quad
+\beta_6 = \frac{1 - \omega}{1 + \omega} \frac{\cos(\alpha - \phi)}{2\cos(\phi)}.
+$$
+
+
+Under this model $\beta_3\beta_5/(\beta_4\beta_6) = 1$.
+
+
+
+# Example: The Noshiro dataset
+
+## `angular` and `consensus` functions
+
+```{r example-noshiro, eval=FALSE}
+library(CircularRegression)
+data(noshiro)
+
+```
+REFAIRE NOSHIRO COMME DOCUMENT LP
+
+
+
+
+
+
+# Application: Bison movement data
 
 The `bison` data frame contains directional observations (`y.dir`) along with
 predictor summaries (`y.prec` and `y.prec2`) that characterize preceding animal
 headings. The formulas used in this vignette follow the convention of placing the
 circular response on the left-hand side.
 
-# Angular regression model
+## Angular regression model
 
 The angular regression model links the response direction to previous directions
 through trigonometric transformations. The example below fits the simplified
@@ -44,49 +365,74 @@ angular regression model with `y.dir` as the response and two predictors that
 capture previous movement directions.
 
 ```{r angular-fit}
-ang_fit <- angular(y.dir ~ y.prec + y.prec2, data = bison)
-ang_fit
+ang_fit_bison <- angular(y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap, data = bison)
+ang_fit_bison
 ```
 
 A summary provides parameter estimates and associated inference information.
 
 ```{r angular-summary}
-summary(ang_fit)
+summary(ang_fit_bison)
 ```
 
-Diagnostic plots help assess the adequacy of the model by visualizing residuals
-and fitted directions.
 
-```{r angular-plot, fig.width=7, fig.height=6}
-plot(ang_fit)
-```
 
-# Consensus regression model
+
+## Consensus regression model
 
 The consensus model extends the angular regression framework by explicitly
 modelling the concentration parameter. The following example fits a consensus
 model using the same predictors.
 
 ```{r consensus-fit}
-cons_fit <- consensus(y.dir ~ y.prec + y.prec2, data = bison)
-cons_fit
+cons_fit_bison <- consensus(y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap, data = bison)
+cons_fit_bison
 ```
 
 You can inspect the estimated parameters and goodness-of-fit criteria via the
 summary method.
 
 ```{r consensus-summary}
-summary(cons_fit)
+summary(cons_fit_bison)
 ```
+
+
+
+## pick reference variable
+
+In the homogeneous error model, the first angular predictor is the reference
+angle. You can change the reference angle by reordering the predictors in the
+formula. If the user wants to find the reference angle automatically, the
+`pick_reference_angle()` function can be used. This function fits a consensus model
+for every predictor and selects the one with the highest $\hat \beta$. For example, in the bison data set, `y.prec` is selected as the reference angle:
+
+```{r}
+pick_reference_angle(y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap, data = bison)$ref_name
+```
+
+# Diagnostic tools
+
+
+Diagnostic plots help assess the adequacy of the model by visualizing residuals
+and fitted directions.
+
+```{r angular-plot, fig.width=7, fig.height=6}
+plot(ang_fit_bison)
+```
+
 
 For a more detailed diagnostic assessment, the plotting method provides a suite
 of charts similar to those available for linear models.
 
 ```{r consensus-plot, fig.width=7, fig.height=6}
-plot(cons_fit)
+plot(cons_fit_bison)
 ```
 
-# Likelihood Ratio test
+
+
+# Simulation and model comparison
+
+## Likelihood Ratio test
 
 ```{r}
 fit_full <- angular(y.dir ~ y.prec + y.prec2 + x.gap + z.gap:x.gap, data = bison)
@@ -96,9 +442,16 @@ print(lrt_result)
 anova(fit_full, fit_reduced, test = "LRT")
 ```
 
-# random effect
 
-```{r, eval=FALSE}
+
+
+# Application of angular regression model with random intercept
+
+In the homogeneous–error formulation, the concentration parameter of the error distribution is assumed constant across all observations. This setting corresponds to a von Mises regression model in which the variability around the conditional mean direction does not depend on the explanatory variables. Rivest and Kato (2019) later extended this approach to account for *clustered circular data* by incorporating random effects and intra–cluster correlation within the homogeneous framework. Their model introduces a hierarchical structure where the mean direction combines a fixed–effects component, denoted \(\mu_{ij}(\beta)\), and a cluster–specific random intercept \(a_i\) following a von Mises distribution. This extension provides a natural way to model repeated or spatially correlated angular observations, while preserving the analytical simplicity of the homogeneous–error von Mises likelihood. The homogeneous model with a random intercept thus forms the foundation for more general mixed–effects specifications in circular regression, offering both interpretability and robustness when data exhibit within–cluster dependence.
+
+
+
+```{r, echo=FALSE}
 data("Sandhopper", package = "CircularRegression")
 dat <- Sandhopper
 to_rad <- function(x) x * pi/180
@@ -127,7 +480,12 @@ long <- do.call(rbind, lapply(seq_len(nrow(dat2)), function(i) {
 # On réutilise la grammaire "x:z" de angular()
 long$Zero   <- 0
 long$Pi2    <- pi/2
+```
 
+
+The `angular_re()` function fits the random–intercept model of Rivest and Kato (2019). The following example uses the `Sandhopper` dataset from the `CircularRegression` package, which contains directional observations of sandhoppers along with various predictors. The dataset includes repeated measurements for each individual sandhopper, making it suitable for a mixed-effects model.
+
+```{r}
 fit <- angular_re(
   LN ~ Azimuth + DirW + Zero + DirW:SpeedW + Zero:Eye + Pi2:Eye + Pi2:Rep,
   data = long,
@@ -139,7 +497,7 @@ print(fit)
 coef(fit)
 vcov(fit)                 # SE modèle
 vcov(fit, robust = TRUE)  # SE sandwich
-head(ranef(fit))          # prédicteurs a_hat
+head(fit$ranef)          # prédicteurs a_hat
 
 
 # flèches avec longueur A1(kappa_a) (interprétable)
@@ -153,8 +511,17 @@ plot(fit, which = "both")             # fixed + conditional
 plot(fit, which = "fixed")
 plot(fit, which = "conditional", points = FALSE)
 
+
+
+
+
+```
+
+## prediction
+
+```{r}
 ## Prédictions
-library(CircStats)
+library(circular)
 new_df <- data.frame(
   LN = rvonmises(5, mu = 0, kappa = 1), # ex: 5 valeurs aléatoires
   Azimuth = rep(to_rad(45), 5),       # ex: 45° en radians
@@ -169,26 +536,24 @@ new_df <- data.frame(
 mu_new <- predict(fit, newdata = new_df, type = "marginal")
 
 # conditionnelles pour des observations appartenant à des grappes connues
-mu_cond <- predict(fit, newdata = df_existing, cluster = df_existing$id,
+mu_cond <- predict(fit, newdata = long, cluster = long$id,
                    type = "conditional")
 
 # conditionnelles avec un a_hat imposé (p.ex. scénario)
 mu_scenario <- predict(fit, newdata = new_df, type = "conditional", a_hat = 0.3)
 
 
-
-
-
 ```
 
 
-# Additional models and utilities
 
-Besides the angular and consensus models, the package exposes additional
-regression frameworks such as the decentered predictor model, Presnell model,
-and mean direction model. Refer to the function documentation for these
-methods for more examples (`?decentredPredictorModel`, `?presnellModel`,
-etc.).
+
+# References
+
+
+
+
+
 
 # Session information
 

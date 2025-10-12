@@ -73,24 +73,33 @@ consensus <- function(
   y <- as.numeric(mf[[1]])
   term_labels <- attr(attr(mf, "terms"), "term.labels")
   if (length(term_labels) == 0) {
-    stop("The model must include at least one term specifying the reference direction.")
+    stop(
+      "The model must include at least one term specifying the reference direction."
+    )
   }
 
   split_terms <- strsplit(term_labels, ":", fixed = TRUE)
-  term_matrix <- t(vapply(split_terms, function(x) {
-    if (length(x) == 1) {
-      c(x, x)
-    } else if (length(x) == 2) {
-      x
-    } else {
-      stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
-    }
-  }, character(2)))
+  term_matrix <- t(vapply(
+    split_terms,
+    function(x) {
+      if (length(x) == 1) {
+        c(x, x)
+      } else if (length(x) == 2) {
+        x
+      } else {
+        stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
+      }
+    },
+    character(2)
+  ))
 
   ref_name <- term_matrix[1, 1]
   if (!ref_name %in% names(mf)) {
     stop(
-      sprintf("Reference direction '%s' not found in the supplied data.", ref_name),
+      sprintf(
+        "Reference direction '%s' not found in the supplied data.",
+        ref_name
+      ),
       call. = FALSE
     )
   }
@@ -108,7 +117,10 @@ consensus <- function(
       if (!identical(z_names[j], x_names[j])) {
         if (!z_names[j] %in% names(mf)) {
           stop(
-            sprintf("Modifier '%s' not found in the supplied data.", z_names[j]),
+            sprintf(
+              "Modifier '%s' not found in the supplied data.",
+              z_names[j]
+            ),
             call. = FALSE
           )
         }
@@ -157,13 +169,15 @@ consensus <- function(
     if (p > 0) {
       term1 <- term1 + as.vector((matz * cos(y - matx)) %*% param[2:(p + 1)])
     }
-    LL <- sum(weight * term1) - sum(weight * log(besselI(long, 0, expon.scaled = FALSE)))
+    LL <- sum(weight * term1) -
+      sum(weight * log(besselI(long, 0, expon.scaled = FALSE)))
     list(LL = LL, long = long, mui = mui)
   }
 
   betaUpdate <- function(paramk, long, mui) {
     matx0 <- if (p > 0) cbind(x0, matx) else matrix(x0, ncol = 1)
-    matz0 <- if (p > 0) cbind(rep(1, nobs), matz) else matrix(1, ncol = 1, nrow = nobs)
+    matz0 <- if (p > 0) cbind(rep(1, nobs), matz) else
+      matrix(1, ncol = 1, nrow = nobs)
     ratio_num <- besselI(long, 1, expon.scaled = FALSE)
     ratio_den <- besselI(long, 0, expon.scaled = FALSE)
     Along <- ratio_num / ratio_den
@@ -181,7 +195,10 @@ consensus <- function(
     matI <- (matI + t(matI)) / 2
     qrI <- qr(matI)
     if (qrI$rank < ncol(matI)) {
-      stop("Information matrix is singular; cannot update parameters.", call. = FALSE)
+      stop(
+        "Information matrix is singular; cannot update parameters.",
+        call. = FALSE
+      )
     }
     dparam <- as.vector(qr.coef(qrI, vecs))
     list(paramk1 = paramk + dparam, dparam = dparam, matu = matu, matI = matI)
@@ -190,16 +207,30 @@ consensus <- function(
   nparam <- p + 1
   if (is.null(initbeta)) {
     pg <- max(1L, round(pginit^(1 / nparam)))
-    grid_vals <- rep(list(seq(-1, 1, length.out = pg + 2)[-c(1, pg + 2)]), nparam)
+    grid_vals <- rep(
+      list(seq(-1, 1, length.out = pg + 2)[-c(1, pg + 2)]),
+      nparam
+    )
     possVal <- cbind(expand.grid(grid_vals), NA_real_)
     colnames(possVal) <- c(paramname, "LL")
-    possVal[, nparam + 1] <- apply(possVal[, seq_len(nparam), drop = FALSE], 1, function(par) {
-      loglik_components(as.numeric(par))$LL
-    })
-    paramk <- as.numeric(possVal[which.max(possVal[, nparam + 1]), seq_len(nparam), drop = TRUE])
+    possVal[, nparam + 1] <- apply(
+      possVal[, seq_len(nparam), drop = FALSE],
+      1,
+      function(par) {
+        loglik_components(as.numeric(par))$LL
+      }
+    )
+    paramk <- as.numeric(possVal[
+      which.max(possVal[, nparam + 1]),
+      seq_len(nparam),
+      drop = TRUE
+    ])
   } else {
     if (length(initbeta) != nparam) {
-      stop(sprintf("'initbeta' must have length %d for this model.", nparam), call. = FALSE)
+      stop(
+        sprintf("'initbeta' must have length %d for this model.", nparam),
+        call. = FALSE
+      )
     }
     paramk <- initbeta
   }
@@ -234,7 +265,9 @@ consensus <- function(
       if (iter.sh >= maxiter) break
     }
     if (maxLLk1 < maxLLk) {
-      warning("The algorithm did not converge; it failed to maximise the log-likelihood.")
+      warning(
+        "The algorithm did not converge; it failed to maximise the log-likelihood."
+      )
       conv <- FALSE
       break
     } else {
@@ -246,7 +279,9 @@ consensus <- function(
     }
   }
   if (iter > maxiter + 1) {
-    warning("The algorithm did not converge: maximum number of iterations reached.")
+    warning(
+      "The algorithm did not converge: maximum number of iterations reached."
+    )
   } else {
     iter.detail <- iter.detail[seq_len(iter + 1), , drop = FALSE]
   }
@@ -258,7 +293,9 @@ consensus <- function(
     M_sym <- (M + t(M)) / 2
     chol_res <- tryCatch(chol(M_sym), error = function(e) NULL)
     if (is.null(chol_res)) {
-      warning("Information matrix is not positive definite; returning NA variances.")
+      warning(
+        "Information matrix is not positive definite; returning NA variances."
+      )
       matrix(NA_real_, nrow = nrow(M_sym), ncol = ncol(M_sym))
     } else {
       chol2inv(chol_res)
@@ -311,7 +348,10 @@ consensus <- function(
   }
 
   residual_obj <- list(y = y, mui = mui, long = long)
-  autocorr <- stats::acf(residuals.consensus(object = residual_obj), plot = FALSE)
+  autocorr <- stats::acf(
+    residuals.consensus(object = residual_obj),
+    plot = FALSE
+  )
 
   k <- nparam
   logLik <- maxLLk
@@ -576,7 +616,8 @@ plot.consensus <- function(x, ...) {
       title = "Residuals vs Fitted",
       x = "Fitted Values",
       y = "Residuals"
-    )
+    ) +
+    ggplot2::theme_minimal()
 
   res <- as.numeric(residuals.consensus(x, ...))
   res_mean <- mean(res)
@@ -601,7 +642,8 @@ plot.consensus <- function(x, ...) {
       title = "Histogram of Residuals",
       x = "Scaled Residuals",
       y = "Density"
-    )
+    ) +
+    ggplot2::theme_minimal()
 
   p3 <- ggplot2::ggplot(
     data = data.frame(Residual = as.numeric(res)),
@@ -613,7 +655,8 @@ plot.consensus <- function(x, ...) {
       title = "Normal Q-Q",
       x = "Theoretical Quantiles",
       y = "Sample Quantiles"
-    )
+    ) +
+    ggplot2::theme_minimal()
 
   p4 <- ggplot2::ggplot() +
     ggplot2::annotate(

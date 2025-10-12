@@ -64,5 +64,5 @@ omitted or identical to \code{x}).
 }
 }
 \author{
-Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
+Sophie Baillargeon, Louis-Paul Rivest, and Aurelien Nicosia
 }

@@ -17,14 +17,21 @@ RoxygenNote: 7.3.2
 Imports:
     ggplot2,
     gridExtra,
-    circular
+    circular,
+    graphics,
+    stats,
+    utils
 Depends:
     R (>= 3.5)
 Suggests:
     knitr,
     rmarkdown,
     testthat (>= 3.0.0),
-    CircStats
+    CircStats,
+    dplyr,
+    purrr,
+    tibble,
+    tidyr
 VignetteBuilder: knitr
 URL: https://github.com/AurelienNicosiaULaval/CircularRegression
 BugReports: https://github.com/AurelienNicosiaULaval/CircularRegression/issues

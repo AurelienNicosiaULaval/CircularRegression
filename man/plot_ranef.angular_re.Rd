@@ -9,7 +9,7 @@ plot_ranef.angular_re(
   scale = c("A1_kappa_a", "unit"),
   labels = FALSE,
   cex.labels = 0.7,
-  main = "Random intercepts (â_i)",
+  main = "Random intercepts (a_hat[i])",
   ...
 )
 }

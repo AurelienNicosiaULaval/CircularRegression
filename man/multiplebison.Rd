@@ -8,19 +8,25 @@
 A data frame with \eqn{n = 1475} rows (hours kept after filtering) and the
 following columns:
 \describe{
-  \item{Date_time_round_next}{POSIXct. Timestamp of the (kept) hourly record.}
-  \item{Heure}{integer. Hour of day (0–23).}
-  \item{Direction_1045-a}{numeric. Movement direction of bison 1045-a.}
-  \item{Direction_1044-a}{numeric. Movement direction of bison 1044-a.}
-  \item{Distance_1045-a}{numeric. Step length (m) of bison 1045-a between consecutive fixes.}
-  \item{Distance_1044-a}{numeric. Step length (m) of bison 1044-a between consecutive fixes.}
-  \item{Lat_1045-a}{numeric. Latitude of bison 1045-a (decimal degrees).}
-  \item{Lat_1044-a}{numeric. Latitude of bison 1044-a (decimal degrees).}
-  \item{Long_1045-a}{numeric. Longitude of bison 1045-a (decimal degrees).}
-  \item{Long_1044-a}{numeric. Longitude of bison 1044-a (decimal degrees).}
-  \item{Distance}{numeric. Inter-animal distance (m) at the timestamp.}
-  \item{Turn_ang_1044}{numeric. Turning-angle of bison 1044-a between consecutive directions.}
-  \item{Turn_ang_1045}{numeric. Turning-angle of bison 1045-a between consecutive directions.}
+  \item{datetime_round_next}{POSIXct. Timestamp of the retained hourly record.}
+  \item{heure}{integer. Hour of day (0-23).}
+  \item{bearing_ang}{numeric. Bearing from bison 1044-a to 1045-a.}
+  \item{direction_1044-a}{numeric. Movement direction of bison 1044-a.}
+  \item{direction_1045-a}{numeric. Movement direction of bison 1045-a.}
+  \item{distance_1044-a}{numeric. Step length (m) of bison 1044-a between consecutive fixes.}
+  \item{distance_1045-a}{numeric. Step length (m) of bison 1045-a between consecutive fixes.}
+  \item{distance}{numeric. Inter-animal distance (m) at the timestamp.}
+  \item{lat_1044-a}{numeric. Latitude of bison 1044-a (decimal degrees).}
+  \item{lat_1045-a}{numeric. Latitude of bison 1045-a (decimal degrees).}
+  \item{long_1044-a}{numeric. Longitude of bison 1044-a (decimal degrees).}
+  \item{long_1045-a}{numeric. Longitude of bison 1045-a (decimal degrees).}
+  \item{turn_ang_1044}{numeric. Turning angle of bison 1044-a between consecutive directions.}
+  \item{turn_ang_1045}{numeric. Turning angle of bison 1045-a between consecutive directions.}
+  \item{diff}{numeric. Helper column equal to \code{direction_1045-a - direction_1044-a}.}
+  \item{predict_heure}{integer. Hour index used when predicting future movement.}
+  \item{theta1}{numeric. Derived angular covariate used in modeling examples.}
+  \item{theta2}{numeric. Derived angular covariate used in modeling examples.}
+  \item{theta3}{numeric. Derived angular covariate used in modeling examples.}
 }
 }
 \usage{
@@ -29,7 +35,7 @@ multiplebison
 \description{
 Hourly GPS-derived movement metrics for two plains bison (IDs `1044-a` and
 `1045-a`) monitored in Prince Albert National Park (Saskatchewan, Canada)
-during July–October 2013. From the hourly locations, the dataset includes
+during July-October 2013. From the hourly locations, the dataset includes
 per-animal direction of movement, step length (distance between consecutive
 fixes), latitude/longitude, the inter-animal distance at each hour, and
 turning-angles (difference between consecutive movement directions).
@@ -37,8 +43,8 @@ turning-angles (difference between consecutive movement directions).
 \details{
 The file results from merging individual hourly GPS tracks (one per animal),
 retaining rows where the time gap between successive fixes is exactly one hour,
-and reshaping to a “wide” format with one row per timestamp holding both
-animals’ variables. Turning-angles are computed from consecutive directions.
+and reshaping to a "wide" format with one row per timestamp holding both
+animals' variables. Turning-angles are computed from consecutive directions.
 
 
 - Angles are measured around the circle; if stored in degrees in your copy,

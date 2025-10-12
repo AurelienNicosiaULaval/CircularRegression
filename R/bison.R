@@ -1,12 +1,10 @@
-#' bison
+#' Bison example dataset
 #'
-#' Une brève description de ce que contient le jeu de données.
+#' This placeholder dataset documents the structure required by legacy examples
+#' in the package. It provides a minimal template until the full dataset is
+#' restored.
 #'
 #' @docType data
 #' @usage data(bison)
-#' @format Un data frame avec X observations et Y variables:
-#' \describe{
-#'   \item{variable1}{Description de la variable1.}
-#'   \item{variable2}{Description de la variable2.}
-#' }
+#' @format A data frame.
 "bison"

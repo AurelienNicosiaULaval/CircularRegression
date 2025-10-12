@@ -22,7 +22,7 @@ An object of class \code{"htest"} with fields:
   \item \code{method}    A short description.
   \item \code{data.name} Model names compared.
   \item \code{details}   List with \code{n}, \code{kappa_full}, \code{Cbar_full}, \code{Cbar_reduced},
-                         and \code{LRT_logLik} (= 2*ΔlogLik, if \code{logLik.angular} is available).
+                         and \code{LRT_logLik} (= 2*Delta_logLik, if \code{logLik.angular} is available).
 }
 }
 \description{

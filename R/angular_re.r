@@ -456,6 +456,14 @@ residuals.angular_re <- function(
   if (type == "fixed") object$resid_fixed else object$resid_conditional
 }
 
+#' Extract estimated random intercepts from an angular mixed model
+#'
+#' Returns the cluster-specific random intercepts \eqn{\hat a_i} estimated by
+#' \code{angular_re()}.
+#'
+#' @param object A fitted \code{angular_re} model.
+#' @param ... Unused; included for compatibility with the generic.
+#' @return A named numeric vector of random intercept estimates, one per cluster.
 #' @export
 ranef.angular_re <- function(object, ...) object$ranef
 
@@ -466,7 +474,7 @@ fitted.angular_re <- function(object, ...) object$mu
 #' Plot method for angular_re objects
 #'
 #' Draws rose/circular plots of residuals: fixed (y - mu) and conditional
-#' (y - mu - a_hat[cluster]) as in Rivest & Kato (2019), Fig. 1–2.
+#' (y - mu - a_hat[cluster]) as in Rivest & Kato (2019), Fig. 1-2.
 #' If the 'circular' package is available, uses it; otherwise falls back
 #' to a simple polar scatter with density ticks.
 #'
@@ -545,14 +553,14 @@ plot.angular_re <- function(
     op <- par(mfrow = c(1, 2))
     on.exit(par(op), add = TRUE)
     if (has_circ) {
-      draw_panel_circular(r_fix, paste0(main, " — fixed"))
-      draw_panel_circular(r_con, paste0(main, " — conditional"))
+      draw_panel_circular(r_fix, sprintf("%s - fixed", main))
+      draw_panel_circular(r_con, sprintf("%s - conditional", main))
     } else {
-      draw_panel_base(r_fix, paste0(main, " — fixed"))
-      draw_panel_base(r_con, paste0(main, " — conditional"))
+      draw_panel_base(r_fix, sprintf("%s - fixed", main))
+      draw_panel_base(r_con, sprintf("%s - conditional", main))
     }
   } else {
-    ttl <- paste0(main, if (which == "fixed") " — fixed" else " — conditional")
+    ttl <- sprintf("%s - %s", main, if (which == "fixed") "fixed" else "conditional")
     if (has_circ)
       draw_panel_circular(if (which == "fixed") r_fix else r_con, ttl) else
       draw_panel_base(if (which == "fixed") r_fix else r_con, ttl)
@@ -728,7 +736,7 @@ plot_ranef.angular_re <- function(
   scale = c("A1_kappa_a", "unit"),
   labels = FALSE,
   cex.labels = 0.7,
-  main = "Random intercepts (â_i)",
+  main = "Random intercepts (a_hat[i])",
   ...
 ) {
   scale <- match.arg(scale)
@@ -767,14 +775,14 @@ plot_ranef.angular_re <- function(
       axes = TRUE,
       main = main
     )
-    # cercle unité
+    # draw unit circle
     t <- seq(0, 2 * pi, length.out = 360)
     lines(cos(t), sin(t), col = "grey75")
-    # flèches
+    # draw arrows
     xend <- L * cos(a_hat)
     yend <- L * sin(a_hat)
     arrows(0, 0, xend, yend, length = 0.08, lwd = 1.8)
-    # étiquette de la longueur commune
+    # annotate common arrow length
     mtext(
       sprintf(
         "Arrow length: %s = %.3f",

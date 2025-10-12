@@ -45,7 +45,7 @@
 #'   \item{call}{the function call.}
 #' }
 #'
-#' @author Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
+#' @author Sophie Baillargeon, Louis-Paul Rivest, and Aurelien Nicosia
 #' @references L.-P. Rivest, T. Duchesne, A. Nicosia & D. Fortin. A general angular regression model for the analysis of data on animal movement in ecology. Journal of the Royal Statistical Society, series C, to appear.
 #' @examples
 #' \dontrun{
@@ -355,7 +355,7 @@ coef.angular <- function(object, ...) {
 #' @rdname angular-methods
 #' @export
 residuals.angular <- function(object, ...) {
-  # tout en radians pour éviter les ambiguïtés
+  # keep everything in radians to avoid ambiguity
   y <- circular::conversion.circular(
     circular::as.circular(object$y),
     units = "radians"
@@ -365,7 +365,7 @@ residuals.angular <- function(object, ...) {
     units = "radians"
   )
 
-  # différence angulaire signée minimale dans (-pi, pi]
+  # signed angular difference in (-pi, pi]
   d <- atan2(sin(y - mu), cos(y - mu))
 
   # renvoyer un 'circular' en radians (convertis ensuite si tu veux)

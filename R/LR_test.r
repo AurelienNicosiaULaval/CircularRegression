@@ -18,7 +18,7 @@
 #'   \item \code{method}    A short description.
 #'   \item \code{data.name} Model names compared.
 #'   \item \code{details}   List with \code{n}, \code{kappa_full}, \code{Cbar_full}, \code{Cbar_reduced},
-#'                          and \code{LRT_logLik} (= 2*ΔlogLik, if \code{logLik.angular} is available).
+#'                          and \code{LRT_logLik} (= 2*Delta_logLik, if \code{logLik.angular} is available).
 #' }
 #' @export
 angular_lrtest <- function(full, reduced, check = TRUE) {
@@ -60,7 +60,7 @@ angular_lrtest <- function(full, reduced, check = TRUE) {
 
   pval <- stats::pchisq(T2, df = df, lower.tail = FALSE)
 
-  # If logLik.angular is available, also report the plain 2*ΔlogLik
+  # If logLik.angular is available, also report the plain 2*Delta_logLik
   LRT_ll <- tryCatch(
     {
       2 * (as.numeric(stats::logLik(full)) - as.numeric(stats::logLik(reduced)))
@@ -107,8 +107,8 @@ anova.angular <- function(object, ..., test = c("none", "LRT")) {
 
 # ------------------------------------------------------------------------------
 # Optional (recommended): logLik method for 'angular'
-# Lets you check 2*ΔlogLik and use AIC/BIC if desired.
-# Log-likelihood at kappa_hat: sum[kappa_hat * cos(res_i) - log(2π I0(kappa_hat))]
+# Lets you check 2*Delta_logLik and use AIC/BIC if desired.
+# Log-likelihood at kappa_hat: sum[kappa_hat * cos(res_i) - log(2*pi*I0(kappa_hat))]
 # where res_i = y_i - mu_i. Your MaxCosine = mean cos(res_i) is used for speed.
 # ------------------------------------------------------------------------------
 

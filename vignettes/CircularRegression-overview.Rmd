@@ -7,13 +7,12 @@ author:
 date: "`r Sys.Date()`"
 output:
   pdf_document:
-    toc: true
-    toc_depth: 3
-    number_sections: true
-    fig_caption: true
     latex_engine: xelatex
+    number_sections: true
+    toc: true
     includes:
-      in_header: theory-preamble.tex
+      in_header: theory-preamble_min.tex
+geometry: margin=1in
 vignette: >
   %\VignetteIndexEntry{Getting Started with CircularRegression}
   %\VignetteEncoding{UTF-8}
@@ -22,6 +21,8 @@ vignette: >
 editor_options:
 chunk_output_type: console
 bibliography: references.bib
+biblio-style: authoryear
+link-citations: true
 ---
 
 ```{r setup, include=FALSE}
@@ -42,9 +43,9 @@ library(circular)     # pour objets angulaires et outils de base
 
 # Introduction
 
-\section{The regression model of @Rivest16}
+# The regression model of @Rivest16
 
-\subsection{The conditional mean direction}
+## The conditional mean direction
 
 
 This section reviews the regression model proposed in @Rivest16. Let $y$ denote the dependent angle and $x_1,\ldots, x_p$ represent explanatory angles.  To angle $x_j$ is associated a positive real variable $z_j$.  The proposed model is
@@ -75,7 +76,7 @@ y = 1 \times x_1:z_1 + x_2:z_2 + \ldots + x_p:z_p,
 \end{equation}
 where the operator $:$ denotes an interaction between an explanatory angle $x$ and its associated positive variable $z$. When $z_k=1$ one writes $x_k:z_k$ as $x_k$.
 
-\subsection{The asymptotic distribution of $\hat \beta$ under homogeneous errors}
+## The asymptotic distribution of $\hat \beta$ under homogeneous errors
 
 For the homogeneous error model, the error concentration $\kappa>0$ does not depend on $x$ and $y$.  The estimator $\hat \beta$ is the parameter vector that maximizes the von Mises log-likelihood, $\kappa\sum_i\cos\{y_i- \mu(\beta,x_i,z_i)\}-n\log\{{\cal I}_0(\kappa)\}$ where ${\cal I}_\nu(\kappa)$ is a Bessel function of integer order for a non negative integer $\nu$.  The so-called MaxCosine, $MC=\sum_i\cos\{y_i- \mu(\hat \beta,x_i,z_i)\}/n$, is a measure of fit of the model; values close to 1 are associated with small residuals and a good fit. The  maximum likelihood estimator for $\kappa$ is $\hat \kappa=A^{-1}(MC)$ where $A(\kappa)={\cal I}_1(\kappa)/{\cal I}_0(\kappa)$  gives the mean resultant length of a von Mises distribution as a function of the concentration parameter $\kappa$.  The maximized log-likelihood is ${\cal L}_h(\hat \beta, \hat \kappa)$.
 
@@ -94,7 +95,7 @@ v_1(\hat \beta)=\hat B^{-1} \left\{ \sum_{i=1}^n \frac{\hat S_i \hat S_i^\top}{\
 % c'est l'estimateur v_1 de la fonction de Sophie
 \end{equation}
 
-\subsection{The asymptotic distribution of $\hat \beta$ under concensus errors}
+## The asymptotic distribution of $\hat \beta$ under concensus errors
 
 It is convenient to parametrize the model with consensus in terms of positive parameters $\kappa=(\kappa_1,  \ldots, \kappa_p)^\top$. We use the notation $\ell_{i\kappa}$ to denote the length \eqref{leng} calculated for unit $i$ with the $\beta$ parameters replaced by the $\kappa$ parameters,
 The loglikelihood function to estimate the $\kappa_j$'s is given by
@@ -129,125 +130,67 @@ $$
 
 
 
-# Special cases
+\section{Some special cases for model \eqref{eq:mod}}
+Table \ref{tab:tab1} expresses in the general framework of equation \eqref{eq:mods} several circular regression models proposed in the literature when there are either a single auxiliary variable, either angle $x$ or covariate $z$ . The mean direction model, MeanDir, model $y = \mu+ \epsilon$ for $\mu \in [-\pi,\pi)$. It can written using expression \eqref{eq:mods} as long as $\mu \in [-\pi/2,\pi/2)$ the corresponding parameter is $\beta_2=\tan(\mu)$.  When $\mu$ is not in this interval one needs to change the reference angle to $x +\pi$. In a similar way the rotation regression model, RotMod, $y = x+ \mu+ \epsilon$ for $\mu \in [-\pi,\pi)$ can be expressed using
+\eqref{eq:mods} as long as $\mu \in [-\pi/2,\pi/2)$ and $\beta_2$ is then equal to $\tan(\mu)$. When $x$ is an explanatory angle, adding $x+\pi/2$ to the model changes the explanaotry angle into $x+\theta$, for some angle $\theta$.  Indeed one has
+\begin{align*}
+\beta_2 \begin{pmatrix} \cos x \\ \sin x \end{pmatrix}+\beta_3 \begin{pmatrix} \cos (x+\pi/2) \\ \sin (x+\pi/2) \end{pmatrix} & =
+ \begin{pmatrix} \cos x & -\sin x \\ \sin x &\cos x \end{pmatrix}\begin{pmatrix} \beta_2 \\ \beta_3 \end{pmatrix} \\
+ &= \sqrt{\beta_2^2+\beta_3^2}\begin{pmatrix} \cos (x+\theta) \\ \sin (x+\theta) \end{pmatrix},
+\end{align*}
+where $\theta = \arctan2(\beta_3,\beta_2)$.
+
+Changing the explanatory angle form $x$ to $-x$ leads to negative rotation model,  NRotMod in Table \ref{tab:tab1}.  The decentred predictor of @Rivest97 constructed with $x$, Decentred, or with $-x$, NDecentred, can also expressed in terms of the explanatory angles of Table \ref{tab:tab1}.  Model Presnell corresponds to the the proposal of @Presnell98  for a single continuous explanatory variable $z$.
+
+\begin{table}%[htb!]
+\caption{Some models for $y$, expressed using \eqref{eq:mods} constructed using a univariate predictor, either  $x$ or  $z$.  The reference direction is identified by a 1 while $\checkmark$ is used for additional explanatory variables }
+\label{tab:tab1}
+\centering
+%\footnotesize\setlength\tabcolsep{2pt}
+\begin{tabular}{ccccccccc}
+\hline
+&$0$&$\pi/2$&$x$&$x+\pi/2$&$-x$&$-x+\pi/2$&$0:z$&$\pi/2:z$\\
+\hline
+MeanDir & 1 & $\checkmark$ & & & & & & \\
+RotMod &  &  & 1& $\checkmark$ & & & & \\
+NRotMod &  &   & & & 1& $\checkmark$ & & \\
+Decentred & $\checkmark$ & $\checkmark$ &1 & $\checkmark$& & & &  \\
+NDecentred & $\checkmark$ & $\checkmark$ & & &1 & $\checkmark$& &  \\
+JamSen & 1 & $\checkmark$& $\checkmark$ & $\checkmark$&$\checkmark$ &$\checkmark$  & & \\
+Presnell & 1 & $\checkmark$  &  & & & &$\checkmark$ &$\checkmark$ \\
+\hline
+\end{tabular}
+\end{table}
+
+The circular regression models of Table \ref{tab:tab1} are special of the proposal in @jammalamadaka2001topics (JamSen in Table \ref{tab:tab1}).  Whose predicted angle
+\begin{align}
+\label{eq:JamSen}
+\mu(\beta,x)=\arctan2 & \{\beta_2+(\beta_3-\beta_5) \sin x +(\beta_4+\beta_6) \cos x, \\
+  & 1+ (\beta_3 + \beta_5) \cos x+(\beta_6-\beta_4) \sin x\}. \nonumber
+\end{align}
+The Moebius regression model of @Downs02 is also a special case of JamSen.  According to @polsen2015parametric
+it involves two angles $\phi, \alpha \in [0,2\pi)$ and a dependence parameter $\omega \in (-1,1)$. Considering Table 5.1 of @polsen2015parametric the JamSen parameters in \eqref{eq:JamSen} for the Moebius regression model are $\beta_2=\tan \phi$ and
+\begin{align*}
+\beta_3&=\frac{1+\omega}{1-\omega}\frac{\cos(\alpha-\phi)}{2\cos(\phi)} \;
+&\beta_4=\frac{1+\omega}{1-\omega}\frac{\cos(\alpha+\phi)}{2\cos(\phi)} \\
+\beta_5&=\frac{1-\omega}{1+\omega}\frac{\cos(\alpha+\phi)}{2\cos(\phi)} \;
+&\beta_6=\frac{1-\omega}{1+\omega}\frac{\cos(\alpha-\phi)}{2\cos(\phi)}.
+\end{align*}
+Under this model $\beta_3\beta_5/(\beta_4\beta_6)=1$.
+
+\subsection{Model selection for a single independent angle $x$}
+We now consider fitting model \eqref{eq:mod} to the Noshiro data set where $y$ is the direction of ground movement at a site, after an earthquake,  while $x$ is the direction of steepest descent at that site.  Following @Jones15 we removed data points with ties at $x=0, \pi/2$ leading to a sample of $n=678 $ sites where $(x,y)$ are measured.
+
+To illustrate the impact of the choice of the reference explanatory angle $x_1$ on the fit, two JemSen models were fitted one with $x_1=\pi$, as the model with $x_1=0$ failed to converge, and the other with $x_1=x$.
+
+AJOUTER ESTIMATION AVEC LES FONCTIONS DU PACKAGE (Refaire le tableau)
+
+ The two models are equivalent: they give the same predicted angles $\mu(\hat \beta,x_i)$ and they both have $MC=0.5024$.  Indeed dividing the parameter estimate of the fit of the $x_1=\pi$ model, by the estimate for $x$, 5.72, gives the parameter estimates for the fit obtained with $x_1=x$. We want to use the p-values in Table \ref{tab:Nos} to identify important explanatory variables. In the $x_1=\pi$ fit one p-value is smaller than 5\%  while there are 3 with the other fit. 
+
+Removing variables with p-values larger than 5\% in the $x_1=x$ fit leads to a model with $MC=0.5019$ with $\mu(\hat \beta,x_i)=\arctan2\{0.21+\sin(x)+.23\cos(x), -0.17 +\cos(x) +.23\sin(x)\}$ that is plotted in Figure \ref{fig:Nos}.
 
 
-
-Table 1 expresses in the general framework of equation (5) several circular
-regression models proposed in the literature when there are either a single
-auxiliary variable, either angle $x$ or covariate $z$. 
-
-```{r, echo=FALSE, results='asis'}
-library(knitr)
-
-# Create the table content as in Table 1 of pack07
-models <- data.frame(
-  `0` = c('1', '', '', '', '', '', ''),
-  `π/2` = c('', '1', '', '✓', '✓', '✓', '✓'),
-  `x` = c('', '', '1', '✓', '✓', '✓', ''),
-  `x + π/2` = c('', '', '', '✓', '✓', '✓', ''),
-  `-x` = c('', '', '', '', '', '✓', '✓'),
-  `-x + π/2` = c('', '', '', '', '', '✓', '✓'),
-  `0 : z` = c('', '', '', '', '', '', '✓'),
-  `π/2 : z` = c('', '', '', '', '', '', '✓'),
-  row.names = c('MeanDir', 'RotMod', 'NRotMod', 'Decentred', 'NDecentred', 'JamSen', 'Presnell')
-)
-
-# Render the table using kable
-kable(models, caption = 'Table 1: Some models for y, expressed using (5) constructed using a univariate predictor, either x or z. The reference direction is identified by a 1 while ✓ is used for additional explanatory variables.', align = 'c')
-```
-
-
-The mean direction model, MeanDir, model $y = \mu + \epsilon$ for $\mu \in [-\pi, \pi)$. It can be written using expression (5) as long as $\mu \in [-\pi/2, \pi/2)$ the corresponding parameter is $\beta_2 = \tan(\mu)$.
-
-
-When $\mu$ is not in this interval one needs to change the reference angle to
-$x + \pi$. In a similar way the rotation regression model, RotMod, $y = x + \mu + \epsilon$
-for $\mu \in [-\pi, \pi)$ can be expressed using (5) as long as $\mu \in [-\pi/2, \pi/2)$ and $\beta_2$
-is then equal to $\tan(\mu)$. When $x$ is an explanatory angle, adding $x + \pi/2$ to
-the model changes the explanatory angle into $x + \theta$, for some angle $\theta$. Indeed
-one has
-
-
-$$
-\beta_2
-\begin{pmatrix}
-\cos x \\
-\sin x
-\end{pmatrix}
-+ \beta_3
-\begin{pmatrix}
-\cos(x + \pi/2) \\
-\sin(x + \pi/2)
-\end{pmatrix}
-=
-\begin{pmatrix}
-\cos x & -\sin x \\
-\sin x & \cos x
-\end{pmatrix}
-\begin{pmatrix}
-\beta_2 \\
-\beta_3
-\end{pmatrix}
-= \sqrt{\beta_2^2 + \beta_3^2}
-\begin{pmatrix}
-\cos(x + \theta) \\
-\sin(x + \theta)
-\end{pmatrix},
-$$
-
-
-where $\theta = \arctan2(\beta_3, \beta_2)$.
-
-
-Changing the explanatory angle from $x$ to $-x$ leads to the negative rotation
-model, NRotMod in Table 1. The decentred predictor of Rivest (1997) constructed
-with $x$, Decentred, or with $-x$, NDecentred, can also be expressed in terms of
-the explanatory angles of Table 1. Model Presnell corresponds to the proposal of
-Presnell et al. (1998) for a single continuous explanatory variable $z$.
-
-
-The circular regression models of Table 1 are special of the proposal in
-(Jammalamadaka and Sengupta, 2001, chap. 8) (JamSen in Table 1), whose
-predicted angle
-
-
-$$
-\mu(\beta, x) = \arctan2\{\beta_2 + (\beta_3 - \beta_5)\sin x + (\beta_4 + \beta_6)\cos x,
-1 + (\beta_3 + \beta_5)\cos x + (\beta_6 - \beta_4)\sin x\}.
-$$
-
-
-The Möbius regression model of Downs and Mardia (2002) is also a special case
-of JamSen. According to Polsen and Taylor (2015) it involves two angles $\phi$, $\alpha \in [0, 2\pi)$ and a dependence parameter $\omega \in (-1, 1)$. Considering Table
-5.1 of Polsen and Taylor (2015) the JamSen parameters in (8) for the Möbius
-regression model are
-
-
-$$
-\beta_2 = \tan \phi, \quad
-\beta_3 = \frac{1 + \omega}{1 - \omega} \frac{\cos(\alpha - \phi)}{2\cos(\phi)}, \quad
-\beta_4 = \frac{1 + \omega}{1 - \omega} \frac{\cos(\alpha + \phi)}{2\cos(\phi)}, \quad
-\beta_5 = \frac{1 - \omega}{1 + \omega} \frac{\cos(\alpha + \phi)}{2\cos(\phi)}, \quad
-\beta_6 = \frac{1 - \omega}{1 + \omega} \frac{\cos(\alpha - \phi)}{2\cos(\phi)}.
-$$
-
-
-Under this model $\beta_3\beta_5/(\beta_4\beta_6) = 1$.
-
-
-
-# Example: The Noshiro dataset
-
-## `angular` and `consensus` functions
-
-```{r example-noshiro, eval=FALSE}
-library(CircularRegression)
-data(noshiro)
-
-```
-REFAIRE NOSHIRO COMME DOCUMENT LP
-
+METTRE FIGURE DE LA PRÉDICTION
 
 
 
@@ -454,12 +397,5 @@ mu_scenario <- predict(fit, newdata = new_df, type = "conditional", a_hat = 0.3)
 # References
 
 
+\bibliography{references}
 
-
-
-
-# Session information
-
-```{r session-info}
-sessionInfo()
-```

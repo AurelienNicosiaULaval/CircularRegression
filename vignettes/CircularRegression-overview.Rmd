@@ -12,6 +12,8 @@ output:
     number_sections: true
     fig_caption: true
     latex_engine: xelatex
+    includes:
+      in_header: theory-preamble.tex
 vignette: >
   %\VignetteIndexEntry{Getting Started with CircularRegression}
   %\VignetteEncoding{UTF-8}
@@ -40,189 +42,90 @@ library(circular)     # pour objets angulaires et outils de base
 
 # Introduction
 
-# The regression model of @Rivest2015
+\section{The regression model of @Rivest16}
 
-## The conditional mean direction
+\subsection{The conditional mean direction}
 
-Let $y$ denote the dependent angle and $x_1, \ldots, x_p$ represent explanatory angles. To angle $x_j$ is associated a positive real variable $z_j$. The proposed model is
-\begin{equation}
-y = \mu(\boldsymbol{\beta}, x, z) + \varepsilon, \tag{1}
+
+This section reviews the regression model proposed in @Rivest16. Let $y$ denote the dependent angle and $x_1,\ldots, x_p$ represent explanatory angles.  To angle $x_j$ is associated a positive real variable $z_j$.  The proposed model is
+\begin{equation}\label{eq:mod}
+    y = \mu(\beta,x,z) + \epsilon.
 \end{equation}
-where $\mu(\boldsymbol{\beta}, x, z)$ is the conditional mean direction of $y$ given $x$ and $z$ that depends on unknown parameters $\boldsymbol{\beta}$, and $\varepsilon$ is a random error term with a von Mises distribution centered at $0$ with concentration parameter $\kappa$, possibly dependent on $x$ and $z$.
-
-The vector
+where $\mu(\beta,x,z)$ is the conditional mean direction of $y$ given $x$ and $z$ that depends on unknown parameters $\beta$  and $\epsilon$ is an random error term with a von Mises distribution centered at 0 with a concentration parameter $\kappa$ possibly dependent on $x$ and $z$. The vector
 \begin{equation}
-\sum_{j=1}^{p} \beta_j z_j
-\begin{pmatrix}
-\cos(x_j)\\[4pt]
-\sin(x_j)
-\end{pmatrix},
-\qquad \beta_j \in \mathbb{R}, \; j=1,\ldots,p,
-\tag{2}
+\label{vect}
+\sum_{j=1}^p \beta_jz_j\left( \begin{array}{c} \cos(x_j) \\ \sin (x_j)
+\end{array}\right) \quad \beta_j \in \Re, j=1,\ldots,p,
 \end{equation}
-
 plays a crucial role in defining the model. Its length is
-
 \begin{equation}
-\ell =
-\left[
-  \left\{ \sum_j \beta_j z_j \sin(x_j) \right\}^2
-  + \left\{ \sum_j \beta_j z_j \cos(x_j) \right\}^2
-\right]^{1/2},
-\tag{3}
+\label{leng} \ell=\left[\left\{\sum_{j} \beta_j z_j\sin(x_j)\right\}^2+\left\{\sum_{j}  \beta_j z_j
+\cos(x_j)\right\}^2\right]^{1/2},
+\end{equation}
+while its orientation is the predicted angle in \eqref{eq:mod},
+\begin{equation}
+\label{meand}
+\mu(\beta,x,z)=
+\arctan2\left\{\sum_{j=1}^p \beta_j z_j \sin(x_j),\sum_{j=1}^p
+\beta_j z_j \cos(x_j)\right\},
+\end{equation}
+and $\arctan2(a,b)=\tan^{-1}(a/b)$ if $b>0$ and $\tan^{-1}(a/b)+ \pi$ if $b<0$.  Multiplying the parameters $\beta_j$ in \eqref{meand} by a positive constant does not change the orientation. To obtain identifiable parameters we set $\beta_1=1$, making $x_1$ the reference explanatory direction.  A  synthetic expression for mean direction (\ref{meand}) is
+\begin{equation}\label{eq:mods}
+y = 1 \times x_1:z_1 + x_2:z_2 + \ldots + x_p:z_p,
+\end{equation}
+where the operator $:$ denotes an interaction between an explanatory angle $x$ and its associated positive variable $z$. When $z_k=1$ one writes $x_k:z_k$ as $x_k$.
+
+\subsection{The asymptotic distribution of $\hat \beta$ under homogeneous errors}
+
+For the homogeneous error model, the error concentration $\kappa>0$ does not depend on $x$ and $y$.  The estimator $\hat \beta$ is the parameter vector that maximizes the von Mises log-likelihood, $\kappa\sum_i\cos\{y_i- \mu(\beta,x_i,z_i)\}-n\log\{{\cal I}_0(\kappa)\}$ where ${\cal I}_\nu(\kappa)$ is a Bessel function of integer order for a non negative integer $\nu$.  The so-called MaxCosine, $MC=\sum_i\cos\{y_i- \mu(\hat \beta,x_i,z_i)\}/n$, is a measure of fit of the model; values close to 1 are associated with small residuals and a good fit. The  maximum likelihood estimator for $\kappa$ is $\hat \kappa=A^{-1}(MC)$ where $A(\kappa)={\cal I}_1(\kappa)/{\cal I}_0(\kappa)$  gives the mean resultant length of a von Mises distribution as a function of the concentration parameter $\kappa$.  The maximized log-likelihood is ${\cal L}_h(\hat \beta, \hat \kappa)$.
+
+The robust estimator of the asymptotic variance of $\hat \beta$ proposed in @Rivest16 depends on the vectors $S_i$ and $C_i$ defined by
+$$
+S_i=\begin{pmatrix} z_{i2}\sin\{x_{i2}-\mu(\hat \beta,x_i,z_i)\}\\ \vdots \\ z_{ip}\sin\{x_{ip}-\mu(\hat\beta,x_i,z_i)\}\end{pmatrix} \mbox{~~and~~}
+C_i=\begin{pmatrix} z_{i2}\cos\{x_{i2}-\mu(\hat\beta,x_i,z_i)\}\\ \vdots \\ z_{ip}\cos\{x_{ip}-\mu(\hat \beta,x_i,z_i)\}\end{pmatrix} .
+$$
+Observe that $S_i$ and $C_i$ have length $p-1$ since $\beta_1=1$ is not estimated. This robust covariance uses a sandwich variance formula.  It involves the matrix of second order partial derivatives of $\sum_i\cos\{y_i- \mu(\beta,x_i,z_i)\}$ with respect to $\beta$,
+\begin{equation}\label{hata}
+\hat  B= - \sum_{i=1}^n \frac{S_iS_i^\top}{\hat \ell_i^2} \cos\{y_i-\mu(\hat \beta,x_i,z_i)\}  - \sum_{i=1}^n \frac {\sin\{y_i-\mu(\hat \beta,x_i,z_i)\}}{\hat \ell_i^2} \left ( S_iC_i^\top+C_iS_i^\top\right),
+\end{equation}
+where $\hat \ell_i$  is the length given in \eqref{leng} for unit  $i$, evaluated at $\hat \beta$,  and the variance of the score function, $\sum S_i \sin\{y_i-\mu(\hat \beta,x_i,z_i)\} /\ell_i$. The sandwich estimator of the covariance matrix of $\hat \beta$ is
+\begin{equation}\label{v1}
+v_1(\hat \beta)=\hat B^{-1} \left\{ \sum_{i=1}^n \frac{\hat S_i \hat S_i^\top}{\hat \ell_i^2} \sin(y_i-\hat \mu_i)^2 \right\} \hat B^{-1}.
+% c'est l'estimateur v_1 de la fonction de Sophie
 \end{equation}
 
-while its orientation is the predicted angle in :
-\[
-\mu(\boldsymbol{\beta}, x, z)
-= \operatorname{arctan2}
-\!\left(
-  \sum_{j=1}^{p} \beta_j z_j \sin(x_j),
-  \sum_{j=1}^{p} \beta_j z_j \cos(x_j)
-\right),
-\label{eq:mu}
-\]
+\subsection{The asymptotic distribution of $\hat \beta$ under concensus errors}
 
-where $\operatorname{arctan2}(a,b)=\tan^{-1}(a/b)$ if $b>0$ and $\tan^{-1}(a/b)+\pi$ if $b<0$. Multiplying all parameters $\beta_j$ in \eqref{eq:mu} by a positive constant does not change the orientation. To obtain identifiable parameters, we set $\beta_1 = 1$, making $x_1$ the reference explanatory direction.
+It is convenient to parametrize the model with consensus in terms of positive parameters $\kappa=(\kappa_1,  \ldots, \kappa_p)^\top$. We use the notation $\ell_{i\kappa}$ to denote the length \eqref{leng} calculated for unit $i$ with the $\beta$ parameters replaced by the $\kappa$ parameters,
+The loglikelihood function to estimate the $\kappa_j$'s is given by
+$$
+L(\kappa_1, \ldots, \kappa_p)= \sum_{j=1}^p \kappa_j  \sum_{i=1}^n z_{ij}\cos(y_i-x_{ij})- \sum_{i=1}^n \log\{{\cal I}_0(\ell_{i\kappa})\},
+$$
+where $\ell_{i\kappa}$ is the length $\ell_\kappa$ for the $i$th data point.  The maximized log-likelihood is labeled ${\cal L}_c( \hat \kappa)$.   A robust sandwich estimator for the covariance matrix of the estimator $\hat \kappa$  is expressed in terms of the Fisher information matrix
+\begin{eqnarray*}
+I(\kappa)   &=& \sum_{i=1}^n \left[\frac{A(\ell_{i\kappa})}{\ell_{i\kappa}}S_iS_i^\top +
+   \{1- \frac{ A(\ell_{i\kappa})}{\ell_{i\kappa}}-A(\ell_{i\kappa})^2\} C_iC_i^\top\right],
+\end{eqnarray*}
+where  $S_i$ and $C_i$ are $p\times 1$ vectors of sines and cosines as defined in Section 1.2, and of the contribution of unit $i$ to the score vector
+$$
+\hat v_i=\begin{pmatrix}  \cos(y_i-x_{i1})-  \cos\{x_{i1}-\mu(\hat \kappa,x_i,z_i)\}  A(\hat \ell_{i\hat\kappa})\} \\ \vdots \\  \cos(y_i-x_{ip})-  \cos\{x_{ip}-\mu(\hat \kappa,x_i,z_i)\}  A(\hat \ell_{i\hat \kappa})\}
+\end{pmatrix} \quad i=1,\ldots n.
+$$
+ A robust covariance matrix for the $p \times 1$ vector $\hat \kappa$ is
+$$
+v_1(\hat \kappa) = I(\hat \kappa)^{-1} \left( \sum_i \hat v_i \hat v_i^\top \right) I(\hat \kappa)^{-1}.
+$$
 
-A synthetic expression for the mean direction~(4) is
-\begin{equation}
-y = 1 \times x_1\! :\! z_1 + x_2\! :\! z_2 + \dots + x_p\! :\! z_p, \tag{5}
-\end{equation}
-where the operator ``:'' denotes an interaction between an explanatory angle $x$
-and its associated positive variable $z$.
-When $z_k = 1$, one writes $x_k\! :\! z_k$ simply as $x_k$.
-
-## The asymptotic distribution of $\hat{\beta}$ under homogeneous errors
-
-For the homogeneous error model, the error concentration $\kappa>0$ does not
-depend on $x$ and $y$. The estimator $\hat{\beta}$ is the parameter vector that maximizes
-the von Mises log-likelihood,
-\[
-L(\beta,\kappa)=\kappa\sum_{i=1}^{n}\cos\{y_i-\mu(\beta,x_i,z_i)\}
-\;-\; n\log\{I_0(\kappa)\},
-\]
-where $I_\nu(\kappa)$ is a modified Bessel function of integer order $\nu\ge0$.
-The so-called \emph{MaxCosine},
-\[
-MC=\frac{1}{n}\sum_{i=1}^n \cos\{y_i-\mu(\hat{\beta},x_i,z_i)\},
-\]
-is a measure of fit of the model; values close to 1 are associated with small residuals and a good
-fit. The maximum likelihood estimator for $\kappa$ is $\hat{\kappa}=A^{-1}(MC)$ where
-$A(\kappa)=I_1(\kappa)/I_0(\kappa)$ gives the mean resultant length of a von Mises distribution
-as a function of the concentration parameter~$\kappa$. The maximized log-likelihood is denoted
-$L_h(\hat{\beta},\hat{\kappa})$.
-
-\medskip
-The robust estimator of the asymptotic variance of $\hat{\beta}$ proposed in Rivest et al.\ (2016)
-depends on the $(p-1)\times1$ vectors $S_i$ and $C_i$ (the first coefficient $\beta_1=1$ is not estimated),
-defined by
-\[
-S_i=\begin{pmatrix}
-z_{i2}\,\sin\{x_{i2}-\mu(\hat{\beta},x_i,z_i)\}\\
-\vdots\\
-z_{ip}\,\sin\{x_{ip}-\mu(\hat{\beta},x_i,z_i)\}
-\end{pmatrix},
-\qquad
-C_i=\begin{pmatrix}
-z_{i2}\,\cos\{x_{i2}-\mu(\hat{\beta},x_i,z_i)\}\\
-\vdots\\
-z_{ip}\,\cos\{x_{ip}-\mu(\hat{\beta},x_i,z_i)\}
+To get estimators comparable to those obtained using homogeneous errors it is useful to define $\hat \beta_c= (\hat \kappa_2,\ldots, \hat \kappa_p)^\top/|\hat \kappa_1|$. The covariance matrix of $\hat \beta_c$ obtained by linearisation is
+$v_1(\hat \beta_c)=A^\top v_1(\hat \kappa) A$, where
+$$
+A=\begin{pmatrix} -\hat \kappa_2/\hat \kappa_1^2 & -\hat \kappa_3/\hat \kappa_1^2 & \ldots &-\hat \kappa_p/\hat \kappa_1^2 \\
+                    1/|\hat \kappa_1| & 0 &  \ldots & 0 \\
+                    0 & 1/|\hat \kappa_1| &   \ldots & 0 \\
+                    0 & 0 & \ddots    & 0  \\
+                    0 & 0    & \ldots & 1/|\hat \kappa_1| \\
 \end{pmatrix}.
-\]
-It uses a sandwich variance formula. Let $\hat{\ell}_i$ be the length given in~(3) for unit $i$,
-evaluated at $\hat{\beta}$ (i.e., the norm of the mean vector before projection).
-The matrix of second-order partial derivatives of $\sum_i \cos\{y_i-\mu(\beta,x_i,z_i)\}$
-with respect to $\beta$, evaluated at $\hat{\beta}$, is
-\begin{equation}
-\hat{B}
-\;=\;
-\sum_{i=1}^{n}
-\frac{\cos\{y_i-\mu(\hat{\beta},x_i,z_i)\}}{\hat{\ell}_i^{\,2}}\; S_i S_i^{\!\top}
-\;-\;
-\sum_{i=1}^{n}
-\frac{\sin\{y_i-\mu(\hat{\beta},x_i,z_i)\}}{\hat{\ell}_i^{\,2}}\; \bigl(S_i C_i^{\!\top}+C_i S_i^{\!\top}\bigr).
-\tag{6}
-\end{equation}
-The sandwich estimator of the covariance matrix of $\hat{\beta}$ is then
-\begin{equation}
-v_1(\hat{\beta})
-\;=\;
-\hat{B}^{-1}
-\left\{
-\sum_{i=1}^{n}
-\frac{\,\hat{S}_i \hat{S}_i^{\!\top}\,}{\hat{\ell}_i^{\,2}}\;
-\sin^{2}\!\bigl(y_i-\hat{\mu}_i\bigr)
-\right\}
-\hat{B}^{-1},
-\tag{7}
-\end{equation}
-where $\hat{\mu}_i=\mu(\hat{\beta},x_i,z_i)$ and $\hat{S}_i$ denotes $S_i$ evaluated at $\hat{\beta}$.
-
-## The asymptotic distribution of $\hat{\beta}$ under consensus errors
-
-In the consensus–error specification, the error concentration depends on the agreement among the explanatory angles. It is convenient to reparameterize the model by a vector of **positive** parameters
-$\kappa = (\kappa_1,\ldots,\kappa_p)^\top$, with the mean direction
-\[
-\mu(\kappa; x, z)
-= \operatorname{atan2}\Big( \sum_{j=1}^p \kappa_j z_j \sin x_j,\ \sum_{j=1}^p \kappa_j z_j \cos x_j \Big).
-\]
-For unit $i$, denote by $\ell_{i,\kappa}$ the length of the two–dimensional vector inside the $\operatorname{atan2}$ above,
-\[
-\ell_{i,\kappa} 
-= \Big[\Big\{\sum_{j=1}^p \kappa_j z_{ij}\sin(x_{ij})\Big\}^2+\Big\{\sum_{j=1}^p \kappa_j z_{ij}\cos(x_{ij})\Big\}^2\Big]^{1/2}.
-\]
-The (concentrated) log–likelihood for $\kappa$ is
-\[
-L(\kappa_1,\ldots,\kappa_p)
-= \sum_{j=1}^p \kappa_j \sum_{i=1}^n z_{ij}\,\cos(y_i-x_{ij})
-\; - \; \sum_{i=1}^n \log\{ I_0(\ell_{i,\kappa}) \},
-\]
-where $I_\nu(\cdot)$ is the modified Bessel function of the first kind of order $\nu$ and $A(\kappa)=I_1(\kappa)/I_0(\kappa)$.
-
-Let $\mu_i = \mu(\kappa;x_i,z_i)$ and recall the sine/cosine vectors (length $p$)
-\[
-S_i = (z_{i1}\sin(x_{i1}-\mu_i),\ldots, z_{ip}\sin(x_{ip}-\mu_i))^\top,
-\qquad
-C_i = (z_{i1}\cos(x_{i1}-\mu_i),\ldots, z_{ip}\cos(x_{ip}-\mu_i))^\top.
-\]
-Then the Fisher information for $\kappa$ is (element–wise, for $j,k=1,\ldots,p$)
-\[
-I(\kappa)
-= \sum_{i=1}^n \Bigg[ \frac{A(\ell_{i,\kappa})}{\ell_{i,\kappa}}\, S_i S_i^{\top}
-\; + \; \Big\{ 1 - \frac{A(\ell_{i,\kappa})}{\ell_{i,\kappa}} - A(\ell_{i,\kappa})^2 \Big\} \, C_i C_i^{\top} \Bigg].
-\]
-Let $\hat\kappa$ be the maximizer of $L(\kappa)$. A robust (sandwich) covariance estimator for $\hat\kappa$ is
-\[
-\widehat{\operatorname{Var}}\,(\hat\kappa)
-= I(\hat\kappa)^{-1}\,\Big( \sum_{i=1}^n \hat v_i\, \hat v_i^{\top} \Big)\, I(\hat\kappa)^{-1},
-\]
-with unit–level score contributions (length $p$)
-\[
-\hat v_i = \Big( v_{i1},\ldots,v_{ip} \Big)^{\top}, \qquad
-v_{ij} = z_{ij}\Big\{ \cos(y_i-x_{ij}) - \cos(x_{ij}-\hat\mu_i)\, A(\hat\ell_{i,\hat\kappa}) \Big\},
-\]
-where $\hat\mu_i = \mu(\hat\kappa;x_i,z_i)$ and $\hat\ell_{i,\hat\kappa}=\ell_{i,\kappa}$ evaluated at $\hat\kappa$.
-
-To make the consensus–parameter estimates comparable to those under homogeneous errors, define
-\[
-\hat\beta_c = \big(\hat\kappa_2,\ldots,\hat\kappa_p\big)^{\top}/\,|\hat\kappa_1|.
-\]
-By linearization, the covariance of $\hat\beta_c$ is
-\[
-\widehat{\operatorname{Var}}\,(\hat\beta_c) = A^{\top}\, \widehat{\operatorname{Var}}\,(\hat\kappa)\, A,
-\]
-with the $p\times (p-1)$ Jacobian matrix
-\[
-A = \begin{pmatrix}
--\hat\kappa_2/\hat\kappa_1^2 & -\hat\kappa_3/\hat\kappa_1^2 & \cdots & -\hat\kappa_p/\hat\kappa_1^2 \\
-1/|\hat\kappa_1| & 0 & \cdots & 0 \\
-0 & 1/|\hat\kappa_1| & \cdots & 0 \\
-\vdots & \vdots & \ddots & \vdots \\
-0 & 0 & \cdots & 1/|\hat\kappa_1|
-\end{pmatrix}.
-\]
-
+$$
 
 
 
@@ -407,7 +310,7 @@ formula. If the user wants to find the reference angle automatically, the
 for every predictor and selects the one with the highest $\hat \beta$. For example, in the bison data set, `y.prec` is selected as the reference angle:
 
 ```{r}
-pick_reference_angle(y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap, data = bison)$ref_name
+pick_reference_angle(y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap, data = bison)
 ```
 
 # Diagnostic tools

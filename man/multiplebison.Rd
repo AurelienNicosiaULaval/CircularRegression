@@ -6,7 +6,7 @@
 \title{Two plains bison tracked by GPS (Prince Albert National Park, 2013)}
 \format{
 A data frame with \eqn{n = 1475} rows (hours kept after filtering) and the
-following columns:
+following columns (angles in radians unless stated otherwise):
 \describe{
   \item{datetime_round_next}{POSIXct. Timestamp of the retained hourly record.}
   \item{heure}{integer. Hour of day (0-23).}

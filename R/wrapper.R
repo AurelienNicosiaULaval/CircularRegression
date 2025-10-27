@@ -138,9 +138,9 @@ presnellModel <- function(data, response, w, ...) {
   return(out)
 }
 
-#' Jammalamadaka–Sengupta Model Wrapper
+#' Jammalamadaka-Sengupta Model Wrapper
 #'
-#' Wraps the Jammalamadaka–Sengupta circular regression with one angular predictor \code{w}.
+#' Wraps the Jammalamadaka-Sengupta circular regression with one angular predictor \code{w}.
 #' The augmented data include:
 #' \itemize{
 #'   \item \code{const0}: 0; \code{constPi2}: \eqn{\pi/2}

@@ -2,10 +2,19 @@
 % Please edit documentation in R/pick_reference_angle.r
 \name{.add_beta1_row}
 \alias{.add_beta1_row}
-\title{Add the β_ref = 1 row (sd = 0) on top of a 2-column β table}
+\title{Add the beta\_ref = 1 row (sd = 0) on top of a 2-column beta table}
 \usage{
 .add_beta1_row(beta_tab, ref_name, put_first = TRUE)
 }
-\description{
-Add the β_ref = 1 row (sd = 0) on top of a 2-column β table
+\arguments{
+  \item{beta_tab}{A data frame containing at least the columns \\code{estimate} and \\code{sd}.}
+  \item{ref_name}{Name to use for the reference row. Defaults to ``ref`` when \\code{NULL}.}
+  \item{put_first}{Logical flag indicating whether the reference row should be placed first.}
 }
+\value{
+A data frame with the reference row inserted and unique row names.
+}
+\description{
+Add the beta\_ref = 1 row (sd = 0) on top of a 2-column beta table.
+}
+\keyword{internal}

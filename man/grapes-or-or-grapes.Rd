@@ -2,18 +2,18 @@
 % Please edit documentation in R/pick_reference_angle.r
 \name{grapes-or-or-grapes}
 \alias{\%||\%}
-\title{Safe infix ``a \%||\% b``: returns \\code{a} if not \\code{NULL}, otherwise \\code{b}}
+\title{Safe infix \code{a \%||\% b}: returns \code{a} if not \code{NULL}, otherwise \code{b}}
 \usage{
 a \%||\% b
 }
 \arguments{
-  \item{a}{Primary value to return when it is not \\code{NULL}.}
-  \item{b}{Fallback value returned when \\code{a} is \\code{NULL}.}
+  \item{a}{Primary value to return when it is not \code{NULL}.}
+  \item{b}{Fallback value returned when \code{a} is \code{NULL}.}
 }
 \value{
-The value of \\code{a} when it is not \\code{NULL}; otherwise the value of \\code{b}.
+The value of \code{a} when it is not \code{NULL}; otherwise the value of \code{b}.
 }
 \description{
-Safe infix ``a \%||\% b``: returns \\code{a} if not \\code{NULL}, otherwise \\code{b}.
+Safe infix \code{a \%||\% b}: returns \code{a} if not \code{NULL}, otherwise \code{b}.
 }
 \keyword{internal}

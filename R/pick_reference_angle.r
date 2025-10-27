@@ -2,7 +2,7 @@
 # Utilities
 # ======================================================================
 
-#' Safe infix "a %||% b": returns a if not NULL, otherwise b
+#' Safe infix \code{a \%||\% b}: returns \code{a} if not \code{NULL}, otherwise \code{b}
 #' @noRd
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
@@ -13,10 +13,15 @@
 
 #' Extract unique angle names (left of "x:z"), preserving first appearance order
 #' @noRd
-#'
+#' 
 #' Example:
 #'   y ~ x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap
 #' -> c("x.meadow","x.gap")
+#'
+#' @examples
+#' CircularRegression:::.extract_angles_from_formula(
+#'   y ~ x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap
+#' )
 .extract_angles_from_formula <- function(formula) {
   tl <- attr(terms(formula), "term.labels")
   if (length(tl) == 0) return(character(0))
@@ -28,11 +33,11 @@
   ang[!duplicated(ang)]
 }
 
-#' Build an angular formula with ref(angle_ref) for the chosen reference angle
+#' Build an angular formula with \code{ref(angle_ref)} for the chosen reference angle
 #' @noRd
-#'
+#' 
 #' Only the left symbol of any "x:z" pair is considered an angle. The reference
-#' term gets rewritten as ref(x).
+#' term gets rewritten as \code{ref(x)}.
 .make_angular_formula_with_ref <- function(formula, ref_name) {
   y <- deparse(formula[[2]])
   tl <- attr(terms(formula), "term.labels")
@@ -57,7 +62,7 @@
 # Helpers: extraction from consensus() fit
 # ======================================================================
 
-#' Extract beta (scale-free) from a consensus() fit object, robustly
+#' Extract beta (scale-free) from a \code{consensus()} fit object, robustly
 #' @noRd
 .extract_beta_consensus <- function(fit) {
   # try coef() first
@@ -78,10 +83,10 @@
   stop("Could not extract beta coefficients from consensus fit object.")
 }
 
-#' Extract kappa table (estimate, sd) from a consensus() fit object
+#' Extract kappa table (estimate, sd) from a \code{consensus()} fit object
 #'
-#' Returns a data.frame with columns "estimate" and "sd". Row names are made
-#' unique to avoid duplicate 'row.names' errors.
+#' Returns a data.frame with columns \code{estimate} and \code{sd}. Row names
+#' are made unique to avoid duplicate \code{row.names} errors.
 #' @noRd
 .extract_kappa_table <- function(fit, angle_names = NULL) {
   # Preferred path: fit$parameters already shaped like a table
@@ -137,7 +142,7 @@
   )
 }
 
-#' Add the beta_ref = 1 row (sd = 0) on top of a 2-column beta table
+#' Add the beta reference (estimate = 1) row on top of a 2-column beta table
 #' @noRd
 .add_beta1_row <- function(beta_tab, ref_name, put_first = TRUE) {
   beta_tab <- beta_tab[, c("estimate", "sd"), drop = FALSE]
@@ -162,13 +167,13 @@
 #'   (3) rescales beta so that beta_ref = 1,
 #'   (4) returns kappa (estimate, sd) as `parameters` and beta (estimate, sd) as `parambeta`,
 #'       with the first beta_ref row added (estimate=1, sd=0),
-#'   (5) optionally returns an `angular_formula` where the reference angle is written `ref(angle)`.
+#'   (5) optionally returns an \code{angular_formula} where the reference angle is written \code{ref(angle)}.
 #'
 #' @param formula A formula like y ~ x1 + x1:z1 + x2 + x2:z2 + ...
 #'                The left symbol of any "x:z" term is treated as an angular predictor.
 #' @param data A data.frame with response y, angular predictors x_j and positive variables z_j
 #' @param tie_method How to break ties if multiple |beta| are equal: "first" or "random"
-#' @param build_angular_formula If TRUE, also returns a formula ready for angular() with ref(angle)
+#' @param build_angular_formula If TRUE, also returns a formula ready for \code{angular()} with \code{ref(angle)}
 #' @param ... Additional arguments passed to consensus()
 #'
 #' @return A list with:
@@ -178,7 +183,7 @@
 #'   - beta_ref1: beta rescaled so that beta[ref] = 1
 #'   - parameters: data.frame (kappa estimate, sd)
 #'   - parambeta:  data.frame (beta estimate, sd) with beta_ref added on the first row (sd = 0)
-#'   - angular_formula (optional): formula with ref(angle_ref) ready for angular()
+#'   - angular_formula (optional): formula with \code{ref(angle_ref)} ready for \code{angular()}
 #' @export
 pick_reference_angle <- function(
   formula,

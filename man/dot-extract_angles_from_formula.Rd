@@ -2,21 +2,21 @@
 % Please edit documentation in R/pick_reference_angle.r
 \name{.extract_angles_from_formula}
 \alias{.extract_angles_from_formula}
-\title{Extract unique angle names (left of "x:z"), preserving first appearance order}
+\title{Extract unique angle names (left of \code{x:z}), preserving first appearance order}
 \usage{
 .extract_angles_from_formula(formula)
 }
 \arguments{
-  \item{formula}{A model formula whose terms may contain ``angle:covariate`` products.}
+  \item{formula}{A model formula whose terms may contain \code{angle:covariate} products.}
 }
 \value{
 A character vector of unique angle names in the order they first appear.
 }
 \description{
-Extract unique angle names (left of ``x:z``), preserving first appearance order.
+Extract unique angle names (left of \code{x:z}), preserving first appearance order.
 }
 \examples{
 # Example usage
-.extract_angles_from_formula(y ~ x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap)
+CircularRegression:::.extract_angles_from_formula(y ~ x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap)
 }
 \keyword{internal}

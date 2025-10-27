@@ -51,7 +51,7 @@ str(bison)
 \references{
 Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
 A general angular regression model for the analysis of data on animal movement in ecology.
-\emph{Journal of the Royal Statistical Society: Series C (Applied Statistics)}, 65(3), 445–463.  :contentReference[oaicite:0]{index=0}
+\emph{Journal of the Royal Statistical Society: Series C (Applied Statistics)}, 65(3), 445–463.
 }
 \seealso{
 \code{\link{angular}}, \code{\link{consensus}}, \code{\link{pick_reference_angle}}

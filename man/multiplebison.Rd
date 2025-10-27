@@ -22,11 +22,6 @@ following columns (angles in radians unless stated otherwise):
   \item{long_1045-a}{numeric. Longitude of bison 1045-a (decimal degrees).}
   \item{turn_ang_1044}{numeric. Turning angle of bison 1044-a between consecutive directions.}
   \item{turn_ang_1045}{numeric. Turning angle of bison 1045-a between consecutive directions.}
-  \item{diff}{numeric. Helper column equal to \code{direction_1045-a - direction_1044-a}.}
-  \item{predict_heure}{integer. Hour index used when predicting future movement.}
-  \item{theta1}{numeric. Derived angular covariate used in modeling examples.}
-  \item{theta2}{numeric. Derived angular covariate used in modeling examples.}
-  \item{theta3}{numeric. Derived angular covariate used in modeling examples.}
 }
 }
 \usage{
@@ -59,16 +54,6 @@ animals' variables. Turning-angles are computed from consecutive directions.
 ## Basic glimpse
 head(multiplebison)
 
-## If needed, convert directions from degrees to radians for modeling:
-# library(dplyr)
-# library(circular)
-# multiplebison <- multiplebison \%>\%
-#   mutate(
-#     Direction_1044-a = circular::deg2rad(Direction_1044-a),
-#     Direction_1045-a = circular::deg2rad(Direction_1045-a),
-#     Turn_ang_1044    = circular::deg2rad(Turn_ang_1044),
-#     Turn_ang_1045    = circular::deg2rad(Turn_ang_1045)
-#   )
 
 ## Example: inter-animal proximity rate (< 500 m)
 # mean(multiplebison$Distance < 500, na.rm = TRUE)

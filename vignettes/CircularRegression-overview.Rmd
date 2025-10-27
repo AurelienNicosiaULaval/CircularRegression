@@ -183,6 +183,24 @@ We now consider fitting model \eqref{eq:mod} to the Noshiro data set where $y$ i
 
 To illustrate the impact of the choice of the reference explanatory angle $x_1$ on the fit, two JemSen models were fitted one with $x_1=\pi$, as the model with $x_1=0$ failed to converge, and the other with $x_1=x$.
 
+```{r Noshiro-fits}
+data("noshiro", package = "CircularRegression")
+
+# by default in Jammalamadaka model x1=0
+fit_0 <- jammalamadakaModel(data = noshiro, response = "DIRDSC", w = "DIRMV")
+fit_0$fit
+fit_0$formula
+
+# changing reference angle to pi/2
+fit_2 <- angular(formula = DIRDSC ~  neg_DIRMV_pi2 + DIRMV_orig + const0 + neg_DIRMV + DIRMV_pi2 , data = fit_0$data_aug)
+fit_2
+
+# changing reference angle to x
+fit_x <- angular(formula = DIRDSC ~  DIRMV_orig + const0 + constPi2 + neg_DIRMV + DIRMV_pi2 + neg_DIRMV_pi2, data = fit_0$data_aug)
+fit_x
+
+```
+
 AJOUTER ESTIMATION AVEC LES FONCTIONS DU PACKAGE (Refaire le tableau)
 
  The two models are equivalent: they give the same predicted angles $\mu(\hat \beta,x_i)$ and they both have $MC=0.5024$.  Indeed dividing the parameter estimate of the fit of the $x_1=\pi$ model, by the estimate for $x$, 5.72, gives the parameter estimates for the fit obtained with $x_1=x$. We want to use the p-values in Table \ref{tab:Nos} to identify important explanatory variables. In the $x_1=\pi$ fit one p-value is smaller than 5\%  while there are 3 with the other fit. 
@@ -190,7 +208,17 @@ AJOUTER ESTIMATION AVEC LES FONCTIONS DU PACKAGE (Refaire le tableau)
 Removing variables with p-values larger than 5\% in the $x_1=x$ fit leads to a model with $MC=0.5019$ with $\mu(\hat \beta,x_i)=\arctan2\{0.21+\sin(x)+.23\cos(x), -0.17 +\cos(x) +.23\sin(x)\}$ that is plotted in Figure \ref{fig:Nos}.
 
 
-METTRE FIGURE DE LA PRÉDICTION
+```{r Noshiro-plot, fig.width=7, fig.height=6}
+ggplot(data = noshiro, aes( x = DIRMV-pi, y = DIRDSC-pi)) +
+  geom_point() +
+  stat_function(fun = function(x) {
+    atan2(0.21 + sin(x) + 0.23 * cos(x), -0.17 + cos(x) + 0.23 * sin(x))
+  }, color = "blue", size = 1) +
+  labs(title = "Noshiro Data: Fitted Circular Regression Model",
+       x = "Direction of steepest descent",
+       y = "Direction of movement") +
+  theme_minimal()
+```
 
 
 
@@ -221,7 +249,30 @@ A summary provides parameter estimates and associated inference information.
 summary(ang_fit_bison)
 ```
 
+## Reference angle in angular regression
 
+### Effect of reference angle
+
+Choosing the right reference angle is crucial in angular regression. 
+
+```{r}
+fit_1 <- angular(y.dir ~ y.prec + x.meadow + x.gap, data = bison)
+fit_2 <- angular(y.dir ~ x.meadow + x.gap +  y.prec, data = bison)
+fit_1$parameters
+fit_2$parameters
+```
+
+In this example, the parameter estimates differ significantly based on the choice of reference angle. In the first fit, `y.prec` is the reference angle, while in the second fit uses `x.meadow` as the reference. This choice impacts both the parameter estimates and their interpretations. In the second fit, the estimate for `y.prec` is larger than 1, suggesting a strong influence on the response direction and `y.prec` shoud be the reference angle. Moreover, the estimated beta for `x.gap` changes between the two fits, indicating that the choice of reference angle can affect the inference about other predictors as well.
+
+### How to choose the right reference angle
+
+In the homogeneous error model, the first angular predictor in the formula is
+the reference angle. You can change the reference angle by reordering the
+predictors in the formula. If the user wants to find the reference angle, the `pick_reference_angle()` function can be used. This function fits an angular model for every predictor and selects the one with the highest $\hat \kappa$ in the consensus model. 
+For example, in the bison data set, `y.prec` is selected as the reference angle:
+```{r}
+pick_reference_angle(y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap, data = bison)
+```
 
 
 ## Consensus regression model
@@ -244,17 +295,9 @@ summary(cons_fit_bison)
 
 
 
-## pick reference variable
+## Multiple bison analysis
 
-In the homogeneous error model, the first angular predictor is the reference
-angle. You can change the reference angle by reordering the predictors in the
-formula. If the user wants to find the reference angle automatically, the
-`pick_reference_angle()` function can be used. This function fits a consensus model
-for every predictor and selects the one with the highest $\hat \beta$. For example, in the bison data set, `y.prec` is selected as the reference angle:
-
-```{r}
-pick_reference_angle(y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap, data = bison)
-```
+REPRENDRE DES TRUCS DU MÉMOIRE DE MAMADOU
 
 # Diagnostic tools
 

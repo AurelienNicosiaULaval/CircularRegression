@@ -1,9 +1,9 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.10.9)  20 OCT 2025 10:03
+This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.10.9)  20 OCT 2025 11:03
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**/private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview.tex
-(/private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview.tex
+**/private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview.tex
+(/private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview.tex
 LaTeX2e <2025-06-01> patch level 1
 L3 programming layer <2025-09-02>
 (/Users/aureliennicosia/Library/TinyTeX/texmf-dist/tex/latex/base/article.cls
@@ -907,81 +907,85 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 377.
 
-
-LaTeX Warning: Reference `tab:Nos' on page 4 undefined on input line 398.
-
-
-LaTeX Warning: Reference `fig:Nos' on page 4 undefined on input line 405.
-
-LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <12> not available
-(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 413.
+LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <10> not available
+(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 393.
 
 
 [4]
-LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <10> not available
-(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 417.
+
+LaTeX Warning: Reference `tab:Nos' on page 5 undefined on input line 450.
+
+
+LaTeX Warning: Reference `fig:Nos' on page 5 undefined on input line 457.
+
 
 
 [5]
-Overfull \vbox (2.18286pt too high) detected at line 557
- []
-
+File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/Noshiro-plot-1.pdf Graphic file (type pdf)
+</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/Noshiro-plot-1.pdf>
 
 
 [6]
-File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/angular-plot-1.pdf Graphic file (type pdf)
-</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/angular-plot-1.pdf>
-
 
 [7]
-File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/consensus-plot-1.pdf Graphic file (type pdf)
-</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/consensus-plot-1.pdf>
+Missing character: There is no β (U+03B2) in font [lmmono10-italic]:!
+Missing character: There is no κ (U+03BA) in font [lmmono10-italic]:!
+Missing character: There is no β (U+03B2) in font [lmmono10-italic]:!
 
 
 [8]
 
 [9]
-Overfull \vbox (1.48837pt too high) detected at line 758
+File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/angular-plot-1.pdf Graphic file (type pdf)
+</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/angular-plot-1.pdf>
+File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/consensus-plot-1.pdf Graphic file (type pdf)
+</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/consensus-plot-1.pdf>
+
+
+[10]
+
+[11]
+Overfull \vbox (1.48837pt too high) detected at line 854
  []
 
 
 
-[10]
-File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-4-1.pdf Graphic file (type pdf)
-</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-4-1.pdf>
-
-
-[11]
-File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-4-2.pdf Graphic file (type pdf)
-</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-4-2.pdf>
-
-
 [12]
-
-LaTeX Font Warning: Font shape `TU/lmtt/bx/it' in size <10> not available
-(Font)              Font shape `TU/lmtt/b/sl' tried instead on input line 775.
-
-File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-4-3.pdf Graphic file (type pdf)
-</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-4-3.pdf>
+File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-5-1.pdf Graphic file (type pdf)
+</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-5-1.pdf>
 
 
 [13]
-File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-4-4.pdf Graphic file (type pdf)
-</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-4-4.pdf>
+File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-5-2.pdf Graphic file (type pdf)
+</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-5-2.pdf>
 
 
 [14]
-File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-4-5.pdf Graphic file (type pdf)
-</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/RtmpQPhmvz/preview-29281bd82dbb.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-4-5.pdf>
+
+LaTeX Font Warning: Font shape `TU/lmtt/bx/it' in size <10> not available
+(Font)              Font shape `TU/lmtt/b/sl' tried instead on input line 871.
+
+File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-5-3.pdf Graphic file (type pdf)
+</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-5-3.pdf>
 
 
 [15]
-No file CircularRegression-overview.bbl.
+File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-5-4.pdf Graphic file (type pdf)
+</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-5-4.pdf>
 
 
 [16]
+File: /private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-5-5.pdf Graphic file (type pdf)
+</private/var/folders/z7/kl8c7t110w9f9dtx6nbsq5vr0000gn/T/Rtmpfifslc/preview-434d2bf8cda6.dir/CircularRegression-overview_files/figure-latex/unnamed-chunk-5-5.pdf>
 
-[17] (./CircularRegression-overview.aux)
+
+[17]
+No file CircularRegression-overview.bbl.
+
+
+[18]
+
+[19] (./CircularRegression-overview.aux)
  ***********
 LaTeX2e <2025-06-01> patch level 1
 L3 programming layer <2025-09-02>
@@ -991,12 +995,12 @@ LaTeX Warning: There were undefined references.
 
  ) 
 Here is how much of TeX's memory you used:
- 19182 strings out of 470344
- 362341 string characters out of 5482448
- 953447 words of memory out of 5000000
- 47309 multiletter control sequences out of 15000+600000
- 634204 words of font info for 97 fonts, out of 8000000 for 9000
+ 19187 strings out of 470344
+ 363655 string characters out of 5482448
+ 953500 words of memory out of 5000000
+ 47314 multiletter control sequences out of 15000+600000
+ 634196 words of font info for 96 fonts, out of 8000000 for 9000
  36 hyphenation exceptions out of 8191
  90i,14n,114p,1117b,426s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on CircularRegression-overview.pdf (17 pages).
+Output written on CircularRegression-overview.pdf (19 pages).

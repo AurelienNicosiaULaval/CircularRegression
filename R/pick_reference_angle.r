@@ -3,6 +3,7 @@
 # ======================================================================
 
 #' Safe infix "a %||% b": returns a if not NULL, otherwise b
+#' @noRd
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
 
@@ -11,6 +12,7 @@
 # ======================================================================
 
 #' Extract unique angle names (left of "x:z"), preserving first appearance order
+#' @noRd
 #'
 #' Example:
 #'   y ~ x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap
@@ -27,6 +29,7 @@
 }
 
 #' Build an angular formula with ref(angle_ref) for the chosen reference angle
+#' @noRd
 #'
 #' Only the left symbol of any "x:z" pair is considered an angle. The reference
 #' term gets rewritten as ref(x).
@@ -54,7 +57,8 @@
 # Helpers: extraction from consensus() fit
 # ======================================================================
 
-#' Extract β (scale-free) from a consensus() fit object, robustly
+#' Extract beta (scale-free) from a consensus() fit object, robustly
+#' @noRd
 .extract_beta_consensus <- function(fit) {
   # try coef() first
   b <- try(coef(fit), silent = TRUE)
@@ -74,10 +78,11 @@
   stop("Could not extract beta coefficients from consensus fit object.")
 }
 
-#' Extract κ table (estimate, sd) from a consensus() fit object
+#' Extract kappa table (estimate, sd) from a consensus() fit object
 #'
 #' Returns a data.frame with columns "estimate" and "sd". Row names are made
 #' unique to avoid duplicate 'row.names' errors.
+#' @noRd
 .extract_kappa_table <- function(fit, angle_names = NULL) {
   # Preferred path: fit$parameters already shaped like a table
   if (!is.null(fit$parameters)) {
@@ -106,7 +111,7 @@
     return(tab[, c("estimate", "sd"), drop = FALSE])
   }
 
-  # Fallback path: attempt to find a numeric vector of κ
+  # Fallback path: attempt to find a numeric vector of kappa
   kap <- NULL
   for (cand in c("kappa", "kappas", "par_kappa", "pars_kappa", "par", "pars")) {
     if (!is.null(fit[[cand]])) {
@@ -121,7 +126,7 @@
       }
     }
   }
-  if (is.null(kap)) stop("Impossible d'extraire les kappa du fit consensus().")
+  if (is.null(kap)) stop("Could not extract the kappa values from the consensus() fit.")
 
   rn <- angle_names %||% names(kap) %||% paste0("x", seq_along(kap))
   data.frame(
@@ -132,7 +137,8 @@
   )
 }
 
-#' Add the β_ref = 1 row (sd = 0) on top of a 2-column β table
+#' Add the beta_ref = 1 row (sd = 0) on top of a 2-column beta table
+#' @noRd
 .add_beta1_row <- function(beta_tab, ref_name, put_first = TRUE) {
   beta_tab <- beta_tab[, c("estimate", "sd"), drop = FALSE]
   b1 <- data.frame(estimate = 1, sd = 0, row.names = ref_name %||% "ref")
@@ -148,30 +154,30 @@
 # Main: pick_reference_angle()
 # ======================================================================
 
-#' Pick reference angle from a consensus model and assemble κ/β tables
+#' Pick reference angle from a consensus model and assemble kappa/beta tables
 #'
 #' This function:
 #'   (1) fits `consensus(formula, data, ...)`,
-#'   (2) picks the reference angle as argmax |β|,
-#'   (3) rescales β so that β_ref = 1,
-#'   (4) returns κ (estimate, sd) as `parameters` and β (estimate, sd) as `parambeta`,
-#'       with the first β_ref row added (estimate=1, sd=0),
+#'   (2) picks the reference angle as argmax |beta|,
+#'   (3) rescales beta so that beta_ref = 1,
+#'   (4) returns kappa (estimate, sd) as `parameters` and beta (estimate, sd) as `parambeta`,
+#'       with the first beta_ref row added (estimate=1, sd=0),
 #'   (5) optionally returns an `angular_formula` where the reference angle is written `ref(angle)`.
 #'
 #' @param formula A formula like y ~ x1 + x1:z1 + x2 + x2:z2 + ...
 #'                The left symbol of any "x:z" term is treated as an angular predictor.
 #' @param data A data.frame with response y, angular predictors x_j and positive variables z_j
-#' @param tie_method How to break ties if multiple |β| are equal: "first" or "random"
+#' @param tie_method How to break ties if multiple |beta| are equal: "first" or "random"
 #' @param build_angular_formula If TRUE, also returns a formula ready for angular() with ref(angle)
 #' @param ... Additional arguments passed to consensus()
 #'
 #' @return A list with:
-#'   - ref_index: index of the chosen reference angle in β
+#'   - ref_index: index of the chosen reference angle in beta
 #'   - ref_name:  name of the chosen reference angle
-#'   - beta_hat:  raw consensus β estimates (scale-free)
-#'   - beta_ref1: β rescaled so that β[ref] = 1
-#'   - parameters: data.frame (κ estimate, sd)
-#'   - parambeta:  data.frame (β estimate, sd) with β_ref added on the first row (sd = 0)
+#'   - beta_hat:  raw consensus beta estimates (scale-free)
+#'   - beta_ref1: beta rescaled so that beta[ref] = 1
+#'   - parameters: data.frame (kappa estimate, sd)
+#'   - parambeta:  data.frame (beta estimate, sd) with beta_ref added on the first row (sd = 0)
 #'   - angular_formula (optional): formula with ref(angle_ref) ready for angular()
 #' @export
 pick_reference_angle <- function(
@@ -183,10 +189,10 @@ pick_reference_angle <- function(
 ) {
   tie_method <- match.arg(tie_method)
 
-  # 1) Fit consensus model (κ-parameterization internally)
+  # 1) Fit consensus model (kappa-parameterization internally)
   fit <- consensus(formula = formula, data = data, ...)
 
-  # 2) Extract β (scale-free) and basic angle names
+  # 2) Extract beta (scale-free) and basic angle names
   beta_hat <- .extract_beta_consensus(fit)
   if (!is.numeric(beta_hat)) stop("Beta coefficients are not numeric.")
 
@@ -203,21 +209,21 @@ pick_reference_angle <- function(
     angle_names <- names(beta_hat)
   }
 
-  # 3) Choose reference index (max |β|)
+  # 3) Choose reference index (max |beta|)
   absb <- abs(beta_hat)
   ref_index <- if (tie_method == "first") which.max(absb) else
     sample(which(absb == max(absb)), 1L)
   ref_name <- if (length(angle_names)) angle_names[ref_index] else NA_character_
 
-  # 4) Rescale β so that β_ref = 1
+  # 4) Rescale beta so that beta_ref = 1
   beta_ref1 <- beta_hat / beta_hat[ref_index]
   names(beta_hat) <- angle_names %||% names(beta_hat)
   names(beta_ref1) <- names(beta_hat)
 
-  # 5) κ table (parameters)
+  # 5) Kappa table (parameters)
   kappa_tab <- .extract_kappa_table(fit, angle_names = angle_names)
 
-  # 6) β table (parambeta): prefer fit$parambeta if available, then add β_ref row
+  # 6) Beta table (parambeta): prefer fit$parambeta if available, then add beta_ref row
   if (!is.null(fit$parambeta)) {
     pb <- as.data.frame(fit$parambeta, stringsAsFactors = FALSE)
 
@@ -239,7 +245,7 @@ pick_reference_angle <- function(
 
     parambeta <- .add_beta1_row(pb, ref_name = ref_name, put_first = TRUE)
   } else {
-    # fallback: construct from β_ref1 (sd unknown -> NA), then set sd_ref = 0
+    # fallback: construct from beta_ref1 (sd unknown -> NA), then set sd_ref = 0
     pb <- data.frame(
       estimate = as.numeric(beta_ref1),
       sd = NA_real_,
@@ -256,8 +262,8 @@ pick_reference_angle <- function(
     ref_name = ref_name,
     beta_hat = beta_hat,
     beta_ref1 = beta_ref1,
-    parameters = kappa_tab, # κ (estimate, sd)
-    parambeta = parambeta # β (estimate, sd) with β_ref row added
+    parameters = kappa_tab, # kappa (estimate, sd)
+    parambeta = parambeta # beta (estimate, sd) with beta_ref row added
   )
 
   # 8) Optional angular formula with ref()
@@ -283,14 +289,14 @@ print.pick_reference_angle <- function(x, digits = 4, ...) {
   cat("Reference index:", x$ref_index, "\n")
   cat("Reference name : ", x$ref_name, "\n\n")
 
-  # β summary
-  cat("Rescaled beta coefficients (β_ref = 1):\n")
+  # Beta summary
+  cat("Rescaled beta coefficients (beta_ref = 1):\n")
   print(round(x$beta_ref1, digits))
   cat("\n")
 
-  # κ table
+  # Kappa table
   if (!is.null(x$parameters)) {
-    cat("Kappa parameters (κ):\n")
+    cat("Kappa parameters (kappa):\n")
     df <- x$parameters
     df[] <- lapply(
       df,
@@ -300,9 +306,9 @@ print.pick_reference_angle <- function(x, digits = 4, ...) {
     cat("\n")
   }
 
-  # β table
+  # Beta table
   if (!is.null(x$parambeta)) {
-    cat("Beta parameters (β):\n")
+    cat("Beta parameters (beta):\n")
     dfb <- x$parambeta
     dfb[] <- lapply(
       dfb,

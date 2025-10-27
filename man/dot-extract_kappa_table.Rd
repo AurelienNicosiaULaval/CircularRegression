@@ -2,11 +2,19 @@
 % Please edit documentation in R/pick_reference_angle.r
 \name{.extract_kappa_table}
 \alias{.extract_kappa_table}
-\title{Extract κ table (estimate, sd) from a consensus() fit object}
+\title{Extract kappa table (estimate, sd) from a consensus() fit object}
 \usage{
 .extract_kappa_table(fit, angle_names = NULL)
 }
-\description{
-Returns a data.frame with columns "estimate" and "sd". Row names are made
-unique to avoid duplicate 'row.names' errors.
+\arguments{
+  \item{fit}{A fitted model returned by \\code{consensus()}.}
+  \item{angle_names}{Optional character vector used to label the rows of the kappa table.}
 }
+\value{
+A data frame with columns \\code{estimate} and \\code{sd} containing kappa summaries.
+}
+\description{
+Returns a data frame with columns ``estimate`` and ``sd``. Row names are made
+unique to avoid duplicate ``row.names`` errors.
+}
+\keyword{internal}

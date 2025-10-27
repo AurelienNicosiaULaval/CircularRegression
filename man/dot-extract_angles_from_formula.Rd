@@ -6,8 +6,17 @@
 \usage{
 .extract_angles_from_formula(formula)
 }
-\description{
-Example:
-  y ~ x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap
--> c("x.meadow","x.gap")
+\arguments{
+  \item{formula}{A model formula whose terms may contain ``angle:covariate`` products.}
 }
+\value{
+A character vector of unique angle names in the order they first appear.
+}
+\description{
+Extract unique angle names (left of ``x:z``), preserving first appearance order.
+}
+\examples{
+# Example usage
+.extract_angles_from_formula(y ~ x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap)
+}
+\keyword{internal}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/pick_reference_angle.r
 \name{pick_reference_angle}
 \alias{pick_reference_angle}
-\title{Pick reference angle from a consensus model and assemble κ/β tables}
+\title{Pick reference angle from a consensus model and assemble kappa/beta tables}
 \usage{
 pick_reference_angle(
   formula,
@@ -18,7 +18,7 @@ The left symbol of any "x:z" term is treated as an angular predictor.}
 
 \item{data}{A data.frame with response y, angular predictors x_j and positive variables z_j}
 
-\item{tie_method}{How to break ties if multiple |β| are equal: "first" or "random"}
+\item{tie_method}{How to break ties if multiple |beta| are equal: "first" or "random"}
 
 \item{build_angular_formula}{If TRUE, also returns a formula ready for angular() with ref(angle)}
 
@@ -26,20 +26,20 @@ The left symbol of any "x:z" term is treated as an angular predictor.}
 }
 \value{
 A list with:
-  - ref_index: index of the chosen reference angle in β
+  - ref_index: index of the chosen reference angle in beta
   - ref_name:  name of the chosen reference angle
-  - beta_hat:  raw consensus β estimates (scale-free)
-  - beta_ref1: β rescaled so that β[ref] = 1
-  - parameters: data.frame (κ estimate, sd)
-  - parambeta:  data.frame (β estimate, sd) with β_ref added on the first row (sd = 0)
+  - beta_hat:  raw consensus beta estimates (scale-free)
+  - beta_ref1: beta rescaled so that beta[ref] = 1
+  - parameters: data.frame (kappa estimate, sd)
+  - parambeta:  data.frame (beta estimate, sd) with beta_ref added on the first row (sd = 0)
   - angular_formula (optional): formula with ref(angle_ref) ready for angular()
 }
 \description{
 This function:
   (1) fits `consensus(formula, data, ...)`,
-  (2) picks the reference angle as argmax |β|,
-  (3) rescales β so that β_ref = 1,
-  (4) returns κ (estimate, sd) as `parameters` and β (estimate, sd) as `parambeta`,
-      with the first β_ref row added (estimate=1, sd=0),
+  (2) picks the reference angle as argmax |beta|,
+  (3) rescales beta so that beta_ref = 1,
+  (4) returns kappa (estimate, sd) as `parameters` and beta (estimate, sd) as `parambeta`,
+      with the first beta_ref row added (estimate=1, sd=0),
   (5) optionally returns an `angular_formula` where the reference angle is written `ref(angle)`.
 }

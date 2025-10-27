@@ -11,6 +11,7 @@ following columns (angles in radians unless stated otherwise):
   \item{datetime_round_next}{POSIXct. Timestamp of the retained hourly record.}
   \item{heure}{integer. Hour of day (0-23).}
   \item{bearing_ang}{numeric. Bearing from bison 1044-a to 1045-a.}
+  \item{diff}{numeric. Difference between the animals' movement directions (1044-a minus 1045-a).}
   \item{direction_1044-a}{numeric. Movement direction of bison 1044-a.}
   \item{direction_1045-a}{numeric. Movement direction of bison 1045-a.}
   \item{distance_1044-a}{numeric. Step length (m) of bison 1044-a between consecutive fixes.}

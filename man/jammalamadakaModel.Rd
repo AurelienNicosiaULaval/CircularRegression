@@ -2,7 +2,7 @@
 % Please edit documentation in R/wrapper.R
 \name{jammalamadakaModel}
 \alias{jammalamadakaModel}
-\title{Jammalamadaka–Sengupta Model Wrapper}
+\title{Jammalamadaka-Sengupta Model Wrapper}
 \usage{
 jammalamadakaModel(data, response, w, ...)
 }
@@ -19,7 +19,7 @@ jammalamadakaModel(data, response, w, ...)
 A \strong{list}: \code{fit}, \code{data_aug}, \code{formula}.
 }
 \description{
-Wraps the Jammalamadaka–Sengupta circular regression with one angular predictor \code{w}.
+Wraps the Jammalamadaka-Sengupta circular regression with one angular predictor \code{w}.
 The augmented data include:
 \itemize{
   \item \code{const0}: 0; \code{constPi2}: \eqn{\pi/2}

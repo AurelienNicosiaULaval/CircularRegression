@@ -4,22 +4,20 @@
 \alias{angular}
 \title{Angular Regression Model}
 \usage{
-angular(formula, data, model = "simplified", initbeta = NULL, control = list())
+angular(formula, data, initbeta = NULL, control = list())
 }
 \arguments{
-\item{formula}{A formula with the dependent angle on the left of the ~ operator and terms specifying
-the explanatory variables on the right. These terms must be written \code{x:z}, where
-\code{x} is an explanatory angle whose relative importance might depend on the
-positive variable \code{z}. For \code{model = "simplified"}, the first explanatory angle is
-the reference direction (any provided \code{z} for this angle is ignored).}
+\item{formula}{A formula with the dependent angle on the left of the
+\code{~} operator and terms specifying the explanatory variables on the
+right. The first term provides the reference direction.}
 
-\item{data}{An optional data frame, list or environment containing the variables in the model formula.}
+\item{data}{An optional data frame, list or environment containing the
+variables in the model formula.}
 
-\item{model}{A character string, either \code{"complete"} for the complete model with an intercept (the default)
-or \code{"simplified"} for the simplified model without an intercept.}
-
-\item{initbeta}{A numerical vector of initial beta parameter values. The default is to use the best initial
-values found among a grid of possible values.}
+\item{initbeta}{A numeric vector of initial beta parameter values. When
+\code{NULL} (default) a quasi-uniform grid search is used to select
+starting values. The required length equals the number of \code{x:z} terms
+after the reference direction.}
 
 \item{control}{A list of control parameters. See Details.}
 }
@@ -28,9 +26,8 @@ An object of class "angular" containing:
 \describe{
   \item{MaxCosine}{the maximum cosine value.}
   \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
-  \item{varcov0}{the estimated variance-covariance matrix (first definition).}
-  \item{varcov1}{the estimated variance-covariance matrix (second definition).}
-  \item{autocorr}{the autocorrelation of the residuals \eqn{\sin(y_i - \mu_i)}.}
+  \item{varcov0}{the asymptotic estimated variance-covariance matrix.}
+  \item{varcov1}{the non-parametric estimated variance-covariance matrix (sandwich).}
   \item{long}{the vector of predicted concentrations.}
   \item{mui}{the vector of predicted mean angles.}
   \item{y}{the response variable.}
@@ -39,30 +36,30 @@ An object of class "angular" containing:
 }
 }
 \description{
-Function that fits a regression model for angular variables along with its
-associated S3 methods.
+Fit the simplified angular regression model of Rivest et al. (2016). The
+first term in the formula provides the reference direction whose coefficient
+is fixed to one. Subsequent terms must be written \code{x:z}, where
+\code{x} is an angular covariate and \code{z} is a non-negative scaling
+variable. When \code{z} is omitted (or equal to \code{x}), a value of one is
+assumed. A reference-only model is obtained by including only the reference
+term on the right-hand side.
 }
 \details{
 The control argument is a list that can supply any of the following components:
 \describe{
-  \item{\code{pginit}}{The approximate number of points on the grid of possible initial beta values tried when
-                        \code{initbeta} is not given. The default is 1000, which runs quickly. A large value of
-                        \code{pginit} makes the function slower.}
-  \item{\code{maxiter}}{The maximum number of iterations. The default is 1000.}
-  \item{\code{mindiff}}{The minimum difference between two max cosine values to be reached. It defines the convergence criteria:
-                         if the difference between the max cosine for the updated parameter values and the previous
-                         one is below \code{mindiff}, convergence is reached. The default is 0.000001.}
+  \item{\code{pginit}}{Approximate number of points on the grid of possible
+    initial beta values when \code{initbeta} is not supplied (default 1000).}
+  \item{\code{maxiter}}{Maximum number of iterations for the Gauss--Newton
+    updates (default 1000).}
+  \item{\code{mindiff}}{Convergence tolerance on the increase of the mean
+    cosine (default 1e-6).}
 }
 }
 \examples{
 \dontrun{
-  # Example with fictitious data
-  data(wind)
-  n <- length(wind)
-  dat.hom <- data.frame(wind.t = wind[-c(1,2)],
-                        wind.t_1 = wind[-c(1, n)],
-                        wind.t_2 = wind[-c(n-1, n)])
-  an <- angular(wind.t ~ wind.t_1 + wind.t_2, data = dat.hom)
+  # Example with the bison data set included in the package
+  data(bison)
+  an <- angular(y.dir ~ y.prec + y.prec2, data = bison)
   print(an)
   summary(an)
   plot(an)
@@ -72,5 +69,5 @@ The control argument is a list that can supply any of the following components:
 L.-P. Rivest, T. Duchesne, A. Nicosia & D. Fortin. A general angular regression model for the analysis of data on animal movement in ecology. Journal of the Royal Statistical Society, series C, to appear.
 }
 \author{
-Sophie Baillargeon, Louis-Paul Rivest, and Aurélien Nicosia
+Sophie Baillargeon, Louis-Paul Rivest, and Aurelien Nicosia
 }

@@ -7,29 +7,25 @@
 decentredPredictorModel(data, response, w, ...)
 }
 \arguments{
-\item{data}{A data frame containing at least the response variable and the explanatory variable.}
+\item{data}{A data frame containing \code{response} and \code{w}.}
 
-\item{response}{A character string representing the name of the response variable (an angular variable).}
+\item{response}{A string: name of the angular response variable.}
 
-\item{w}{A character string representing the name of the explanatory angular variable in \code{data}.}
+\item{w}{A string: name of the angular explanatory variable in \code{data}.}
 
-\item{...}{Additional arguments to be passed to the underlying \code{angular} estimation function.}
+\item{...}{Additional arguments passed to \code{angular()}.}
 }
 \value{
-An object representing the fitted model as returned by the \code{angular} function.
+A \strong{list}: \code{fit}, \code{data_aug}, \code{formula}.
 }
 \description{
-This function wraps the estimation of the "decentered predictor" model as described in Rivest (1997),
-which is based on a single angular explanatory variable. The synthetic model is built using four covariates:
+Wraps the "decentered predictor" model (Rivest, 1997) for a single angular
+explanatory variable \code{w}. The augmented data include:
 \itemize{
-  \item{\code{w}: the original explanatory angular variable,}
-  \item{\code{w_plus_pi2}: computed as \eqn{w + \pi/2},}
-  \item{\code{zero}: a constant covariate with value 0,}
-  \item{\code{pi2}: a constant covariate with value \eqn{\pi/2}.}
+  \item \code{<w>_plus_pi2}: \eqn{w + \pi/2};
+  \item \code{const0}: 0;
+  \item \code{constPi2}: \eqn{\pi/2}.
 }
-}
-\details{
-The model is expressed as:
-\deqn{y = w + \left(w + \frac{\pi}{2}\right) + 0 + \left(\frac{\pi}{2}\right),}
-which corresponds to the decentered predictor formulation.
+The fitted formula is:
+\code{response ~ <w> + <w>_plus_pi2 + const0 + constPi2}.
 }

@@ -9,29 +9,31 @@ meanDirectionModel(data, response, mu0 = NULL, ...)
 \arguments{
 \item{data}{A data frame containing at least the response variable.}
 
-\item{response}{A character string representing the name of the response variable (an angular variable).}
+\item{response}{A string: name of the angular response variable.}
 
-\item{mu0}{Optional. A numeric vector or value to be used as the baseline covariate.
-If \code{NULL} (default), the baseline is set to 0 and \code{tan_mu} is set to pi/2.
-Otherwise, \code{tan_mu} is set to \code{mu0 + pi/2}.}
+\item{mu0}{Optional numeric (scalar or vector). If \code{NULL}, the baseline is
+0 and \code{tan_mu = pi/2}; otherwise \code{tan_mu = mu0 + pi/2}.}
 
-\item{...}{Additional arguments to be passed to the \code{angular} function.}
+\item{...}{Additional arguments passed to \code{angular()}.}
 }
 \value{
-An object representing the fitted model as returned by the \code{angular} function.
+A \strong{list} with:
+\itemize{
+  \item \code{fit}: the object returned by \code{angular()};
+  \item \code{data_aug}: the augmented data;
+  \item \code{formula}: the formula used in the call to \code{angular()}.
+}
 }
 \description{
-This function wraps the estimation of the "mean direction model" by automatically
-creating the required covariates and constructing the appropriate formula.
-It generates two covariates:
-\itemize{
-  \item{\code{mu0}: If \code{mu0} is \code{NULL} (default), this is set to 0. Otherwise, it is set to the provided value (or vector).}
-  \item{\code{tan_mu}: If \code{mu0} is \code{NULL}, this is set to \eqn{\pi/2}; otherwise, it is set to \code{mu0 + pi/2}.}
-}
+Wraps estimation of the "mean direction model" by automatically creating the
+required covariates and the appropriate formula.
 }
 \details{
-The model is then specified as:
-\deqn{y = 1 \times mu0 + tan\_mu,}
-where the coefficient for \code{mu0} is fixed at 1 (by design in \code{angular}),
-and the estimated coefficient for \code{tan_mu} corresponds to \eqn{\tan(\mu)}.
+Two columns are added:
+\itemize{
+  \item \code{mu0}: 0 if \code{mu0} is \code{NULL} (default), otherwise the provided value;
+  \item \code{tan_mu}: \eqn{\pi/2} if \code{mu0} is \code{NULL}, otherwise \code{mu0 + pi/2}.
+}
+The coefficient of \code{mu0} is fixed at 1 by \code{angular()}, and the
+estimated coefficient of \code{tan_mu} corresponds to \eqn{\tan(\mu)}.
 }

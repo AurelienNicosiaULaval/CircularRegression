@@ -20,7 +20,7 @@ The left symbol of any "x:z" term is treated as an angular predictor.}
 
 \item{tie_method}{How to break ties if multiple |beta| are equal: "first" or "random"}
 
-\item{build_angular_formula}{If TRUE, also returns a formula ready for angular() with ref(angle)}
+\item{build_angular_formula}{If TRUE, also returns a formula ready for \code{angular()} with \code{ref(angle)}}
 
 \item{...}{Additional arguments passed to consensus()}
 }
@@ -32,7 +32,7 @@ A list with:
   - beta_ref1: beta rescaled so that beta[ref] = 1
   - parameters: data.frame (kappa estimate, sd)
   - parambeta:  data.frame (beta estimate, sd) with beta_ref added on the first row (sd = 0)
-  - angular_formula (optional): formula with ref(angle_ref) ready for angular()
+  - angular_formula (optional): formula with \code{ref(angle_ref)} ready for \code{angular()}
 }
 \description{
 This function:
@@ -41,5 +41,5 @@ This function:
   (3) rescales beta so that beta_ref = 1,
   (4) returns kappa (estimate, sd) as `parameters` and beta (estimate, sd) as `parambeta`,
       with the first beta_ref row added (estimate=1, sd=0),
-  (5) optionally returns an `angular_formula` where the reference angle is written `ref(angle)`.
+  (5) optionally returns an \code{angular_formula} where the reference angle is written \code{ref(angle)}.
 }

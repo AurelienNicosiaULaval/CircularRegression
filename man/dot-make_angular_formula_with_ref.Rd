@@ -6,15 +6,6 @@
 \usage{
 .make_angular_formula_with_ref(formula, ref_name)
 }
-\arguments{
-  \item{formula}{A model formula that may contain angle and covariate interactions.}
-  \item{ref_name}{Name of the angle to promote to \code{ref(angle)} in the output formula.}
-}
-\value{
-An updated formula where the chosen reference angle appears as \code{ref(angle)}.
-}
 \description{
-Only the left symbol of any "x:z" pair is considered an angle. The reference
-term gets rewritten as \code{ref(x)}.
+Build an angular formula with \code{ref(angle_ref)} for the chosen reference angle
 }
-\keyword{internal}

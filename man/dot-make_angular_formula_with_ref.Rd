@@ -2,19 +2,19 @@
 % Please edit documentation in R/pick_reference_angle.r
 \name{.make_angular_formula_with_ref}
 \alias{.make_angular_formula_with_ref}
-\title{Build an angular formula with ref(angle_ref) for the chosen reference angle}
+\title{Build an angular formula with \code{ref(angle_ref)} for the chosen reference angle}
 \usage{
 .make_angular_formula_with_ref(formula, ref_name)
 }
 \arguments{
   \item{formula}{A model formula that may contain angle and covariate interactions.}
-  \item{ref_name}{Name of the angle to promote to \\code{ref(angle)} in the output formula.}
+  \item{ref_name}{Name of the angle to promote to \code{ref(angle)} in the output formula.}
 }
 \value{
-An updated formula where the chosen reference angle appears as \\code{ref(angle)}.
+An updated formula where the chosen reference angle appears as \code{ref(angle)}.
 }
 \description{
 Only the left symbol of any "x:z" pair is considered an angle. The reference
-term gets rewritten as ref(x).
+term gets rewritten as \code{ref(x)}.
 }
 \keyword{internal}

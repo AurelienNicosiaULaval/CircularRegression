@@ -43,6 +43,113 @@ library(circular)     # pour objets angulaires et outils de base
 
 # Introduction
 
+
+# Angular regression in R: a concise review 
+
+This section surveys angular (circular) regression methods available in R and positions the package `CircularRegression` within that landscape. We focus on models for a circular response (angles on \([-π, π)\) or \([0, 2π)\)), with linear and/or circular predictors, covering parametric, Bayesian, nonparametric and tree/ensemble approaches. For a broad background on directional statistics and software, see the invited review by Pewsey & García‑Portugués [@pewsey2021recent].
+
+## A taxonomy of approaches in R
+
+### Classical (likelihood‑based) parametric regression
+
+**Von Mises GLM/VGLM family.** 
+The von Mises distribution is the circular analogue of the normal. In R, the **VGAM** package exposes a `vonmises()` family for vector generalized linear models, allowing the mean direction (and optionally concentration) to depend on covariates via link functions [@yee2015VGAM; @VGAMpkg].
+
+**Fisher–Lee style circular regression.**
+The **circular** package implements `lm.circular()` for circular‑linear and circular‑circular regression, where a von Mises response is linked to predictors through transformations inspired by Fisher & Lee’s Biometrics paper [@fisher1992angular; @circularPkg].
+
+**Projected (embedded) models and wrapped alternatives.**
+The **Directional** package offers several likelihood‑based regressions with a circular outcome (e.g., `spml.reg`, `cipc.reg`, `gcpc.reg`), including implementations related to the spherically‑projected linear model and wrapped distributions [@Presnell1998; @tsagrisDirectional].
+
+**Legacy functions.**
+The **CircStats** package includes a classical `circ.reg()` routine for circular‑circular regression and many building blocks and tests for circular analysis [@circstatsPkg].
+
+### Bayesian projected‑normal regression (with mixed effects)
+
+The **bpnreg** package fits Bayesian projected‑normal models via MCMC, in both multiple‑regression (`bpnr`) and mixed‑effects (`bpnme`) forms. This covers fixed effects, random intercepts/slopes, and offers posterior summaries and Bayes factors [@bpnregManual; @bpnregCRAN; @nunezAntonio2014].
+
+### Nonparametric regression for circular data
+
+The **NPCirc** package implements kernel methods for circular regression in the three settings (circular‑linear, circular‑circular, linear‑circular) including Nadaraya–Watson and local‑linear smoothers, bandwidth selectors, significance tests and visualization tools [@oliveira2014npcirc; @NPCircCRAN].
+
+### Distributional regression trees and random forests (von Mises)
+
+The **circtree** package provides distributional trees and forests for circular responses, using the von Mises distribution at the leaves. This yields interpretable trees, automatic covariate selection and flexible non‑linear effects [@lang2020circtree; @circtreePkg].
+
+### Spatial and spatio‑temporal circular modeling
+
+While not regression in the narrow sense of modeling a circular mean with covariates, **CircSpaceTime** implements Bayesian (wrapped/projected Gaussian) models for spatial and spatio‑temporal interpolation and prediction of circular fields, which is useful when dependence over space/time is prominent [@circspacetimeCRAN; @jonaLasinio2020CSTS].
+
+
+## Where `CircularRegression` fits
+
+The `CircularRegression` package targets likelihood‑based angular regression, emphasizing the
+general model of @Rivest16 and important extensions:
+
+- **General angular regression with von Mises errors** — an interpretable additive representation
+  of directional effects (e.g., attraction to targets, alignment with features), with identifiability
+  and ML estimation machinery [@Rivest16].
+  
+- **Consensus-error model** — models the mean direction as a consensus (vector sum)
+  of hypothesized directional effects [@Rivest16].
+  
+- **Particular (special‑case) models** — convenient wrappers corresponding to commonly used
+  structures (e.g., mean-direction model, decentered‑predictor model, Presnell‑style embedding,
+  Jammalamadaka–Sengupta–type forms).
+  
+- **Random‑intercept model** — accommodates clustered circular outcomes with a
+  von Mises random intercept at the group level, following @rivestKato2019.
+
+Advantages relative to existing R alternatives:
+
+- **Interpretability** (directional components and consensus representation) beyond generic links,
+  with clear ecological/biomechanical meaning [@Rivest16].
+  
+- **Likelihood‑based estimation and inference** compatible with von Mises errors (contrast with projected‑normal
+  Bayesian inference in **bpnreg**).  
+  
+- **Built‑in clustered (random‑intercept) model** for repeated measures on groups [@rivestKato2019].
+
+- **Convenience wrappers** for well‑known structures, helping users specify models without hand‑crafting
+  trigonometric re‑parametrizations.
+
+## Choosing between packages (quick guide)
+
+- Prefer **CircularRegression** when you want an interpretable *angular* model with von Mises errors,
+  consensus components, or a random‑intercept extension, and ML‑based inference [@@Rivest16; @rivestKato2019].
+  
+- Prefer **bpnreg** when you need rich **Bayesian** mixed‑effects modeling under the projected‑normal and
+  Bayesian model comparison (Bayes factors) [@bpnregManual].
+  
+- Prefer **VGAM**/**circular**/**Directional** for classical parametric fits with von Mises/wrapped families or
+  Fisher–Lee/embedded transforms, especially when you need GLM‑type predictors and offsets
+  [@circularPkg; @VGAMpkg; @tsagrisDirectional].
+  
+- Prefer **NPCirc** for **nonparametric** smoothing when relationships are strongly non‑linear and you wish to
+  avoid parametric assumptions [@oliveira2014npcirc].
+  
+- Prefer **circtree** for **interpretable trees/forests** with automated covariate selection and interaction capture
+  [@lang2020circtree].
+  
+- Prefer **CircSpaceTime** when **spatial/spatio‑temporal dependence** is central and you need kriging/prediction
+  on circular fields [@circspacetimeCRAN].
+
+## Snapshot of R functionality (selected)
+
+| Package            | Core model family                        | Response | Predictors | Mixed effects | Key functions                             |
+|:------------------|:-----------------------------------------|:---------|:-----------|:--------------|:-------------------------------------------|
+| circular          | Von Mises GLM‑like (Fisher–Lee links)    | circular | linear/circular | –          | `lm.circular()`                            |
+| VGAM              | VGLM with `vonmises()`                   | circular | linear     | –             | `vglm(y ~ x, family = vonmises())`         |
+| Directional       | SPML / wrapped models                    | circular | linear     | –             | `spml.reg()`, `gcpc.reg()`, `cipc.reg()`   |
+| CircStats         | Classical circular‑circular regression    | circular | circular   | –             | `circ.reg()`                               |
+| bpnreg            | Bayesian projected‑normal (MCMC)         | circular | linear     | Yes       | `bpnr()`, `bpnme()`                        |
+| NPCirc            | Kernel (NW, local‑linear)                 | circular | linear/circular | –        | `kern.reg.*` functions                     |
+| circtree          | Distributional trees/forests (von Mises)  | circular | linear     | –             | `circtree()`, `circforest()`               |
+| CircSpaceTime     | Wrapped/projected GP (Bayesian)           | circular (field) | space/time | hier. | `CircSpaceTime()`                          |
+| CircularRegression| **General angular + consensus + RI**      | circular | linear/circular | Only random intercept | `angular()`, `consensus()`, model wrappers |
+
+
+
 # The regression model of @Rivest16
 
 ## The conditional mean direction
@@ -130,7 +237,7 @@ $$
 
 
 
-\section{Some special cases for model \eqref{eq:mod}}
+# Some special cases for model \eqref{eq:mod}
 Table \ref{tab:tab1} expresses in the general framework of equation \eqref{eq:mods} several circular regression models proposed in the literature when there are either a single auxiliary variable, either angle $x$ or covariate $z$ . The mean direction model, MeanDir, model $y = \mu+ \epsilon$ for $\mu \in [-\pi,\pi)$. It can written using expression \eqref{eq:mods} as long as $\mu \in [-\pi/2,\pi/2)$ the corresponding parameter is $\beta_2=\tan(\mu)$.  When $\mu$ is not in this interval one needs to change the reference angle to $x +\pi$. In a similar way the rotation regression model, RotMod, $y = x+ \mu+ \epsilon$ for $\mu \in [-\pi,\pi)$ can be expressed using
 \eqref{eq:mods} as long as $\mu \in [-\pi/2,\pi/2)$ and $\beta_2$ is then equal to $\tan(\mu)$. When $x$ is an explanatory angle, adding $x+\pi/2$ to the model changes the explanaotry angle into $x+\theta$, for some angle $\theta$.  Indeed one has
 \begin{align*}
@@ -178,7 +285,135 @@ it involves two angles $\phi, \alpha \in [0,2\pi)$ and a dependence parameter $\
 \end{align*}
 Under this model $\beta_3\beta_5/(\beta_4\beta_6)=1$.
 
-\subsection{Model selection for a single independent angle $x$}
+
+## How to fit these special cases in the `CircularRegression` package
+
+This section shows how to reproduce the models in Table \ref{tab:tab1} using the wrapper functions provided by the `CircularRegression` package.  
+Each wrapper returns a list with three elements:
+- `fit`: the fitted object returned by `angular()`;
+- `data_aug`: the augmented data used internally (with explicit column names);
+- `formula`: the exact formula passed to `angular()`.
+
+Unless otherwise noted, replace `df`, `y`, `x`, and `z` with the actual column names in your data.
+
+```{r, message=FALSE}
+library(CircularRegression)
+
+df = data.frame(y = bison$y.dir, x = bison$y.prec, z = bison$x.meadow)
+```
+
+### Mean direction model (MeanDir)
+
+The model $y = \mu + \varepsilon$ with baseline direction $\mu$. Under the synthetic formulation, the parameter associated with $\tan_\mu$ corresponds to $\tan(\mu)$. If $\mu \in [-\pi/2, \pi/2)$, no re-centering is needed.
+
+```{r}
+# Fixed mean μ (single value)
+fit_mean <- meanDirectionModel(
+  data     = df,
+  response = "y",
+  mu0      = 0  # or any numeric scalar; if NULL, baseline 0 and tan_mu = π/2
+)
+
+fit_mean$formula         # formula actually used
+head(fit_mean$data_aug)  # augmented data (mu0, tan_mu)
+fit_mean$fit             # fitted object from angular()
+```
+
+If you prefer a vector of baselines `mu0` (same length as `df`), pass it directly; the wrapper will build the appropriate augmented data.
+
+### Rotation model (RotMod) and negative rotation model (NRotMod)
+
+RotMod uses only the pair $(x, x + \pi/2)$; NRotMod uses $(-x, -x + \pi/2)$. These are immediate two-column special cases. While there is no dedicated wrapper for RotMod/NRotMod, you can specify them explicitly as follows.
+
+```{r}
+# RotMod: $y \sim x + (x + \pi/2)$
+df$x_plus_pi2 <- df$x + pi/2
+form_rot <- y ~ x + x_plus_pi2
+fit_rot <- angular(formula = form_rot, data = df)
+fit_rot
+
+# NRotMod: $y \sim (-x) + (-x + \pi/2)$
+df$x_neg     <- -df$x
+df$x_neg_pi2 <- df$x_neg + pi/2
+form_nrot <- y ~ x_neg + x_neg_pi2
+fit_nrot <- angular(formula = form_nrot, data = df)
+fit_nrot
+```
+
+If you prefer a wrapper-only workflow, note that the Jammalamadaka–Sengupta wrapper below contains these two columns as a subset; RotMod/NRotMod can be viewed as constrained versions of that general case.
+
+### Decentered predictor (Decentred) and negative decentered predictor (NDecentred)
+
+The decentered predictor with angular $x$ is obtained with the `decentredPredictorModel()` wrapper. For the negative version, simply pass a precomputed column $x_{neg} = -x$ as `w`.
+
+```{r}
+# Decentred: $y \sim x + (x + \pi/2) + const0 + constPi2$
+fit_decentred <- decentredPredictorModel(
+  data     = df,
+  response = "y",
+  w        = "x"   # the actual column name in df
+)
+fit_decentred$formula
+head(fit_decentred$data_aug)
+fit_decentred$fit
+
+# NDecentred: use w = -x via a new column
+df$x_neg <- -df$x
+fit_ndecentred <- decentredPredictorModel(
+  data     = df,
+  response = "y",
+  w        = "x_neg"
+)
+fit_ndecentred$formula
+head(fit_ndecentred$data_aug)
+fit_ndecentred$fit
+```
+
+The wrapper automatically names augmented columns using the true name of `w`, for instance `x_plus_pi2`, `const0`, and `constPi2`. In NDecentred, the column names will reflect `x_neg` accordingly.
+
+### Jammalamadaka–Sengupta (JamSen)
+
+This wrapper builds the six-term expansion $(0, \pi/2, w, -w, w + \pi/2, -w + \pi/2)$ for a single angular predictor $w$.
+
+```{r}
+fit_jamsen <- jammalamadakaModel(
+  data     = df,
+  response = "y",
+  w        = "x"
+)
+fit_jamsen$formula
+head(fit_jamsen$data_aug)
+fit_jamsen$fit
+```
+
+The augmented data will include the columns `x_orig`, `neg_x`, `x_pi2`, and neg_x_pi`, in addition to $const0$ and $constPi2$. As mentioned above, RotMod/NRotMod correspond to using only the pair $(x, x + \pi/2)$ or $(-x, -x + \pi/2)$ from this construction.
+
+### Presnell
+
+For a single non-circular covariate $z$, use the `presnellModel()` wrapper, which builds the interaction terms with the constants $0$ and $\pi/2$.
+
+```{r}
+fit_presnell <- presnellModel(
+  data     = df,
+  response = "y",
+  w        = "z"  # 'z' is continuous (non-circular)
+)
+fit_presnell$formula
+head(fit_presnell$data_aug)
+fit_presnell$fit
+```
+
+**Notes and practical tips**
+
+- In all wrappers, the argument `response` and the predictor `w` are the real column names in your data. The augmented column names are derived systematically from those real names (for example, `x_plus_pi2`, `neg_x`, or interactions like `const0:z`, `constPi2:z`).
+
+- You can extract `fit$formula` to report the exact synthetic representation used, and `fit$data_aug` to inspect or reuse the constructed covariates.
+
+- If a rotation baseline places $\mu$ outside $[-\pi/2, \pi/2)$, re-center as appropriate (for example, consider $x + \pi$) before calling the wrapper, or use a transformed column as the input `w`.
+
+
+## Example of the Jammalamadaka and Sengupta model with earthquake data
+
 We now consider fitting model \eqref{eq:mod} to the Noshiro data set where $y$ is the direction of ground movement at a site, after an earthquake,  while $x$ is the direction of steepest descent at that site.  Following @Jones15 we removed data points with ties at $x=0, \pi/2$ leading to a sample of $n=678 $ sites where $(x,y)$ are measured.
 
 To illustrate the impact of the choice of the reference explanatory angle $x_1$ on the fit, two JemSen models were fitted one with $x_1=\pi$, as the model with $x_1=0$ failed to converge, and the other with $x_1=x$.
@@ -192,16 +427,23 @@ fit_0$fit
 fit_0$formula
 
 # changing reference angle to pi/2
-fit_2 <- angular(formula = DIRDSC ~  neg_DIRMV_pi2 + DIRMV_orig + const0 + neg_DIRMV + DIRMV_pi2 , data = fit_0$data_aug)
+fit_2 <- angular(
+  formula = DIRDSC ~
+    neg_DIRMV_pi2 + DIRMV_orig + const0 + neg_DIRMV + DIRMV_pi2,
+  data = fit_0$data_aug
+)
 fit_2
 
 # changing reference angle to x
-fit_x <- angular(formula = DIRDSC ~  DIRMV_orig + const0 + constPi2 + neg_DIRMV + DIRMV_pi2 + neg_DIRMV_pi2, data = fit_0$data_aug)
+fit_x <- angular(
+  formula = DIRDSC ~
+    DIRMV_orig + const0 + constPi2 + neg_DIRMV + DIRMV_pi2 + neg_DIRMV_pi2,
+  data = fit_0$data_aug
+)
 fit_x
-
 ```
 
-AJOUTER ESTIMATION AVEC LES FONCTIONS DU PACKAGE (Refaire le tableau)
+AJOUTER ESTIMATION AVEC LES FONCTIONS DU PACKAGE (Refaire le tableau du papier de LP)
 
  The two models are equivalent: they give the same predicted angles $\mu(\hat \beta,x_i)$ and they both have $MC=0.5024$.  Indeed dividing the parameter estimate of the fit of the $x_1=\pi$ model, by the estimate for $x$, 5.72, gives the parameter estimates for the fit obtained with $x_1=x$. We want to use the p-values in Table \ref{tab:Nos} to identify important explanatory variables. In the $x_1=\pi$ fit one p-value is smaller than 5\%  while there are 3 with the other fit. 
 
@@ -209,17 +451,22 @@ Removing variables with p-values larger than 5\% in the $x_1=x$ fit leads to a m
 
 
 ```{r Noshiro-plot, fig.width=7, fig.height=6}
-ggplot(data = noshiro, aes( x = DIRMV-pi, y = DIRDSC-pi)) +
+ggplot(data = noshiro, aes(x = DIRMV - pi, y = DIRDSC - pi)) +
   geom_point() +
-  stat_function(fun = function(x) {
-    atan2(0.21 + sin(x) + 0.23 * cos(x), -0.17 + cos(x) + 0.23 * sin(x))
-  }, color = "blue", size = 1) +
-  labs(title = "Noshiro Data: Fitted Circular Regression Model",
-       x = "Direction of steepest descent",
-       y = "Direction of movement") +
+  stat_function(
+    fun = function(x) {
+      atan2(0.21 + sin(x) + 0.23 * cos(x), -0.17 + cos(x) + 0.23 * sin(x))
+    },
+    color = "blue",
+    size = 1
+  ) +
+  labs(
+    title = "Noshiro Data: Fitted Circular Regression Model",
+    x = "Direction of steepest descent",
+    y = "Direction of movement"
+  ) +
   theme_minimal()
 ```
-
 
 
 
@@ -233,10 +480,7 @@ circular response on the left-hand side.
 
 ## Angular regression model
 
-The angular regression model links the response direction to previous directions
-through trigonometric transformations. The example below fits the simplified
-angular regression model with `y.dir` as the response and two predictors that
-capture previous movement directions.
+The angular regression model links the response direction to previous directions through trigonometric transformations. The example below fits the simplified angular regression model with `y.dir` as the response and multiple predictors that capture previous movement directions.
 
 ```{r angular-fit}
 ang_fit_bison <- angular(y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap, data = bison)
@@ -249,7 +493,7 @@ A summary provides parameter estimates and associated inference information.
 summary(ang_fit_bison)
 ```
 
-## Reference angle in angular regression
+## Reference angle in angular regression model
 
 ### Effect of reference angle
 
@@ -266,70 +510,201 @@ In this example, the parameter estimates differ significantly based on the choic
 
 ### How to choose the right reference angle
 
-In the homogeneous error model, the first angular predictor in the formula is
-the reference angle. You can change the reference angle by reordering the
-predictors in the formula. If the user wants to find the reference angle, the `pick_reference_angle()` function can be used. This function fits an angular model for every predictor and selects the one with the highest $\hat \kappa$ in the consensus model. 
+In the homogeneous error model, the first angular predictor in the formula is the reference angle. You can change the reference angle by reordering the predictors in the formula. If the user wants to find the reference angle, the `pick_reference_angle()` function can be used. This function fits an angular model for every predictor and selects the one with the highest $\hat \kappa$ in the consensus model. 
+
 For example, in the bison data set, `y.prec` is selected as the reference angle:
 ```{r}
-pick_reference_angle(y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap, data = bison)
+pick_bison <- pick_reference_angle(
+  formula = y.dir ~
+    y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap,
+  data = bison
+)
+pick_bison
+```
+
+
+
+### Change intial values of $\beta$
+
+By default, the angular regression model uses initial values of $\beta$ randomly generated between -1 and 1 for all predictors, since it considers that the right reference angle have been chosen. If $|\hat \beta| >>1$ , it may indicate that a different reference angle would be more appropriate. Getting good initial values is important for the convergence of the optimization algorithm. However, if prior knowledge suggests different starting points, you can specify custom initial values using the `initbeta` argument in the `angular()` function.
+
+
+```{r, eval=FALSE}
+set.seed(123)
+n <- 200
+df <- data.frame(
+  x = runif(n, -pi, pi),   # angular predictor
+  z = rnorm(n)             # linear predictor
+)
+
+# True parameters
+beta_true <- c(beta_x = 1, beta_xpi2 = 5, beta_z = 3)
+
+# Build the linear predictor η
+eta <- beta_true["beta_x"] * df$x +
+       beta_true["beta_xpi2"] * (df$x + pi/2) +
+       beta_true["beta_z"] * df$z
+
+# Simulate a circular response around η with von Mises noise
+kappa <- 5  # concentration
+eps   <- circular::rvonmises(n, mu = 0, kappa = kappa)
+df$y  <- atan2(sin(eta + eps), cos(eta + eps))
+
+# Synthetic columns for angular()
+df$x_plus_pi2 <- df$x + pi/2
+
+# Model to recover true parameters
+form <- y ~  x + x_plus_pi2 + z
+
+# BAD initialization: far from true values
+fit_bad <- try(angular(formula = form, data = df),
+               silent = TRUE)
+fit_bad  # usually fails or gives unstable estimates
+
+# GOOD initialization: close to true parameters
+good_init <- c(5, 3)
+fit_good <- angular(formula = form, data = df, initbeta = good_init)
+
+# Compare results
+print(fit_good)
 ```
 
 
 ## Consensus regression model
 
-The consensus model extends the angular regression framework by explicitly
-modelling the concentration parameter. The following example fits a consensus
-model using the same predictors.
+The consensus model extends the angular regression framework by explicitly modelling the concentration parameter. The following example fits a consensus model using the same predictors.
 
 ```{r consensus-fit}
 cons_fit_bison <- consensus(y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap, data = bison)
 cons_fit_bison
 ```
 
-You can inspect the estimated parameters and goodness-of-fit criteria via the
-summary method.
+You can inspect the estimated parameters and goodness-of-fit criteria via the summary method.
 
 ```{r consensus-summary}
 summary(cons_fit_bison)
 ```
 
-
+Cons
 
 ## Multiple bison analysis
 
-REPRENDRE DES TRUCS DU MÉMOIRE DE MAMADOU
+### Data
 
-# Diagnostic tools
-
-
-Diagnostic plots help assess the adequacy of the model by visualizing residuals
-and fitted directions.
-
-```{r angular-plot, fig.width=7, fig.height=6}
-plot(ang_fit_bison)
-```
-
-
-For a more detailed diagnostic assessment, the plotting method provides a suite
-of charts similar to those available for linear models.
-
-```{r consensus-plot, fig.width=7, fig.height=6}
-plot(cons_fit_bison)
-```
-
-
-
-# Simulation and model comparison
-
-## Likelihood Ratio test
+We use the `multiplebison` dataset (hourly steps) bundled with **CircularRegression**. 
 
 ```{r}
-fit_full <- angular(y.dir ~ y.prec + y.prec2 + x.gap + z.gap:x.gap, data = bison)
-fit_reduced    <- angular(y.dir ~ y.prec + y.prec2, data = bison)
-lrt_result  <- angular_lrtest(full = fit_full, reduced = fit_reduced)
-print(lrt_result)
-anova(fit_full, fit_reduced, test = "LRT")
+dat <- multiplebison
+glimpse(dat)
 ```
+
+For convenience we’ll define the core columns and convert angles (degrees → radians). Hours are integers in `[0, 23]`:
+
+```{r}
+df <- dat %>%
+  transmute(
+    time      = datetime_round_next,
+    hour      = as.integer(heure),
+    dir_1044  = `direction_1044-a`,  # adapt to your exact column naming if needed
+    dir_1045  = `direction_1045-a`,
+    dist_1044 = `distance_1044-a`,
+    dist_1045 = `distance_1045-a`,
+    dist_pair = distance,
+    turn_1044 = turn_ang_1044,
+    turn_1045 = turn_ang_1045
+  )
+
+# Some datasets store names with '-' or other symbols; fix if needed:
+deg2rad <- function(d) d * pi / 180
+rad2deg <- function(r) r * 180 / pi
+
+df <- df %>%
+  mutate(
+    # circular angles in radians
+    y_1044 = deg2rad(dir_1044),
+    y_1045 = deg2rad(dir_1045),
+    phi    = 2*pi*(hour %% 24)/24,
+    logdist = log1p(dist_pair),
+    zero= 0,
+    pi2 = pi/2,
+    phi_pi2 = phi + pi/2,
+    m_phi = -phi,
+    m_phi_pi2 = m_phi + pi2
+  ) %>%
+  filter(!is.na(y_1044), !is.na(y_1045), !is.na(hour))
+```
+
+
+
+## Regression of direction on hour of day
+
+We now fit the four special cases model defined in Section XXXXX. The mean direction is modeled as the direction of a weighted sum of unit vectors pointing to targets (e.g., `phi`, `phi+π/2`, etc.), where`phi` represent the angular version of the hour of day. 
+
+
+```{r, eval = FALSE}
+
+fit_M0_1044 <- angular(formula = y_1044 ~ zero  +  pi2 , data  = df)
+fit_MR_1044 <- angular(formula = y_1044 ~ phi  +  phi_pi2 , data  = df)
+fit_MD_1044 <- angular(formula = y_1044 ~ phi  +  zero + pi2 + phi_pi2 , data  = df)
+fit_MJS_1044 <- angular(formula = y_1044 ~ phi  +  zero + pi2 + phi_pi2 +m_phi +m_phi_pi2 , data  = df)
+
+
+
+```
+
+Visual comparison of fitted mean direction vs. empirical circular means by hour (replicates Fig. 3.5 qualitatively).
+
+```{r}
+# On refait le graphiques avec les 4 modèles
+```
+
+Residual diagnostics—rose diagrams to visually check concentration and symmetry:
+
+```{r}
+# code 
+```
+
+**Model comparison via a likelihood-ratio–style statistic.** We emulate the thesis’ test contrasting a 24-parameter saturated model (free mean by hour) with a parsimonious MJS fit, using the statistic 
+\(T^2 = 2 n \, \hat{\kappa}_1 ( \bar{C}_1 - \bar{C}_0 )\). We estimate \(\kappa\) via `circular::est.kappa` on residuals. See Section 2.2.6 and Table 3.9.
+
+```{r}
+# code: on utilise notre fonction LRtest
+```
+
+## Inter-bison dependence
+
+
+### Circular regression of one bison on the other (with hour and distance)
+
+We fit a model where the mean direction of 1044-a is predicted from 1045-a’s current direction, with hour-of-day contributions (\( \phi, \phi \pm \pi/2 \)) and an interaction on the pair distance (through \(\log(1+\text{distance})\)). This follows the thesis Section 3.3.3 (Tables 3.16–3.17 and Fig. 3.8). 
+
+```{r, eval=FALSE}
+
+df = df %>% mutate(
+  y_1045_pi2 = y_1045 + pi/2,
+    y_1044_pi2 = y_1044 + pi/2
+
+)
+
+ fit <- consensus( y_1044 ~ y_1045 + y_1045_pi2 + phi + phi_pi2 + m_phi + m_phi_pi2 + zero +  pi2 + y_1045:logdist, data = df )
+fit
+
+ fitc <- consensus( y_1045 ~ y_1044 + y_1044_pi2 + phi + phi_pi2 + m_phi + m_phi_pi2 + zero + pi2 + y_1044:logdist, data = df )
+ fit <- angular( y_1045 ~ y_1044 + y_1044_pi2 + phi + phi_pi2 + m_phi + m_phi_pi2 + zero + pi2 + y_1044:logdist, data = df , initbeta = fit$parambeta[,1] )
+ 
+
+
+```
+
+A quick visualization mirroring Fig. 3.8—predicted direction for 1044-a across values of 1045-a’s direction, at two hours and two distances:
+
+```{r}
+# code
+```
+
+
+
+
 
 
 
@@ -423,14 +798,14 @@ new_df <- data.frame(
 )
 # marginales (nouvelle grappe)
 mu_new <- predict(fit, newdata = new_df, type = "marginal")
-
+mu_new
 # conditionnelles pour des observations appartenant à des grappes connues
 mu_cond <- predict(fit, newdata = long, cluster = long$id,
                    type = "conditional")
-
+mu_cond
 # conditionnelles avec un a_hat imposé (p.ex. scénario)
 mu_scenario <- predict(fit, newdata = new_df, type = "conditional", a_hat = 0.3)
-
+mu_scenario
 
 ```
 

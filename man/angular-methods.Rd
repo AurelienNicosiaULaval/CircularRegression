@@ -48,12 +48,12 @@ the parameter estimates, and the number of observations.
 
 This function prints a summary of an angular regression model.
 
-This function produces a set of diagnostic plots for an object of class "angular"
-in a layout similar to that of \code{plot.lm}. The diagnostics include:
+This function produces a set of diagnostic plots for an object of class
+"angular" in a layout similar to that of \code{plot.lm}. Three panels are
+displayed:
 \enumerate{
-  \item Residuals vs Fitted values.
+  \item Residuals vs fitted values.
   \item Histogram of residuals with a normal density overlay.
   \item Normal Q-Q plot.
-  \item A text display of a goodness-of-fit measure.
 }
 }

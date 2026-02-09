@@ -76,7 +76,7 @@ dev.off()
 
 ok_svg <- FALSE
 if (file.exists("figure/hex-logo.svg")) {
-  file.remove("figure/hex-logo.svg")
+  invisible(file.remove("figure/hex-logo.svg"))
 }
 
 if (requireNamespace("svglite", quietly = TRUE)) {

@@ -5,6 +5,7 @@
 [![Version](https://img.shields.io/badge/version-0.3.0-2A9D8F)](https://github.com/AurelienNicosiaULaval/CircularRegression)
 [![License: GPL-3](https://img.shields.io/badge/license-GPL--3-0B2239.svg)](https://opensource.org/license/gpl-3-0)
 [![R >= 3.5](https://img.shields.io/badge/R-%3E%3D%203.5-276DC3.svg)](https://www.r-project.org/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18548931.svg)](https://doi.org/10.5281/zenodo.18548931)
 
 `CircularRegression` provides regression methods for circular responses (angles in radians), with an API aligned to Rivest, Duchesne, Nicosia and Fortin (2016, JRSS C). It is designed for movement ecology and other directional-data settings where standard linear models are inappropriate.
 

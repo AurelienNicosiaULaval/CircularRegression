@@ -1,14 +1,15 @@
 Package: CircularRegression
 Type: Package
 Title: Circular Regression Models
-Version: 0.2.0
-Date: 2025-10-27
+Version: 0.4.0
+Date: 2026-02-10
+Author: Aurelien Nicosia [aut, cre]
+Maintainer: Aurelien Nicosia <aurelien.nicosia@mat.ulaval.ca>
 Authors@R: c(
     person( "Aurelien", "Nicosia",
            email = "aurelien.nicosia@mat.ulaval.ca",
            role = c("aut", "cre")))
-Description: This package implements various regression models for analyzing 
-    circular data. The package provides 
+Description: Implements regression models for analyzing circular data. The package provides 
     implementations of models such as the angular regression model, the consensus 
     model, the decentered predictor model, and the Presnell model.
 License: GPL-3
@@ -25,15 +26,12 @@ Imports:
 Depends:
     R (>= 3.5)
 Suggests:
-    knitr,
-    rmarkdown,
     testthat (>= 3.0.0),
     CircStats,
     dplyr,
     purrr,
     tibble,
     tidyr
-VignetteBuilder: knitr
 URL: https://github.com/AurelienNicosiaULaval/CircularRegression
 BugReports: https://github.com/AurelienNicosiaULaval/CircularRegression/issues
 Config/testthat/edition: 3

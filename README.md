@@ -2,7 +2,7 @@
 
 # CircularRegression
 
-[![Version](https://img.shields.io/badge/version-0.3.0-2A9D8F)](https://github.com/AurelienNicosiaULaval/CircularRegression)
+[![Version](https://img.shields.io/badge/version-0.4.0-2A9D8F)](https://github.com/AurelienNicosiaULaval/CircularRegression)
 [![License: GPL-3](https://img.shields.io/badge/license-GPL--3-0B2239.svg)](https://opensource.org/license/gpl-3-0)
 [![R >= 3.5](https://img.shields.io/badge/R-%3E%3D%203.5-276DC3.svg)](https://www.r-project.org/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18548931.svg)](https://doi.org/10.5281/zenodo.18548931)
@@ -77,6 +77,13 @@ summary(fit_homogeneous)
 - `Sandhopper`: repeated-orientation escape experiment data.
 
 All modeling functions assume angular quantities are expressed in radians.
+
+## Migration Notes for 0.4.0
+
+- Special-case wrappers now return natural-parameter summaries and delta-method SEs:
+  - `natural_parameters` (`estimate`, `se_model`, `se_robust`)
+  - `natural_vcov_model`, `natural_vcov_robust`, `natural_jacobian`
+- Wrappers default to `reference = "first"` if `reference` is not provided explicitly.
 
 ## Migration Notes for 0.3.0
 

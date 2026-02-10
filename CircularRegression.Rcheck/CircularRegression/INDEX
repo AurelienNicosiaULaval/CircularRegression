@@ -1,0 +1,38 @@
+angular                 Angular Regression Model with Homogeneous von
+                        Mises Errors
+angular_lrtest          Likelihood-ratio test (T2) between two
+                        homogeneous angular models
+angular_re              Angular mixed-effects regression with von Mises
+                        random intercepts
+angular_two_step        Two-step angular regression workflow (consensus
+                        then homogeneous)
+autoregressivedata      Create autoregressive dataset
+bison                   Bison movement data
+consensus               Consensus Angular Regression Model
+decentredPredictorModel
+                        Decentered Predictor Model Wrapper (two-step
+                        workflow)
+jammalamadakaModel      Jammalamadaka-Sengupta Model Wrapper (two-step
+                        workflow)
+meanDirectionModel      Mean Direction Model Wrapper (two-step
+                        workflow)
+multiplebison           Two plains bison tracked by GPS (Prince Albert
+                        National Park, 2013)
+noshiro                 nishiro
+pick_reference_angle    Backward-compatible wrapper for reference-angle
+                        selection
+plot_ranef.angular_re   Plot random-intercept directions for an
+                        angular_re fit
+plot.angular_re         Plot method for angular_re objects
+predict.angular_re      Predict method for angular_re objects
+presnellModel           Presnell Model Wrapper (two-step workflow)
+print.angular           Methods for Angular Regression Objects
+print.consensus         Methods for Consensus Objects
+print.pick_reference_angle
+                        Print method for 'pick_reference_angle'
+ranef.angular_re        Extract estimated random intercepts from an
+                        angular mixed model
+Sandhopper              Sandhopper Escape Orientation Data
+select_reference_angle
+                        Select Reference Angle for Homogeneous Angular
+                        Model

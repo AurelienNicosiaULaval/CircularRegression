@@ -6,5 +6,5 @@
 ^\.Rhistory$
 ^\.RData$
 ^\.\.Rcheck$
-^CHANGELOG_0\.3\.0\.md$
+^CHANGELOG_.*\.md$
 ^figure$

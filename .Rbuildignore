@@ -1,3 +1,10 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.DS_Store$
+^\.git$
+^\.gitignore$
+^\.Rhistory$
+^\.RData$
+^\.\.Rcheck$
+^CHANGELOG_0\.3\.0\.md$
+^figure$

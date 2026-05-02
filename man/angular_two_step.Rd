@@ -10,7 +10,8 @@ angular_two_step(
   weights = NULL,
   reference = c("auto", "first", "name"),
   control_consensus = list(),
-  control_angular = list()
+  control_angular = list(),
+  na.action = stats::na.omit
 )
 }
 \arguments{
@@ -26,6 +27,9 @@ angular_two_step(
 \item{control_consensus}{Control list for \code{consensus()}.}
 
 \item{control_angular}{Control list for \code{angular()}.}
+
+\item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
+missing values. The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
 An object of class \code{"angular_two_step"}.

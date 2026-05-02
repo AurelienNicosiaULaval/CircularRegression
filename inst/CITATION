@@ -3,6 +3,6 @@ bibentry(
   title = "CircularRegression: Circular Regression Models",
   author = person("Aurelien", "Nicosia"),
   year = "2026",
-  note = "R package version 0.4.0",
+  note = "R package version 0.5.0",
   url = "https://github.com/AurelienNicosiaULaval/CircularRegression"
 )

@@ -4,7 +4,15 @@
 \alias{consensus}
 \title{Consensus Angular Regression Model}
 \usage{
-consensus(formula, data, weights = NULL, initkappa = NULL, control = list())
+consensus(
+  formula,
+  data,
+  weights = NULL,
+  initkappa = NULL,
+  initbeta = NULL,
+  control = list(),
+  na.action = stats::na.omit
+)
 }
 \arguments{
 \item{formula}{Model formula containing terms of the form \code{x} or
@@ -16,8 +24,14 @@ consensus(formula, data, weights = NULL, initkappa = NULL, control = list())
 
 \item{initkappa}{Optional numeric vector of initial \eqn{\kappa_j} values.}
 
+\item{initbeta}{Deprecated alias for \code{initkappa}, retained for
+backward compatibility.}
+
 \item{control}{Optional list with \code{pginit}, \code{maxiter},
 \code{mindiff}.}
+
+\item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
+missing values. The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
 An object of class \code{"consensus"}.

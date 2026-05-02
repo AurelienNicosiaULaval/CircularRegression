@@ -21,6 +21,8 @@
 #'   \code{hessian} (\code{TRUE}), and \code{start_from_angular} (\code{TRUE})
 #'   indicating whether \code{angular()} should be used to initialise the fixed
 #'   effects.
+#' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
+#'   missing values. The default is \code{\link[stats]{na.omit}}.
 #' @return object of class \code{"angular_re"}
 #' @importFrom stats model.frame optim pnorm
 #' @examples
@@ -31,7 +33,8 @@ angular_re <- function(
   data,
   cluster,
   init = list(),
-  control = list()
+  control = list(),
+  na.action = stats::na.omit
 ) {
   stopifnot(!missing(cluster))
   call <- match.call()
@@ -40,11 +43,13 @@ angular_re <- function(
   mfargs <- match(c("formula", "data"), names(call), 0L)
   call_subset <- call[c(1L, mfargs)]
   call_subset[[1L]] <- as.name("model.frame")
+  call_subset$na.action <- na.action
   mf <- eval(call_subset, parent.frame())
   y <- as.numeric(mf[[1]])
+  .validate_numeric_vector(y, names(mf)[1])
   n <- length(y)
 
-  keep_idx <- as.integer(rownames(mf))
+  keep_idx <- .model_frame_rows(mf, data)
   cluster_vec <- as.vector(cluster)
   if (length(cluster_vec) == n) {
     cluster_mf <- cluster_vec
@@ -88,6 +93,7 @@ angular_re <- function(
     )
   }
   x0 <- mf[[ref_name]]
+  .validate_numeric_vector(as.numeric(x0), ref_name)
 
   betaname <- if (length(term_labels) > 1) term_labels[-1] else character(0)
   p <- length(betaname)
@@ -95,6 +101,9 @@ angular_re <- function(
     x_names <- term_matrix[-1, 1]
     z_names <- term_matrix[-1, 2]
     matx <- as.matrix(mf[, x_names, drop = FALSE])
+    for (j in seq_len(ncol(matx))) {
+      .validate_numeric_vector(as.numeric(matx[, j]), x_names[j])
+    }
     matz <- matrix(1, nrow = n, ncol = p)
     for (j in seq_len(p)) {
       if (!identical(z_names[j], x_names[j])) {
@@ -104,7 +113,14 @@ angular_re <- function(
             call. = FALSE
           )
         }
-        matz[, j] <- mf[[z_names[j]]]
+        z <- as.numeric(mf[[z_names[j]]])
+        if (any(!is.finite(z)) || any(z < 0)) {
+          stop(
+            sprintf("Modifier '%s' must be finite and non-negative.", z_names[j]),
+            call. = FALSE
+          )
+        }
+        matz[, j] <- z
       }
     }
   } else {
@@ -181,6 +197,12 @@ angular_re <- function(
     ),
     control
   )
+  if (!is.numeric(ctrl$maxit) || length(ctrl$maxit) != 1L || !is.finite(ctrl$maxit) || ctrl$maxit < 0) {
+    stop("'control$maxit' must be a finite non-negative scalar.", call. = FALSE)
+  }
+  if (!is.numeric(ctrl$reltol) || length(ctrl$reltol) != 1L || !is.finite(ctrl$reltol) || ctrl$reltol <= 0) {
+    stop("'control$reltol' must be a finite positive scalar.", call. = FALSE)
+  }
 
   coalesce_null <- function(x, default) if (is.null(x)) default else x
 
@@ -197,7 +219,7 @@ angular_re <- function(
     }
   } else {
     beta0 <- coalesce_null(init$beta, rep(0, p))
-    if (length(beta0) != p) {
+    if (!is.numeric(beta0) || any(!is.finite(beta0)) || length(beta0) != p) {
       stop(sprintf("'init$beta' must have length %d", p), call. = FALSE)
     }
   }
@@ -224,8 +246,15 @@ angular_re <- function(
   A1_ka <- if (A1_ke < 1e-8) mean(cos(r0), na.rm = TRUE) else mean(cos(r0), na.rm = TRUE) / A1_ke
   A1_ka <- pmin(pmax(A1_ka, 0), 0.999999)
   kappa_a0 <- coalesce_null(init$kappa_a, if (A1_ka >= 0.999999) 50 else A1inv(A1_ka))
+  if (!is.null(init$kappa_e) && (!.is_scalar_number(kappa_e0) || kappa_e0 <= 0)) {
+    stop("'init$kappa_e' must be a finite positive scalar.", call. = FALSE)
+  }
+  if (!is.null(init$kappa_a) && (!.is_scalar_number(kappa_a0) || kappa_a0 <= 0)) {
+    stop("'init$kappa_a' must be a finite positive scalar.", call. = FALSE)
+  }
 
-  par0 <- c(beta0, kappa_e0, kappa_a0)
+  kappa_floor <- sqrt(.Machine$double.eps)
+  par0 <- c(beta0, max(as.numeric(kappa_e0), kappa_floor), max(as.numeric(kappa_a0), kappa_floor))
   names(par0) <- c(betaname, "kappa_e", "kappa_a")
 
   ## ---- loglik + score (by cluster) ----
@@ -314,10 +343,11 @@ angular_re <- function(
     par0,
     fn = function(p) -objective(p),
     gr = function(p) -gradient(p),
-    method = "BFGS",
+    method = "L-BFGS-B",
+    lower = c(rep(-Inf, nparam), kappa_floor, kappa_floor),
     control = list(
       maxit = ctrl$maxit,
-      reltol = ctrl$reltol,
+      factr = ctrl$reltol / .Machine$double.eps,
       trace = ctrl$trace
     ),
     hessian = isTRUE(ctrl$hessian)

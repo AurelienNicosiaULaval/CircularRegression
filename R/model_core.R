@@ -7,8 +7,98 @@
   paste0("`", gsub("`", "\\\\`", x_chr, fixed = TRUE), "`")
 }
 
-.make_model_frame <- function(formula, data) {
-  mf <- stats::model.frame(formula = formula, data = data)
+.is_scalar_number <- function(x) {
+  is.numeric(x) && length(x) == 1L && is.finite(x)
+}
+
+.check_control_scalar <- function(x, name, lower = -Inf, strict_lower = FALSE) {
+  ok <- .is_scalar_number(x)
+  if (ok && strict_lower) ok <- x > lower
+  if (ok && !strict_lower) ok <- x >= lower
+  if (!ok) {
+    op <- if (strict_lower) "greater than" else "at least"
+    stop(sprintf("'%s' must be a finite numeric scalar %s %s.", name, op, lower), call. = FALSE)
+  }
+  x
+}
+
+.check_fit_control <- function(control, defaults, prefix = "control") {
+  if (!is.list(control)) {
+    stop(sprintf("'%s' must be a list.", prefix), call. = FALSE)
+  }
+  out <- utils::modifyList(defaults, control)
+  if (!is.null(out$pginit)) {
+    out$pginit <- .check_control_scalar(out$pginit, paste0(prefix, "$pginit"), lower = 0, strict_lower = TRUE)
+  }
+  if (!is.null(out$maxiter)) {
+    out$maxiter <- as.integer(.check_control_scalar(out$maxiter, paste0(prefix, "$maxiter"), lower = 0))
+  }
+  if (!is.null(out$mindiff)) {
+    out$mindiff <- .check_control_scalar(out$mindiff, paste0(prefix, "$mindiff"), lower = 0, strict_lower = TRUE)
+  }
+  out
+}
+
+.wrap_angle <- function(x) {
+  atan2(sin(x), cos(x))
+}
+
+.A1_ratio <- function(k) {
+  k <- as.numeric(k)
+  out <- rep(NA_real_, length(k))
+  finite_k <- is.finite(k)
+
+  out[finite_k & k == 0] <- 0
+
+  direct <- finite_k & k > 0
+  if (any(direct)) {
+    idx <- which(direct)
+    num <- besselI(k[idx], 1, expon.scaled = TRUE)
+    den <- besselI(k[idx], 0, expon.scaled = TRUE)
+    ok <- is.finite(num) & is.finite(den) & den > 0
+    out[idx[ok]] <- num[ok] / den[ok]
+  }
+
+  need_approx <- finite_k & k > 0 & !is.finite(out)
+  if (any(need_approx)) {
+    kk <- k[need_approx]
+    out[need_approx] <- 1 - 1 / (2 * kk) - 1 / (8 * kk^2) - 1 / (8 * kk^3)
+  }
+
+  positive_infinite <- is.infinite(k) & k > 0
+  out[positive_infinite] <- 1
+  pmin(pmax(out, 0), 1)
+}
+
+.logI0 <- function(k) {
+  k <- as.numeric(k)
+  out <- rep(NA_real_, length(k))
+  finite_k <- is.finite(k)
+
+  out[finite_k & k == 0] <- 0
+
+  direct <- finite_k & k > 0
+  if (any(direct)) {
+    idx <- which(direct)
+    scaled <- besselI(k[idx], 0, expon.scaled = TRUE)
+    ok <- is.finite(scaled) & scaled > 0
+    out[idx[ok]] <- log(scaled[ok]) + k[idx[ok]]
+  }
+
+  need_approx <- finite_k & k > 0 & !is.finite(out)
+  if (any(need_approx)) {
+    kk <- k[need_approx]
+    correction <- 1 / (8 * kk) + 9 / (128 * kk^2) + 225 / (3072 * kk^3)
+    out[need_approx] <- kk - 0.5 * log(2 * pi * kk) + log1p(correction)
+  }
+
+  positive_infinite <- is.infinite(k) & k > 0
+  out[positive_infinite] <- Inf
+  out
+}
+
+.make_model_frame <- function(formula, data, na.action = stats::na.omit) {
+  mf <- stats::model.frame(formula = formula, data = data, na.action = na.action)
   if (nrow(mf) == 0) {
     stop("No observations available.", call. = FALSE)
   }
@@ -59,9 +149,17 @@
   )
 }
 
-.circular_design <- function(formula, data) {
-  mf <- .make_model_frame(formula = formula, data = data)
+.validate_numeric_vector <- function(x, name) {
+  if (!is.numeric(x) || any(!is.finite(x))) {
+    stop(sprintf("'%s' must be numeric and finite after NA handling.", name), call. = FALSE)
+  }
+  x
+}
+
+.circular_design <- function(formula, data, na.action = stats::na.omit) {
+  mf <- .make_model_frame(formula = formula, data = data, na.action = na.action)
   y <- as.numeric(mf[[1]])
+  .validate_numeric_vector(y, names(mf)[1])
   term_labels <- attr(attr(mf, "terms"), "term.labels")
   term_info <- .parse_term_labels(term_labels)
 
@@ -83,6 +181,7 @@
   for (j in seq_len(p)) {
     ang_name <- term_info$angle[j]
     matx[, j] <- as.numeric(mf[[ang_name]])
+    .validate_numeric_vector(matx[, j], ang_name)
 
     if (isTRUE(term_info$has_modifier[j])) {
       mod_name <- term_info$modifier[j]
@@ -204,8 +303,8 @@
   idx[1]
 }
 
-.angular_design <- function(formula, data, reference = "auto", tie_method = "first") {
-  des <- .circular_design(formula = formula, data = data)
+.angular_design <- function(formula, data, reference = "auto", tie_method = "first", na.action = stats::na.omit) {
+  des <- .circular_design(formula = formula, data = data, na.action = na.action)
 
   ref <- .resolve_reference(
     reference = reference,
@@ -237,8 +336,8 @@
   )
 }
 
-.consensus_design <- function(formula, data) {
-  .circular_design(formula = formula, data = data)
+.consensus_design <- function(formula, data, na.action = stats::na.omit) {
+  .circular_design(formula = formula, data = data, na.action = na.action)
 }
 
 .identifiability_matrix <- function(beta_full, matx_full, matz_full) {
@@ -266,12 +365,19 @@
 #' @param data Data frame used to evaluate the formula.
 #' @param tie_method Tie-break rule when multiple candidates share the same
 #'   score: \code{"first"} (default) or \code{"random"}.
+#' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
+#'   missing values. The default is \code{\link[stats]{na.omit}}.
 #' @return An object of class \code{"select_reference_angle"}.
 #' @export
-select_reference_angle <- function(formula, data, tie_method = c("first", "random")) {
+select_reference_angle <- function(
+  formula,
+  data,
+  tie_method = c("first", "random"),
+  na.action = stats::na.omit
+) {
   tie_method <- match.arg(tie_method)
   call <- match.call()
-  des <- .circular_design(formula = formula, data = data)
+  des <- .circular_design(formula = formula, data = data, na.action = na.action)
   ref <- .resolve_reference(
     reference = "auto",
     y = des$y,
@@ -305,4 +411,58 @@ print.select_reference_angle <- function(x, digits = 4, ...) {
   tab$mean_cos <- round(tab$mean_cos, digits)
   print(tab, row.names = FALSE)
   invisible(x)
+}
+
+.model_frame_rows <- function(mf, data) {
+  if (!is.data.frame(data)) {
+    return(seq_len(nrow(mf)))
+  }
+  idx <- match(rownames(mf), row.names(data))
+  if (anyNA(idx)) {
+    stop("Could not align model-frame rows with the original data.", call. = FALSE)
+  }
+  idx
+}
+
+.rhs_model_frame <- function(formula, data, na.action = stats::na.pass) {
+  rhs_terms <- stats::delete.response(stats::terms(formula))
+  stats::model.frame(rhs_terms, data = data, na.action = na.action)
+}
+
+.new_term_design <- function(term_info, formula, newdata) {
+  mf <- .rhs_model_frame(formula = formula, data = newdata)
+  n <- nrow(mf)
+  p <- nrow(term_info)
+  matx <- matrix(0, nrow = n, ncol = p)
+  matz <- matrix(1, nrow = n, ncol = p)
+  colnames(matx) <- term_info$label
+  colnames(matz) <- term_info$label
+
+  for (j in seq_len(p)) {
+    angle_name <- term_info$angle[j]
+    if (!angle_name %in% names(mf)) {
+      stop(sprintf("Angle variable '%s' not found in 'newdata'.", angle_name), call. = FALSE)
+    }
+    matx[, j] <- as.numeric(mf[[angle_name]])
+    .validate_numeric_vector(matx[, j], angle_name)
+
+    if (isTRUE(term_info$has_modifier[j])) {
+      modifier_name <- term_info$modifier[j]
+      if (!modifier_name %in% names(mf)) {
+        stop(sprintf("Modifier '%s' not found in 'newdata'.", modifier_name), call. = FALSE)
+      }
+      z <- as.numeric(mf[[modifier_name]])
+      if (any(!is.finite(z)) || any(z < 0)) {
+        stop(sprintf("Modifier '%s' must be finite and non-negative.", modifier_name), call. = FALSE)
+      }
+      matz[, j] <- z
+    }
+  }
+  list(matx = matx, matz = matz)
+}
+
+.mean_direction_from_terms <- function(coef, matx, matz) {
+  sinmu <- as.vector((matz * sin(matx)) %*% coef)
+  cosmu <- as.vector((matz * cos(matx)) %*% coef)
+  atan2(sinmu, cosmu)
 }

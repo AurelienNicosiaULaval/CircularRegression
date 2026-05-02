@@ -4,7 +4,12 @@
 \alias{select_reference_angle}
 \title{Select Reference Angle for Homogeneous Angular Model}
 \usage{
-select_reference_angle(formula, data, tie_method = c("first", "random"))
+select_reference_angle(
+  formula,
+  data,
+  tie_method = c("first", "random"),
+  na.action = stats::na.omit
+)
 }
 \arguments{
 \item{formula}{Model formula containing terms of the form \code{x} or
@@ -14,6 +19,9 @@ select_reference_angle(formula, data, tie_method = c("first", "random"))
 
 \item{tie_method}{Tie-break rule when multiple candidates share the same
 score: \code{"first"} (default) or \code{"random"}.}
+
+\item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
+missing values. The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
 An object of class \code{"select_reference_angle"}.

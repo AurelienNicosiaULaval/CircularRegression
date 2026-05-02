@@ -3,7 +3,10 @@
 \name{print.consensus}
 \alias{print.consensus}
 \alias{coef.consensus}
+\alias{vcov.consensus}
+\alias{fitted.consensus}
 \alias{residuals.consensus}
+\alias{predict.consensus}
 \alias{summary.consensus}
 \alias{print.summary.consensus}
 \alias{plot.consensus}
@@ -21,7 +24,13 @@
   ...
 )
 
+\method{vcov}{consensus}(object, robust = FALSE, ...)
+
+\method{fitted}{consensus}(object, ...)
+
 \method{residuals}{consensus}(object, ...)
+
+\method{predict}{consensus}(object, newdata = NULL, type = c("response", "components"), ...)
 
 \method{summary}{consensus}(object, ...)
 
@@ -46,6 +55,11 @@
 \code{"beta"}. The latter returns ratios relative to a selected reference.}
 
 \item{reference}{Reference selection rule for \code{type = "beta"}.}
+
+\item{robust}{Logical; for \code{vcov()}, accepted for consistency and
+currently ignored because the consensus model stores one covariance matrix.}
+
+\item{newdata}{Optional data frame for prediction.}
 
 \item{k}{Numeric penalty for AIC.}
 }

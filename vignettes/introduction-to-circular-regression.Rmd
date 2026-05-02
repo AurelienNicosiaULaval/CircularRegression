@@ -1,0 +1,122 @@
+---
+title: "Introduction to Circular Regression"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to Circular Regression}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+CircularRegression models a circular response, such as an angle or movement
+direction, using circular explanatory variables. Angles are assumed to be in
+radians. The package follows the angular regression framework of Rivest,
+Duchesne, Nicosia and Fortin (2016), where the conditional mean direction is
+obtained from the argument of a resultant vector.
+
+For a homogeneous angular model with reference direction \(x_1\), a simple
+two-term mean direction can be written as
+
+\[
+\mu_i(\beta) =
+\operatorname{atan2}\{
+\sin(x_{1i}) + \beta z_i \sin(x_{2i}),
+\cos(x_{1i}) + \beta z_i \cos(x_{2i})
+\}.
+\]
+
+The formula syntax mirrors this construction. A plain term such as `x1`
+represents an angular covariate. A term such as `x2:z2` represents an angular
+covariate `x2` weighted by a finite non-negative modifier `z2`.
+
+## Simulated example
+
+```{r}
+library(CircularRegression)
+
+wrap_angle <- function(x) atan2(sin(x), cos(x))
+
+set.seed(123)
+n <- 150
+x1 <- runif(n, -pi, pi)
+x2 <- runif(n, -pi, pi)
+z2 <- runif(n, 0.2, 1.8)
+beta <- 0.35
+
+mu <- atan2(
+  sin(x1) + beta * z2 * sin(x2),
+  cos(x1) + beta * z2 * cos(x2)
+)
+y <- wrap_angle(mu + rnorm(n, sd = 0.12))
+
+dat <- data.frame(y = y, x1 = x1, x2 = x2, z2 = z2)
+```
+
+The recommended high-level interface is `circular_regression()`. Its default
+method is `"two_step"`: it first fits the consensus model, then fits the
+homogeneous angular model using the selected reference direction.
+
+```{r}
+fit <- circular_regression(y ~ x1 + x2:z2, data = dat)
+fit
+```
+
+The usual S3 generics are available.
+
+```{r}
+coef(fit)
+head(fitted(fit))
+head(residuals(fit))
+head(predict(fit))
+```
+
+Predictions for new angular covariates are returned as angles in radians.
+
+```{r}
+new_dat <- dat[1:5, c("x1", "x2", "z2")]
+predict(fit, newdata = new_dat)
+```
+
+## Model-specific functions
+
+The original model-specific interfaces remain available. Use `angular()` when
+you want direct control of the homogeneous model and the reference direction.
+
+```{r}
+fit_hom <- angular(
+  y ~ x1 + x2:z2,
+  data = dat,
+  reference = c("name", "x1")
+)
+
+summary(fit_hom)
+```
+
+Use `consensus()` to fit the consensus formulation directly.
+
+```{r}
+fit_cons <- consensus(y ~ x1 + x2:z2, data = dat)
+summary(fit_cons)
+```
+
+## Practical notes
+
+All angles should be supplied in radians. Missing values are handled through
+the `na.action` argument passed to `model.frame()`. Modifiers in `x:z` terms
+must be finite and non-negative, because they act as vector weights in the
+mean-direction construction.
+
+Reference:
+
+Rivest, L.-P., Duchesne, T., Nicosia, A. and Fortin, D. (2016). A general
+angular regression model for the analysis of data on animal movement in
+ecology. Journal of the Royal Statistical Society: Series C (Applied
+Statistics), 65(3), 445-463.

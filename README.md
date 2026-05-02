@@ -1,123 +1,61 @@
-<img src="figure/hex-logo.png" align="right" width="180" alt="CircularRegression hex logo" />
-
 # CircularRegression
 
-[![Version](https://img.shields.io/badge/version-0.4.0-2A9D8F)](https://github.com/AurelienNicosiaULaval/CircularRegression)
-[![License: GPL-3](https://img.shields.io/badge/license-GPL--3-0B2239.svg)](https://opensource.org/license/gpl-3-0)
-[![R >= 3.5](https://img.shields.io/badge/R-%3E%3D%203.5-276DC3.svg)](https://www.r-project.org/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18548931.svg)](https://doi.org/10.5281/zenodo.18548931)
-
-`CircularRegression` provides regression methods for circular responses (angles in radians), with an API aligned to Rivest, Duchesne, Nicosia and Fortin (2016, JRSS C). It is designed for movement ecology and other directional-data settings where standard linear models are inappropriate.
-
-## Scope
-
-The package implements:
-
-- The homogeneous angular regression model via `angular()`.
-- The consensus model via `consensus()`.
-- Article-based reference-angle selection via `select_reference_angle()`.
-- The recommended two-step workflow via `angular_two_step()`:
-  consensus fit, reference selection, then homogeneous fit.
-- Specialized wrappers (`meanDirectionModel()`, `decentredPredictorModel()`, `presnellModel()`, `jammalamadakaModel()`).
-- Core S3 methods (`print`, `summary`, `coef`, `residuals`, `fitted`, `logLik`, `AIC`, `BIC`, model comparison utilities).
+CircularRegression fits regression models for circular response data, such as
+movement directions or angles measured in radians. The package implements the
+general angular regression framework of Rivest, Duchesne, Nicosia and Fortin
+(2016), including homogeneous angular regression, consensus regression, a
+two-step workflow, and selected special-case wrappers.
 
 ## Installation
-
-Development version from GitHub:
 
 ```r
 install.packages("remotes")
 remotes::install_github("AurelienNicosiaULaval/CircularRegression")
 ```
 
-## Quick Start (Recommended Workflow)
+## Main interface
 
 ```r
 library(CircularRegression)
+
 data(bison)
+d <- bison[seq_len(100), ]
 
-# Keep this run short in interactive sessions
-d <- bison[seq_len(600), ]
-
-form <- y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap
-
-fit <- angular_two_step(
-  formula = form,
-  data = d,
-  control_consensus = list(maxiter = 100),
-  control_angular = list(maxiter = 100)
+fit <- circular_regression(
+  y.dir ~ y.prec + x.meadow:z.meadow,
+  data = d
 )
 
-fit$reference
-coef(fit$consensus_fit, type = "kappa")
-coef(fit$homogeneous_fit)
+summary(fit)
+coef(fit)
+head(predict(fit))
 ```
 
-## Fit Models Separately
+The formula syntax uses angular variables as terms. A term of the form `x`
+adds a direction directly. A term of the form `x:z` adds a direction `x`
+weighted by a finite non-negative modifier `z`.
 
-```r
-library(CircularRegression)
-data(bison)
+## Model-specific interfaces
 
-d <- bison[seq_len(600), ]
-form <- y.dir ~ y.prec + y.prec2 + x.meadow + x.meadow:z.meadow + x.gap + x.gap:z.gap
+The original interfaces remain available:
 
-fit_consensus <- consensus(formula = form, data = d)
-fit_homogeneous <- angular(formula = form, data = d, reference = "auto")
+- `angular()` fits the homogeneous angular regression model.
+- `consensus()` fits the consensus angular regression model.
+- `angular_two_step()` fits the consensus model, selects a reference direction,
+  and then fits the homogeneous model.
+- `angular_re()` fits the random-intercept extension for clustered circular
+  outcomes.
 
-summary(fit_consensus)
-summary(fit_homogeneous)
-```
+The package provides S3 methods for printing, summarising, coefficients,
+fitted values, residuals, predictions, plots, information criteria, and
+log-likelihoods where appropriate.
 
-## Included Data
+## References
 
-- `bison`: bison movement directions with landscape covariates.
-- `multiplebison`: synchronized movement features for two tracked bison.
-- `noshiro`: earthquake-related directional variables.
-- `Sandhopper`: repeated-orientation escape experiment data.
+Rivest, L.-P., Duchesne, T., Nicosia, A. and Fortin, D. (2016). A general
+angular regression model for the analysis of data on animal movement in
+ecology. Journal of the Royal Statistical Society: Series C (Applied
+Statistics), 65(3), 445-463.
 
-All modeling functions assume angular quantities are expressed in radians.
-
-## Migration Notes for 0.4.0
-
-- Special-case wrappers now return natural-parameter summaries and delta-method SEs:
-  - `natural_parameters` (`estimate`, `se_model`, `se_robust`)
-  - `natural_vcov_model`, `natural_vcov_robust`, `natural_jacobian`
-- Wrappers default to `reference = "first"` if `reference` is not provided explicitly.
-
-## Migration Notes for 0.3.0
-
-- `consensus(initbeta = ...)` is replaced by `consensus(initkappa = ...)`.
-- `angular()` now uses explicit reference strategies: `"auto"`, `"first"`, or `c("name", "<angle>")`.
-- `select_reference_angle()` is the primary reference-selection helper.
-- `pick_reference_angle()` is retained as a deprecated compatibility wrapper.
-- `angular_two_step()` is the documented default analysis path.
-
-## Documentation
-
-Use package help pages directly:
-
-```r
-?angular_two_step
-?angular
-?consensus
-?select_reference_angle
-```
-
-## Citation
-
-Methodological reference:
-
-Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016). A general angular regression model for the analysis of data on animal movement in ecology. *Journal of the Royal Statistical Society: Series C (Applied Statistics)*, 65(3), 445-463.
-
-Package citation:
-
-```r
-citation("CircularRegression")
-```
-
-## Issues and Contributions
-
-- Bug reports and feature requests:
-  <https://github.com/AurelienNicosiaULaval/CircularRegression/issues>
-- Contributions are welcome through pull requests with a minimal reproducible example and tests when relevant.
+Rivest, L.-P. and Kato, S. (2019). A random-effects model for clustered
+circular data. Canadian Journal of Statistics, 47(4), 712-728.

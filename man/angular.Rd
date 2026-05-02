@@ -9,7 +9,8 @@ angular(
   data,
   reference = c("auto", "first", "name"),
   initbeta = NULL,
-  control = list()
+  control = list(),
+  na.action = stats::na.omit
 )
 }
 \arguments{
@@ -26,6 +27,9 @@ coefficients.}
 
 \item{control}{Control list with optional components \code{pginit},
 \code{maxiter}, and \code{mindiff}.}
+
+\item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
+missing values. The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
 An object of class \code{"angular"}.

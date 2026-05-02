@@ -234,6 +234,7 @@
   )
 
   list(
+    fit = pipeline$homogeneous_fit,
     consensus_fit = pipeline$consensus_fit,
     homogeneous_fit = pipeline$homogeneous_fit,
     reference = pipeline$reference,

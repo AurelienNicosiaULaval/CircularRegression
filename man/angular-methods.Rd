@@ -3,7 +3,10 @@
 \name{print.angular}
 \alias{print.angular}
 \alias{coef.angular}
+\alias{vcov.angular}
+\alias{fitted.angular}
 \alias{residuals.angular}
+\alias{predict.angular}
 \alias{summary.angular}
 \alias{print.summary.angular}
 \alias{plot.angular}
@@ -13,7 +16,13 @@
 
 \method{coef}{angular}(object, ...)
 
+\method{vcov}{angular}(object, robust = FALSE, ...)
+
+\method{fitted}{angular}(object, ...)
+
 \method{residuals}{angular}(object, ...)
+
+\method{predict}{angular}(object, newdata = NULL, type = c("response", "components"), ...)
 
 \method{summary}{angular}(object, ...)
 
@@ -27,6 +36,14 @@
 \item{...}{Additional arguments.}
 
 \item{object}{An object of class \code{"angular"}.}
+
+\item{robust}{Logical; for \code{vcov()}, return the sandwich covariance
+matrix when \code{TRUE}.}
+
+\item{newdata}{Optional data frame for prediction.}
+
+\item{type}{Prediction type. Use \code{"response"} for fitted angles in
+radians or \code{"components"} for cosine and sine components.}
 }
 \description{
 Methods for Angular Regression Objects

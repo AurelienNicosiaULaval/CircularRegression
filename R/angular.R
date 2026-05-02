@@ -17,6 +17,8 @@
 #'   coefficients.
 #' @param control Control list with optional components \code{pginit},
 #'   \code{maxiter}, and \code{mindiff}.
+#' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
+#'   missing values. The default is \code{\link[stats]{na.omit}}.
 #' @return An object of class \code{"angular"}.
 #' @export
 angular <- function(
@@ -24,10 +26,16 @@ angular <- function(
   data,
   reference = c("auto", "first", "name"),
   initbeta = NULL,
-  control = list()
+  control = list(),
+  na.action = stats::na.omit
 ) {
   call <- match.call()
-  des <- .angular_design(formula = formula, data = data, reference = reference)
+  des <- .angular_design(
+    formula = formula,
+    data = data,
+    reference = reference,
+    na.action = na.action
+  )
 
   y <- des$y
   x0 <- des$x0
@@ -37,18 +45,17 @@ angular <- function(
   p <- length(betaname)
   nobs <- des$nobs
 
-  if (!is.null(initbeta) && length(initbeta) != p) {
+  if (!is.null(initbeta) && (!is.numeric(initbeta) || any(!is.finite(initbeta)) || length(initbeta) != p)) {
     stop(sprintf("'initbeta' must have length %d for this model.", p), call. = FALSE)
   }
 
-  pginit <- control$pginit %||% 1000
-  maxiter <- control$maxiter %||% 1000
-  mindiff <- control$mindiff %||% 1e-06
-
-  if (!is.numeric(maxiter) || length(maxiter) != 1 || maxiter < 0) {
-    stop("'control$maxiter' must be a non-negative scalar.", call. = FALSE)
-  }
-  maxiter <- as.integer(maxiter)
+  ctrl <- .check_fit_control(
+    control = control,
+    defaults = list(pginit = 1000, maxiter = 1000, mindiff = 1e-06)
+  )
+  pginit <- ctrl$pginit
+  maxiter <- ctrl$maxiter
+  mindiff <- ctrl$mindiff
 
   compute_components <- function(beta) {
     sinmu <- sin(x0)
@@ -248,6 +255,7 @@ angular <- function(
     y = y,
     iter.detail = iter.detail,
     call = call,
+    formula = formula,
     nobs = nobs,
     k = p + 1L,
     reference = des$reference$ref_name,
@@ -256,7 +264,8 @@ angular <- function(
     term_labels = des$term_labels,
     ref_idx = des$ref_idx,
     full_coefficients = beta_full,
-    response_name = des$response_name
+    response_name = des$response_name,
+    na.action = attr(des$mf, "na.action")
   )
   class(out) <- "angular"
   out
@@ -270,6 +279,11 @@ angular <- function(
 #'
 #' @param object An object of class \code{"angular"}.
 #' @param x An object of class \code{"angular"}.
+#' @param newdata Optional data frame for prediction.
+#' @param type Prediction type. Use \code{"response"} for fitted angles in
+#'   radians or \code{"components"} for cosine and sine components.
+#' @param robust Logical; for \code{vcov()}, return the sandwich covariance
+#'   matrix when \code{TRUE}.
 #' @param ... Additional arguments.
 #' @rdname angular-methods
 #' @export
@@ -305,8 +319,51 @@ coef.angular <- function(object, ...) {
 
 #' @rdname angular-methods
 #' @export
+vcov.angular <- function(object, robust = FALSE, ...) {
+  if (isTRUE(robust)) object$varcov1 else object$varcov0
+}
+
+#' @rdname angular-methods
+#' @export
+fitted.angular <- function(object, ...) {
+  object$mui
+}
+
+#' @rdname angular-methods
+#' @export
 residuals.angular <- function(object, ...) {
-  atan2(sin(object$y - object$mui), cos(object$y - object$mui))
+  .wrap_angle(object$y - object$mui)
+}
+
+#' @rdname angular-methods
+#' @export
+predict.angular <- function(
+  object,
+  newdata = NULL,
+  type = c("response", "components"),
+  ...
+) {
+  type <- match.arg(type)
+
+  if (is.null(newdata)) {
+    mu <- object$mui
+  } else {
+    design <- .new_term_design(
+      term_info = object$term_info,
+      formula = object$formula,
+      newdata = newdata
+    )
+    mu <- .mean_direction_from_terms(
+      coef = object$full_coefficients,
+      matx = design$matx,
+      matz = design$matz
+    )
+  }
+
+  if (type == "components") {
+    return(cbind(cos = cos(mu), sin = sin(mu)))
+  }
+  mu
 }
 
 #' @rdname angular-methods
@@ -384,7 +441,7 @@ plot.angular <- function(x, ...) {
     ggplot2::aes(x = Residual)
   ) +
     ggplot2::geom_histogram(
-      ggplot2::aes(y = after_stat(density)),
+      ggplot2::aes(y = ggplot2::after_stat(density)),
       bins = 12,
       color = "black",
       fill = "gray"

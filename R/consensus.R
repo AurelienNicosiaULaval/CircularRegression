@@ -2,19 +2,6 @@
 # Consensus Model
 ###############################################################################
 
-.A1_ratio <- function(k) {
-  num <- besselI(k, 1, expon.scaled = TRUE)
-  den <- besselI(k, 0, expon.scaled = TRUE)
-  out <- num / den
-  out[!is.finite(out)] <- 1
-  out[k == 0] <- 0
-  out
-}
-
-.logI0 <- function(k) {
-  log(besselI(k, 0, expon.scaled = TRUE)) + k
-}
-
 #' Consensus Angular Regression Model
 #'
 #' Fits the consensus model of Rivest et al. (2016), where each formula term of
@@ -26,8 +13,12 @@
 #' @param data Data frame, list or environment containing model variables.
 #' @param weights Optional non-negative weights.
 #' @param initkappa Optional numeric vector of initial \eqn{\kappa_j} values.
+#' @param initbeta Deprecated alias for \code{initkappa}, retained for
+#'   backward compatibility.
 #' @param control Optional list with \code{pginit}, \code{maxiter},
 #'   \code{mindiff}.
+#' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
+#'   missing values. The default is \code{\link[stats]{na.omit}}.
 #' @return An object of class \code{"consensus"}.
 #' @export
 consensus <- function(
@@ -35,10 +26,12 @@ consensus <- function(
   data,
   weights = NULL,
   initkappa = NULL,
-  control = list()
+  initbeta = NULL,
+  control = list(),
+  na.action = stats::na.omit
 ) {
   call <- match.call()
-  des <- .consensus_design(formula = formula, data = data)
+  des <- .consensus_design(formula = formula, data = data, na.action = na.action)
 
   y <- des$y
   matx <- des$matx
@@ -59,7 +52,7 @@ consensus <- function(
     if (length(w_raw) == nobs) {
       weight <- w_raw
     } else if (is.data.frame(data) && length(w_raw) == nrow(data)) {
-      keep_idx <- as.integer(rownames(des$mf))
+      keep_idx <- .model_frame_rows(des$mf, data)
       weight <- w_raw[keep_idx]
     } else {
       stop("'weights' must have length equal to nrow(data) or to the model-frame size.", call. = FALSE)
@@ -73,18 +66,24 @@ consensus <- function(
     stop("'weights' cannot be all zero.", call. = FALSE)
   }
 
-  if (!is.null(initkappa) && length(initkappa) != nparam) {
+  if (!is.null(initkappa) && !is.null(initbeta)) {
+    stop("Use only one of 'initkappa' or 'initbeta'.", call. = FALSE)
+  }
+  if (is.null(initkappa) && !is.null(initbeta)) {
+    initkappa <- initbeta
+  }
+
+  if (!is.null(initkappa) && (!is.numeric(initkappa) || any(!is.finite(initkappa)) || length(initkappa) != nparam)) {
     stop(sprintf("'initkappa' must have length %d.", nparam), call. = FALSE)
   }
 
-  pginit <- control$pginit %||% 1000
-  maxiter <- control$maxiter %||% 1000
-  mindiff <- control$mindiff %||% 1e-06
-
-  if (!is.numeric(maxiter) || length(maxiter) != 1 || maxiter < 0) {
-    stop("'control$maxiter' must be a non-negative scalar.", call. = FALSE)
-  }
-  maxiter <- as.integer(maxiter)
+  ctrl <- .check_fit_control(
+    control = control,
+    defaults = list(pginit = 1000, maxiter = 1000, mindiff = 1e-06)
+  )
+  pginit <- ctrl$pginit
+  maxiter <- ctrl$maxiter
+  mindiff <- ctrl$mindiff
 
   cos_y_minus_x <- cos(matrix(y, nrow = nobs, ncol = nparam) - matx)
 
@@ -100,6 +99,9 @@ consensus <- function(
     comp <- compute_components(kappa)
     term1 <- as.vector((matz * cos_y_minus_x) %*% kappa)
     ll <- sum(weight * term1) - sum(weight * .logI0(comp$long))
+    if (!is.finite(ll)) {
+      ll <- -Inf
+    }
     list(LL = ll, long = comp$long, mui = comp$mui)
   }
 
@@ -143,6 +145,11 @@ consensus <- function(
       1,
       function(par) loglik_components(as.numeric(par))$LL
     )
+    finite_start <- is.finite(poss[, nparam + 1])
+    if (!any(finite_start)) {
+      stop("Unable to find a finite initial log-likelihood for the consensus model.", call. = FALSE)
+    }
+    poss[!finite_start, nparam + 1] <- -Inf
     kappak <- as.numeric(poss[which.max(poss[, nparam + 1]), seq_len(nparam), drop = TRUE])
   } else {
     kappak <- as.numeric(initkappa)
@@ -152,6 +159,14 @@ consensus <- function(
   maxLLk <- calc$LL
   long <- calc$long
   mui <- calc$mui
+
+  if (!is.finite(maxLLk)) {
+    stop("Initial values produce a non-finite consensus log-likelihood.", call. = FALSE)
+  }
+
+  is_worse_loglik <- function(new, old) {
+    !is.finite(new) || new < old
+  }
 
   iter <- 0L
   conv <- FALSE
@@ -171,7 +186,7 @@ consensus <- function(
       mui1 <- calc1$mui
 
       iter.sh <- 0L
-      while (maxLLk1 < maxLLk && iter.sh < maxiter) {
+      while (is_worse_loglik(maxLLk1, maxLLk) && iter.sh < maxiter) {
         iter.sh <- iter.sh + 1L
         kappak1 <- kappak + dparam / (2^iter.sh)
         calc1 <- loglik_components(kappak1)
@@ -180,7 +195,7 @@ consensus <- function(
         mui1 <- calc1$mui
       }
 
-      if (maxLLk1 < maxLLk) {
+      if (is_worse_loglik(maxLLk1, maxLLk)) {
         warning(
           "The algorithm did not converge; step-halving failed to improve the log-likelihood.",
           call. = FALSE
@@ -188,7 +203,7 @@ consensus <- function(
         break
       }
 
-      conv <- (maxLLk1 - maxLLk) <= mindiff
+      conv <- is.finite(maxLLk1) && (maxLLk1 - maxLLk) <= mindiff
       kappak <- kappak1
       maxLLk <- maxLLk1
       long <- long1
@@ -265,6 +280,7 @@ consensus <- function(
     weights = weight,
     iter.detail = iter.detail,
     call = call,
+    formula = formula,
     nobs = nobs,
     k = k,
     logLik = logLik,
@@ -273,7 +289,8 @@ consensus <- function(
     angle_data = des$angle_data,
     plain_angles = plain_angles,
     reference_scores = reference_scores,
-    autocorr = stats::acf(residuals.consensus(list(y = y, mui = mui)), plot = FALSE)
+    autocorr = stats::acf(residuals.consensus(list(y = y, mui = mui)), plot = FALSE),
+    na.action = attr(des$mf, "na.action")
   )
   class(out) <- "consensus"
   out
@@ -290,6 +307,9 @@ consensus <- function(
 #' @param type For \code{coef.consensus()}, either \code{"kappa"} or
 #'   \code{"beta"}. The latter returns ratios relative to a selected reference.
 #' @param reference Reference selection rule for \code{type = "beta"}.
+#' @param newdata Optional data frame for prediction.
+#' @param robust Logical; for \code{vcov()}, accepted for consistency and
+#'   currently ignored because the consensus model stores one covariance matrix.
 #' @param ... Additional arguments.
 #' @rdname consensus-methods
 #' @export
@@ -346,8 +366,51 @@ coef.consensus <- function(
 
 #' @rdname consensus-methods
 #' @export
+vcov.consensus <- function(object, robust = FALSE, ...) {
+  object$varcov_kappa
+}
+
+#' @rdname consensus-methods
+#' @export
+fitted.consensus <- function(object, ...) {
+  object$mui
+}
+
+#' @rdname consensus-methods
+#' @export
 residuals.consensus <- function(object, ...) {
-  atan2(sin(object$y - object$mui), cos(object$y - object$mui))
+  .wrap_angle(object$y - object$mui)
+}
+
+#' @rdname consensus-methods
+#' @export
+predict.consensus <- function(
+  object,
+  newdata = NULL,
+  type = c("response", "components"),
+  ...
+) {
+  type <- match.arg(type)
+
+  if (is.null(newdata)) {
+    mu <- object$mui
+  } else {
+    design <- .new_term_design(
+      term_info = object$term_info,
+      formula = object$formula,
+      newdata = newdata
+    )
+    mu <- .mean_direction_from_terms(
+      coef = as.numeric(object$kappa),
+      matx = design$matx,
+      matz = design$matz
+    )
+  }
+
+  if (type == "components") {
+    return(cbind(cos = cos(mu), sin = sin(mu)))
+  }
+  mu
 }
 
 #' @rdname consensus-methods
@@ -420,7 +483,7 @@ plot.consensus <- function(x, ...) {
     ggplot2::aes(x = Residual)
   ) +
     ggplot2::geom_histogram(
-      ggplot2::aes(y = after_stat(density)),
+      ggplot2::aes(y = ggplot2::after_stat(density)),
       bins = 12,
       color = "black",
       fill = "gray"

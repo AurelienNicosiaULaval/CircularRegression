@@ -2,67 +2,42 @@
 % Please edit documentation in R/consensus.R
 \name{consensus}
 \alias{consensus}
-\title{Consensus Model}
+\title{Consensus Angular Regression Model}
 \usage{
-consensus(formula, data, weights = NULL, initbeta = NULL, control = list())
+consensus(
+  formula,
+  data,
+  weights = NULL,
+  initkappa = NULL,
+  initbeta = NULL,
+  control = list(),
+  na.action = stats::na.omit
+)
 }
 \arguments{
-\item{formula}{A formula with the dependent angle on the left of the
-\code{~} operator and terms specifying the explanatory variables on the
-right. The first term provides the reference direction.}
+\item{formula}{Model formula containing terms of the form \code{x} or
+\code{x:z}.}
 
-\item{data}{An optional data frame, list or environment containing the
-variables in the model formula.}
+\item{data}{Data frame, list or environment containing model variables.}
 
-\item{weights}{Optional non-negative observation weights. If supplied, they
-must have the same length as the response.}
+\item{weights}{Optional non-negative weights.}
 
-\item{initbeta}{A numeric vector of initial parameter values. When
-\code{NULL} (default) a quasi-uniform grid search is used to obtain starting
-values. The required length equals the number of \code{x:z} terms plus one.}
+\item{initkappa}{Optional numeric vector of initial \eqn{\kappa_j} values.}
 
-\item{control}{A list of control parameters. The following components can be
-supplied:
-\describe{
-  \item{\code{pginit}}{Approximate number of grid points used to obtain
-    starting values when \code{initbeta} is not provided (default 1000).}
-  \item{\code{maxiter}}{Maximum number of Gauss--Newton iterations
-    (default 1000).}
-  \item{\code{mindiff}}{Convergence tolerance on the increase of the log
-    likelihood (default 1e-6).}
-}}
+\item{initbeta}{Deprecated alias for \code{initkappa}, retained for
+backward compatibility.}
+
+\item{control}{Optional list with \code{pginit}, \code{maxiter},
+\code{mindiff}.}
+
+\item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
+missing values. The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
-An object of class "consensus" containing:
-\describe{
-  \item{MaxLL}{the maximum value of the log likelihood.}
-  \item{AIC}{the Akaike Information Criterion.}
-  \item{BIC}{the Bayesian Information Criterion.}
-  \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
-  \item{varcov1}{the estimated variance covariance matrix.}
-  \item{parambeta}{the beta parameter estimates and their standard errors (obtained by linearization).}
-  \item{varcovbeta1}{the estimated variance covariance matrix for the beta estimates (by linearization).}
-  \item{autocorr}{the autocorrelation of the residuals \eqn{\sin(y_i - \mu_i)}.}
-  \item{iter.detail}{the iteration details.}
-  \item{call}{the function call.}
-}
+An object of class \code{"consensus"}.
 }
 \description{
-Fit the simplified consensus regression model for angular data as described
-by Rivest et al. (2016). The first term in the formula supplies the reference
-direction with coefficient fixed to one. Subsequent terms must be written
-\code{x:z} where \code{x} is an angular covariate and \code{z} is an optional
-non-negative scaling variable (a value of one is assumed when \code{z} is
-omitted or identical to \code{x}).
-}
-\examples{
-\dontrun{
-  data(bison)
-  fit <- consensus(y.dir ~ y.prec + y.prec2, data = bison)
-  print(fit)
-  summary(fit)
-}
-}
-\author{
-Sophie Baillargeon, Louis-Paul Rivest, and Aurelien Nicosia
+Fits the consensus model of Rivest et al. (2016), where each formula term of
+the form \code{x} or \code{x:z} receives a \eqn{\kappa_j} coefficient in the
+log-likelihood parameterization.
 }

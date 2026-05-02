@@ -1,0 +1,100 @@
+---
+title: "Applied Example with Bison Movement Data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Applied Example with Bison Movement Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+This vignette illustrates a compact workflow using the `bison` data included in
+CircularRegression. The response `y.dir` is the movement direction at the
+current time. The covariate `y.prec` is the previous movement direction, and
+`x.meadow:z.meadow` represents the direction toward the nearest meadow weighted
+by the associated non-negative distance variable.
+
+```{r}
+library(CircularRegression)
+
+data(bison)
+
+d <- bison[seq_len(200), c("y.dir", "y.prec", "x.meadow", "z.meadow")]
+d <- na.omit(d)
+str(d)
+```
+
+## Fit the default two-step model
+
+```{r}
+fit <- circular_regression(
+  y.dir ~ y.prec + x.meadow:z.meadow,
+  data = d
+)
+
+fit
+```
+
+The default fit uses the consensus model to select a reference direction and
+initialize the homogeneous angular fit.
+
+```{r}
+summary(fit)
+coef(fit)
+```
+
+## Predictions and residuals
+
+Predicted values are angles in radians. Residuals are wrapped circular
+differences between the observed and fitted directions.
+
+```{r}
+pred <- predict(fit)
+res <- residuals(fit)
+
+head(data.frame(observed = d$y.dir, fitted = pred, residual = res))
+summary(res)
+```
+
+A simple base-R diagnostic plot can be useful before calling the package plot
+method.
+
+```{r}
+plot(
+  pred,
+  res,
+  xlab = "Fitted direction",
+  ylab = "Circular residual",
+  pch = 19,
+  col = "gray30"
+)
+abline(h = 0, lty = 2)
+```
+
+## Direct consensus fit
+
+The consensus model can be fitted directly when the interest is in the
+consensus coefficients.
+
+```{r}
+fit_cons <- consensus(
+  y.dir ~ y.prec + x.meadow:z.meadow,
+  data = d
+)
+
+coef(fit_cons)
+head(predict(fit_cons))
+```
+
+This applied example is intentionally small so that it can be built quickly
+as part of package checks. Larger analyses should keep the same structure:
+inspect the angular variables, fit the model, examine circular residuals, and
+verify that conclusions are stable under reasonable changes to the formula.

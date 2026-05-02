@@ -2,17 +2,15 @@
 % Please edit documentation in R/pick_reference_angle.r
 \name{print.pick_reference_angle}
 \alias{print.pick_reference_angle}
-\title{Print method for pick_reference_angle objects}
+\title{Print method for \code{pick_reference_angle}}
 \usage{
-\method{print}{pick_reference_angle}(x, digits = 4, ...)
+\method{print}{pick_reference_angle}(x, ...)
 }
 \arguments{
-\item{x}{A list returned by pick_reference_angle()}
+\item{x}{Object returned by \code{pick_reference_angle()}.}
 
-\item{digits}{Number of digits to print (default 4)}
-
-\item{...}{Unused}
+\item{...}{Unused.}
 }
 \description{
-Print method for pick_reference_angle objects
+Print method for \code{pick_reference_angle}
 }

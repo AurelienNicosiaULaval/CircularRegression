@@ -2,140 +2,63 @@
 # Consensus Model
 ###############################################################################
 
-#' Consensus Model
+#' Consensus Angular Regression Model
 #'
-#' Fit the simplified consensus regression model for angular data as described
-#' by Rivest et al. (2016). The first term in the formula supplies the reference
-#' direction with coefficient fixed to one. Subsequent terms must be written
-#' \code{x:z} where \code{x} is an angular covariate and \code{z} is an optional
-#' non-negative scaling variable (a value of one is assumed when \code{z} is
-#' omitted or identical to \code{x}).
+#' Fits the consensus model of Rivest et al. (2016), where each formula term of
+#' the form \code{x} or \code{x:z} receives a \eqn{\kappa_j} coefficient in the
+#' log-likelihood parameterization.
 #'
-#' @param formula A formula with the dependent angle on the left of the
-#'   \code{~} operator and terms specifying the explanatory variables on the
-#'   right. The first term provides the reference direction.
-#' @param data An optional data frame, list or environment containing the
-#'   variables in the model formula.
-#' @param weights Optional non-negative observation weights. If supplied, they
-#'   must have the same length as the response.
-#' @param initbeta A numeric vector of initial parameter values. When
-#'   \code{NULL} (default) a quasi-uniform grid search is used to obtain starting
-#'   values. The required length equals the number of \code{x:z} terms plus one.
-#' @param control A list of control parameters. The following components can be
-#'   supplied:
-#'   \describe{
-#'     \item{\code{pginit}}{Approximate number of grid points used to obtain
-#'       starting values when \code{initbeta} is not provided (default 1000).}
-#'     \item{\code{maxiter}}{Maximum number of Gauss--Newton iterations
-#'       (default 1000).}
-#'     \item{\code{mindiff}}{Convergence tolerance on the increase of the log
-#'       likelihood (default 1e-6).}
-#'   }
-#' @return An object of class "consensus" containing:
-#' \describe{
-#'   \item{MaxLL}{the maximum value of the log likelihood.}
-#'   \item{AIC}{the Akaike Information Criterion.}
-#'   \item{BIC}{the Bayesian Information Criterion.}
-#'   \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
-#'   \item{varcov1}{the estimated variance covariance matrix.}
-#'   \item{parambeta}{the beta parameter estimates and their standard errors (obtained by linearization).}
-#'   \item{varcovbeta1}{the estimated variance covariance matrix for the beta estimates (by linearization).}
-#'   \item{autocorr}{the autocorrelation of the residuals \eqn{\sin(y_i - \mu_i)}.}
-#'   \item{iter.detail}{the iteration details.}
-#'   \item{call}{the function call.}
-#' }
-#'
-#' @author Sophie Baillargeon, Louis-Paul Rivest, and Aurelien Nicosia
-#' @examples
-#' \dontrun{
-#'   data(bison)
-#'   fit <- consensus(y.dir ~ y.prec + y.prec2, data = bison)
-#'   print(fit)
-#'   summary(fit)
-#' }
+#' @param formula Model formula containing terms of the form \code{x} or
+#'   \code{x:z}.
+#' @param data Data frame, list or environment containing model variables.
+#' @param weights Optional non-negative weights.
+#' @param initkappa Optional numeric vector of initial \eqn{\kappa_j} values.
+#' @param initbeta Deprecated alias for \code{initkappa}, retained for
+#'   backward compatibility.
+#' @param control Optional list with \code{pginit}, \code{maxiter},
+#'   \code{mindiff}.
+#' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
+#'   missing values. The default is \code{\link[stats]{na.omit}}.
+#' @return An object of class \code{"consensus"}.
 #' @export
 consensus <- function(
   formula,
   data,
   weights = NULL,
+  initkappa = NULL,
   initbeta = NULL,
-  control = list()
+  control = list(),
+  na.action = stats::na.omit
 ) {
-  call <- mfcall <- match.call()
+  call <- match.call()
+  des <- .consensus_design(formula = formula, data = data, na.action = na.action)
 
-  mfargs <- match(c("formula", "data"), names(mfcall), 0L)
-  mfcall <- mfcall[c(1L, mfargs)]
-  mfcall[[1L]] <- quote(model.frame)
-  mf <- eval(mfcall, parent.frame())
-  nobs <- nrow(mf)
-  if (nobs == 0) stop("No observations available.")
+  y <- des$y
+  matx <- des$matx
+  matz <- des$matz
+  paramname <- des$term_labels
+  term_info <- des$term_info
+  nobs <- des$nobs
+  nparam <- length(paramname)
 
-  y <- as.numeric(mf[[1]])
-  term_labels <- attr(attr(mf, "terms"), "term.labels")
-  if (length(term_labels) == 0) {
-    stop(
-      "The model must include at least one term specifying the reference direction."
-    )
+  if (nparam == 0) {
+    stop("The model must include at least one explanatory term.", call. = FALSE)
   }
 
-  split_terms <- strsplit(term_labels, ":", fixed = TRUE)
-  term_matrix <- t(vapply(
-    split_terms,
-    function(x) {
-      if (length(x) == 1) {
-        c(x, x)
-      } else if (length(x) == 2) {
-        x
-      } else {
-        stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
-      }
-    },
-    character(2)
-  ))
-
-  ref_name <- term_matrix[1, 1]
-  if (!ref_name %in% names(mf)) {
-    stop(
-      sprintf(
-        "Reference direction '%s' not found in the supplied data.",
-        ref_name
-      ),
-      call. = FALSE
-    )
-  }
-  x0 <- mf[[ref_name]]
-
-  paramname <- term_labels
-  betaname <- if (length(term_labels) > 1) term_labels[-1] else character(0)
-  p <- length(betaname)
-  if (p > 0) {
-    x_names <- term_matrix[-1, 1]
-    z_names <- term_matrix[-1, 2]
-    matx <- as.matrix(mf[, x_names, drop = FALSE])
-    matz <- matrix(1, nrow = nobs, ncol = p)
-    for (j in seq_len(p)) {
-      if (!identical(z_names[j], x_names[j])) {
-        if (!z_names[j] %in% names(mf)) {
-          stop(
-            sprintf(
-              "Modifier '%s' not found in the supplied data.",
-              z_names[j]
-            ),
-            call. = FALSE
-          )
-        }
-        matz[, j] <- mf[[z_names[j]]]
-      }
-    }
+  if (is.null(weights)) {
+    weight <- rep(1, nobs)
   } else {
-    matx <- matrix(0, nrow = nobs, ncol = 0)
-    matz <- matrix(0, nrow = nobs, ncol = 0)
+    w_raw <- as.numeric(weights)
+    if (length(w_raw) == nobs) {
+      weight <- w_raw
+    } else if (is.data.frame(data) && length(w_raw) == nrow(data)) {
+      keep_idx <- .model_frame_rows(des$mf, data)
+      weight <- w_raw[keep_idx]
+    } else {
+      stop("'weights' must have length equal to nrow(data) or to the model-frame size.", call. = FALSE)
+    }
   }
 
-  weight <- if (is.null(weights)) rep(1, nobs) else as.numeric(weights)
-  if (length(weight) != nobs) {
-    stop("'weights' must have the same length as the response.", call. = FALSE)
-  }
   if (any(!is.finite(weight)) || any(weight < 0)) {
     stop("'weights' must be finite and non-negative.", call. = FALSE)
   }
@@ -143,158 +66,170 @@ consensus <- function(
     stop("'weights' cannot be all zero.", call. = FALSE)
   }
 
-  pginit <- if (is.null(control$pginit)) 1000 else control$pginit
-  maxiter <- if (is.null(control$maxiter)) 1000 else control$maxiter
-  mindiff <- if (is.null(control$mindiff)) 1e-06 else control$mindiff
+  if (!is.null(initkappa) && !is.null(initbeta)) {
+    stop("Use only one of 'initkappa' or 'initbeta'.", call. = FALSE)
+  }
+  if (is.null(initkappa) && !is.null(initbeta)) {
+    initkappa <- initbeta
+  }
 
-  compute_components <- function(param) {
-    kappa0 <- param[1]
-    sinmu <- kappa0 * sin(x0)
-    cosmu <- kappa0 * cos(x0)
-    if (p > 0) {
-      beta <- param[2:(p + 1)]
-      sinmu <- sinmu + as.vector((matz * sin(matx)) %*% beta)
-      cosmu <- cosmu + as.vector((matz * cos(matx)) %*% beta)
-    }
+  if (!is.null(initkappa) && (!is.numeric(initkappa) || any(!is.finite(initkappa)) || length(initkappa) != nparam)) {
+    stop(sprintf("'initkappa' must have length %d.", nparam), call. = FALSE)
+  }
+
+  ctrl <- .check_fit_control(
+    control = control,
+    defaults = list(pginit = 1000, maxiter = 1000, mindiff = 1e-06)
+  )
+  pginit <- ctrl$pginit
+  maxiter <- ctrl$maxiter
+  mindiff <- ctrl$mindiff
+
+  cos_y_minus_x <- cos(matrix(y, nrow = nobs, ncol = nparam) - matx)
+
+  compute_components <- function(kappa) {
+    sinmu <- as.vector((matz * sin(matx)) %*% kappa)
+    cosmu <- as.vector((matz * cos(matx)) %*% kappa)
     long <- sqrt(sinmu^2 + cosmu^2)
     mui <- atan2(sinmu, cosmu)
     list(long = long, mui = mui)
   }
 
-  loglik_components <- function(param) {
-    comp <- compute_components(param)
-    long <- comp$long
-    mui <- comp$mui
-    term1 <- param[1] * cos(y - x0)
-    if (p > 0) {
-      term1 <- term1 + as.vector((matz * cos(y - matx)) %*% param[2:(p + 1)])
+  loglik_components <- function(kappa) {
+    comp <- compute_components(kappa)
+    term1 <- as.vector((matz * cos_y_minus_x) %*% kappa)
+    ll <- sum(weight * term1) - sum(weight * .logI0(comp$long))
+    if (!is.finite(ll)) {
+      ll <- -Inf
     }
-    LL <- sum(weight * term1) -
-      sum(weight * log(besselI(long, 0, expon.scaled = FALSE)))
-    list(LL = LL, long = long, mui = mui)
+    list(LL = ll, long = comp$long, mui = comp$mui)
   }
 
-  betaUpdate <- function(paramk, long, mui) {
-    matx0 <- if (p > 0) cbind(x0, matx) else matrix(x0, ncol = 1)
-    matz0 <- if (p > 0) cbind(rep(1, nobs), matz) else
-      matrix(1, ncol = 1, nrow = nobs)
-    ratio_num <- besselI(long, 1, expon.scaled = FALSE)
-    ratio_den <- besselI(long, 0, expon.scaled = FALSE)
-    Along <- ratio_num / ratio_den
-    Along[!is.finite(Along)] <- 0
-    Along_over_long <- ifelse(long > 0, Along / long, 0)
-    matu <- matz0 * (cos(y - matx0) - cos(matx0 - mui) * Along)
-    vecs <- colSums(weight * matu)
-    Xc <- matz0 * cos(matx0 - mui)
-    Xs <- matz0 * sin(matx0 - mui)
-    Dc_vec <- 1 - Along_over_long - Along^2
-    Ds_vec <- Along_over_long
-    sqrt_Dc <- sqrt(pmax(weight * Dc_vec, 0))
-    sqrt_Ds <- sqrt(pmax(weight * Ds_vec, 0))
-    matI <- crossprod(Xc * sqrt_Dc, Xc) + crossprod(Xs * sqrt_Ds, Xs)
-    matI <- (matI + t(matI)) / 2
-    qrI <- qr(matI)
-    if (qrI$rank < ncol(matI)) {
+  fisher_step <- function(kappa, long, mui) {
+    A <- .A1_ratio(long)
+    A_over_long <- ifelse(long > .Machine$double.eps, A / long, 0)
+
+    S <- matz * sin(matx - mui)
+    C <- matz * cos(matx - mui)
+
+    matu <- matz * (cos_y_minus_x - C * A)
+    score <- colSums(weight * matu)
+
+    w1 <- pmax(weight * A_over_long, 0)
+    w2 <- pmax(weight * (1 - A_over_long - A^2), 0)
+
+    I1 <- crossprod(S * sqrt(w1), S * sqrt(w1))
+    I2 <- crossprod(C * sqrt(w2), C * sqrt(w2))
+    I <- (I1 + I2)
+    I <- (I + t(I)) / 2
+
+    qrI <- qr(I)
+    if (qrI$rank < ncol(I)) {
       stop(
-        "Information matrix is singular; cannot update parameters.",
+        "Consensus information matrix is singular; parameters are not identifiable.",
         call. = FALSE
       )
     }
-    dparam <- as.vector(qr.coef(qrI, vecs))
-    list(paramk1 = paramk + dparam, dparam = dparam, matu = matu, matI = matI)
+
+    dparam <- as.vector(qr.coef(qrI, score))
+    list(kappa1 = kappa + dparam, dparam = dparam, I = I)
   }
 
-  nparam <- p + 1
-  if (is.null(initbeta)) {
+  if (is.null(initkappa)) {
     pg <- max(1L, round(pginit^(1 / nparam)))
-    grid_vals <- rep(
-      list(seq(-1, 1, length.out = pg + 2)[-c(1, pg + 2)]),
-      nparam
-    )
-    possVal <- cbind(expand.grid(grid_vals), NA_real_)
-    colnames(possVal) <- c(paramname, "LL")
-    possVal[, nparam + 1] <- apply(
-      possVal[, seq_len(nparam), drop = FALSE],
+    grid_vals <- rep(list(seq(-1, 1, length.out = pg + 2)[-c(1, pg + 2)]), nparam)
+    poss <- cbind(expand.grid(grid_vals), NA_real_)
+    colnames(poss) <- c(paramname, "LL")
+    poss[, nparam + 1] <- apply(
+      poss[, seq_len(nparam), drop = FALSE],
       1,
-      function(par) {
-        loglik_components(as.numeric(par))$LL
-      }
+      function(par) loglik_components(as.numeric(par))$LL
     )
-    paramk <- as.numeric(possVal[
-      which.max(possVal[, nparam + 1]),
-      seq_len(nparam),
-      drop = TRUE
-    ])
-  } else {
-    if (length(initbeta) != nparam) {
-      stop(
-        sprintf("'initbeta' must have length %d for this model.", nparam),
-        call. = FALSE
-      )
+    finite_start <- is.finite(poss[, nparam + 1])
+    if (!any(finite_start)) {
+      stop("Unable to find a finite initial log-likelihood for the consensus model.", call. = FALSE)
     }
-    paramk <- initbeta
+    poss[!finite_start, nparam + 1] <- -Inf
+    kappak <- as.numeric(poss[which.max(poss[, nparam + 1]), seq_len(nparam), drop = TRUE])
+  } else {
+    kappak <- as.numeric(initkappa)
   }
 
-  calcul <- loglik_components(paramk)
-  maxLLk <- calcul$LL
-  long <- calcul$long
-  mui <- calcul$mui
-  iter <- iter.sh <- 0
+  calc <- loglik_components(kappak)
+  maxLLk <- calc$LL
+  long <- calc$long
+  mui <- calc$mui
+
+  if (!is.finite(maxLLk)) {
+    stop("Initial values produce a non-finite consensus log-likelihood.", call. = FALSE)
+  }
+
+  is_worse_loglik <- function(new, old) {
+    !is.finite(new) || new < old
+  }
+
+  iter <- 0L
   conv <- FALSE
-  iter.detail <- matrix(NA_real_, nrow = maxiter + 1, ncol = nparam + 3)
+  iter.detail <- matrix(NA_real_, nrow = maxiter + 1L, ncol = nparam + 3L)
   colnames(iter.detail) <- c(paramname, "LL", "iter", "nitersh")
-  iter.detail[1, ] <- c(paramk, maxLLk, iter, iter.sh)
-  maxLLk1 <- maxLLk
+  iter.detail[1L, ] <- c(kappak, maxLLk, iter, 0)
 
-  while (!conv && iter <= maxiter) {
-    maj <- betaUpdate(paramk = paramk, long = long, mui = mui)
-    paramk1 <- maj$paramk1
-    dparam <- maj$dparam
-    calcul <- loglik_components(paramk1)
-    maxLLk1 <- calcul$LL
-    long <- calcul$long
-    mui <- calcul$mui
-    iter.sh <- 0
-    while (maxLLk1 < maxLLk) {
-      iter.sh <- iter.sh + 1
-      paramk1 <- paramk + dparam / (2^iter.sh)
-      calcul <- loglik_components(paramk1)
-      maxLLk1 <- calcul$LL
-      long <- calcul$long
-      mui <- calcul$mui
-      if (iter.sh >= maxiter) break
-    }
-    if (maxLLk1 < maxLLk) {
-      warning(
-        "The algorithm did not converge; it failed to maximise the log-likelihood."
-      )
-      conv <- FALSE
-      break
-    } else {
-      conv <- (maxLLk1 - maxLLk) <= mindiff
-      paramk <- paramk1
+  if (maxiter > 0) {
+    while (!conv && iter < maxiter) {
+      step <- fisher_step(kappak, long = long, mui = mui)
+      kappak1 <- step$kappa1
+      dparam <- step$dparam
+
+      calc1 <- loglik_components(kappak1)
+      maxLLk1 <- calc1$LL
+      long1 <- calc1$long
+      mui1 <- calc1$mui
+
+      iter.sh <- 0L
+      while (is_worse_loglik(maxLLk1, maxLLk) && iter.sh < maxiter) {
+        iter.sh <- iter.sh + 1L
+        kappak1 <- kappak + dparam / (2^iter.sh)
+        calc1 <- loglik_components(kappak1)
+        maxLLk1 <- calc1$LL
+        long1 <- calc1$long
+        mui1 <- calc1$mui
+      }
+
+      if (is_worse_loglik(maxLLk1, maxLLk)) {
+        warning(
+          "The algorithm did not converge; step-halving failed to improve the log-likelihood.",
+          call. = FALSE
+        )
+        break
+      }
+
+      conv <- is.finite(maxLLk1) && (maxLLk1 - maxLLk) <= mindiff
+      kappak <- kappak1
       maxLLk <- maxLLk1
-      iter <- iter + 1
-      iter.detail[iter + 1, ] <- c(paramk, maxLLk, iter, iter.sh)
+      long <- long1
+      mui <- mui1
+
+      iter <- iter + 1L
+      iter.detail[iter + 1L, ] <- c(kappak, maxLLk, iter, iter.sh)
+    }
+
+    if (!conv && iter >= maxiter) {
+      warning("Maximum number of iterations reached before convergence.", call. = FALSE)
     }
   }
-  if (iter > maxiter + 1) {
-    warning(
-      "The algorithm did not converge: maximum number of iterations reached."
-    )
-  } else {
-    iter.detail <- iter.detail[seq_len(iter + 1), , drop = FALSE]
-  }
 
-  maj <- betaUpdate(paramk = paramk, long = long, mui = mui)
-  matI <- maj$matI
+  iter.detail <- iter.detail[seq_len(iter + 1L), , drop = FALSE]
+
+  final_step <- fisher_step(kappak, long = long, mui = mui)
+  matI <- final_step$I
 
   invert_information <- function(M) {
     M_sym <- (M + t(M)) / 2
     chol_res <- tryCatch(chol(M_sym), error = function(e) NULL)
     if (is.null(chol_res)) {
       warning(
-        "Information matrix is not positive definite; returning NA variances."
+        "Information matrix is not positive definite; returning NA variances.",
+        call. = FALSE
       )
       matrix(NA_real_, nrow = nrow(M_sym), ncol = ncol(M_sym))
     } else {
@@ -302,71 +237,41 @@ consensus <- function(
     }
   }
 
-  v1 <- invert_information(matI)
-
-  if (p > 0) {
-    paramb <- paramk[2:(p + 1)] / paramk[1]
-    matDeriv <- rbind(
-      -paramk[2:(p + 1)] / paramk[1]^2,
-      diag(1 / paramk[1], nrow = p, ncol = p)
-    )
-    vb <- t(matDeriv) %*% v1[1:(p + 1), 1:(p + 1), drop = FALSE] %*% matDeriv
-    names(paramb) <- colnames(vb) <- rownames(vb) <- betaname
-  } else {
-    paramb <- numeric(0)
-    vb <- matrix(numeric(0), nrow = 0, ncol = 0)
-  }
-
-  se_param <- sqrt(diag(v1))
-  zvalue <- paramk / se_param
+  v_kappa <- invert_information(matI)
+  se_kappa <- sqrt(diag(v_kappa))
+  zvalue <- kappak / se_kappa
   pvals <- 2 * stats::pnorm(abs(zvalue), lower.tail = FALSE)
+
   parameters <- cbind(
-    estimate = paramk,
-    `Std. Error` = se_param,
+    estimate = kappak,
+    `Std. Error` = se_kappa,
     `z value` = zvalue,
     `P(|z|>.)` = pvals
   )
   rownames(parameters) <- paramname
 
-  if (p > 0) {
-    se_beta <- sqrt(diag(vb))
-    zbeta <- paramb / se_beta
-    pbeta <- 2 * stats::pnorm(abs(zbeta), lower.tail = FALSE)
-    parambeta <- cbind(
-      estimate = paramb,
-      `Std. Error` = se_beta,
-      `z value` = zbeta,
-      `P(|z|>.)` = pbeta
-    )
-  } else {
-    parambeta <- matrix(
-      numeric(0),
-      nrow = 0,
-      ncol = 4,
-      dimnames = list(NULL, c("estimate", "Std. Error", "z value", "P(|z|>.)"))
-    )
-  }
-
-  residual_obj <- list(y = y, mui = mui, long = long)
-  autocorr <- stats::acf(
-    residuals.consensus(object = residual_obj),
-    plot = FALSE
-  )
-
   k <- nparam
-  logLik <- maxLLk
+  logLik <- as.numeric(maxLLk)
   AIC <- -2 * logLik + 2 * k
-  BIC <- -2 * logLik + log(sum(weight)) * k
+  BIC <- -2 * logLik + log(nobs) * k
+
+  plain_angles <- des$plain_angles
+  reference_scores <- if (length(plain_angles) > 0) {
+    .reference_scores(y = y, angle_data = des$angle_data, candidates = plain_angles)
+  } else {
+    numeric(0)
+  }
 
   out <- list(
     MaxLL = maxLLk,
     AIC = AIC,
     BIC = BIC,
     parameters = parameters,
-    varcov1 = v1,
-    parambeta = parambeta,
-    varcovbeta1 = vb,
-    autocorr = autocorr,
+    kappa = stats::setNames(kappak, paramname),
+    varcov_kappa = v_kappa,
+    varcov1 = v_kappa,
+    parambeta = NULL,
+    varcovbeta1 = NULL,
     matx = matx,
     matz = matz,
     y = y,
@@ -375,239 +280,190 @@ consensus <- function(
     weights = weight,
     iter.detail = iter.detail,
     call = call,
+    formula = formula,
     nobs = nobs,
     k = k,
-    logLik = logLik
+    logLik = logLik,
+    term_info = term_info,
+    paramname = paramname,
+    angle_data = des$angle_data,
+    plain_angles = plain_angles,
+    reference_scores = reference_scores,
+    autocorr = stats::acf(residuals.consensus(list(y = y, mui = mui)), plot = FALSE),
+    na.action = attr(des$mf, "na.action")
   )
   class(out) <- "consensus"
   out
 }
+
 ###############################################################################
 ### S3 Methods for Consensus Objects
 ###############################################################################
 
 #' Methods for Consensus Objects
 #'
-#' These functions provide methods for printing, extracting coefficients,
-#' summarizing, and retrieving residuals from a consensus model.
-#'
-#' @param object An object of class "consensus".
-#' @param x An object of class "consensus".
-#' @param ... Additional arguments passed to the corresponding functions.
-#'
+#' @param object An object of class \code{"consensus"}.
+#' @param x An object of class \code{"consensus"}.
+#' @param type For \code{coef.consensus()}, either \code{"kappa"} or
+#'   \code{"beta"}. The latter returns ratios relative to a selected reference.
+#' @param reference Reference selection rule for \code{type = "beta"}.
+#' @param newdata Optional data frame for prediction.
+#' @param robust Logical; for \code{vcov()}, accepted for consistency and
+#'   currently ignored because the consensus model stores one covariance matrix.
+#' @param ... Additional arguments.
 #' @rdname consensus-methods
 #' @export
 print.consensus <- function(x, ...) {
-  cat(
-    "Call:
-"
-  )
+  cat("Call:\n")
   print(x$call)
-  cat(
-    "
-Maximum log-likelihood:",
-    format(x$MaxLL, digits = 4),
-    "
-"
+  cat("\nMaximum log-likelihood:", format(x$MaxLL, digits = 5), "\n")
+  cat("AIC:", format(x$AIC, digits = 5), "\n")
+  cat("BIC:", format(x$BIC, digits = 5), "\n\n")
+  cat("Kappa coefficients:\n")
+  stats::printCoefmat(
+    x$parameters,
+    signif.stars = TRUE,
+    signif.legend = TRUE
   )
-  cat(
-    "AIC:",
-    format(x$AIC, digits = 4),
-    "
-"
-  )
-  cat(
-    "BIC:",
-    format(x$BIC, digits = 4),
-    "
-
-"
-  )
-  cat(
-    "Coefficients (Kappa estimates):
-"
-  )
-
-  coefmat <- x$parameters
-  stars <- ifelse(
-    coefmat[, "P(|z|>.)"] < 0.001,
-    "***",
-    ifelse(
-      coefmat[, "P(|z|>.)"] < 0.01,
-      "**",
-      ifelse(
-        coefmat[, "P(|z|>.)"] < 0.05,
-        "*",
-        ifelse(coefmat[, "P(|z|>.)"] < 0.1, ".", " ")
-      )
-    )
-  )
-
-  # Coerce to a numeric matrix for printCoefmat
-  mat_numeric <- cbind(
-    Estimate = as.numeric(coefmat[, 1]),
-    `Std. Error` = as.numeric(coefmat[, 2]),
-    `z value` = as.numeric(coefmat[, 3]),
-    `P(|z|>.)` = as.numeric(coefmat[, 4])
-  )
-
-  rownames(mat_numeric) <- rownames(coefmat)
-
-  # Impression avec printCoefmat
-  stats::printCoefmat(mat_numeric, P.values = TRUE, has.Pvalue = TRUE)
   invisible(x)
 }
 
 #' @rdname consensus-methods
 #' @export
-coef.consensus <- function(object, ...) {
-  object$parameters[, "estimate"]
+coef.consensus <- function(
+  object,
+  type = c("kappa", "beta"),
+  reference = c("auto", "first", "name"),
+  ...
+) {
+  type <- match.arg(type)
+
+  if (type == "kappa") {
+    return(object$kappa)
+  }
+
+  ref <- .resolve_reference(
+    reference = reference,
+    y = object$y,
+    angle_data = object$angle_data,
+    candidates = object$plain_angles,
+    tie_method = "first"
+  )
+  ref_name <- ref$ref_name
+  ref_idx <- .reference_term_index(object$term_info, ref_name)
+
+  kappa_ref <- object$kappa[ref_idx]
+  if (!is.finite(kappa_ref) || abs(kappa_ref) < .Machine$double.eps) {
+    stop("Cannot derive beta coefficients: selected reference kappa is zero.", call. = FALSE)
+  }
+
+  beta <- object$kappa[-ref_idx] / kappa_ref
+  names(beta) <- object$paramname[-ref_idx]
+  attr(beta, "reference") <- ref_name
+  attr(beta, "reference_scores") <- ref$scores
+  beta
+}
+
+#' @rdname consensus-methods
+#' @export
+vcov.consensus <- function(object, robust = FALSE, ...) {
+  object$varcov_kappa
+}
+
+#' @rdname consensus-methods
+#' @export
+fitted.consensus <- function(object, ...) {
+  object$mui
 }
 
 #' @rdname consensus-methods
 #' @export
 residuals.consensus <- function(object, ...) {
-  # keep everything in radians to avoid ambiguity
-  y <- circular::conversion.circular(
-    circular::as.circular(object$y),
-    units = "radians"
-  )
-  mu <- circular::conversion.circular(
-    circular::as.circular(object$mui),
-    units = "radians"
-  )
-
-  # signed angular difference in (-pi, pi]
-  d <- atan2(sin(y - mu), cos(y - mu))
-
-  # renvoyer un 'circular' en radians (convertis ensuite si tu veux)
-  circular::as.circular(d, units = "radians", modulo = "asis")
+  .wrap_angle(object$y - object$mui)
 }
 
-#' Summary Method for Consensus Objects
-#'
-#' This function summarizes an object of class "consensus" by providing key
-#' diagnostic statistics including the model call, maximum log-likelihood, AIC, BIC, a summary of residuals,
-#' the coefficient estimates, and the number of observations.
-#'
-#' @param object An object of class "consensus".
-#' @param ... Further arguments (currently ignored).
-#'
-#' @return An object of class "summary.consensus", a list containing:
-#' \describe{
-#'   \item{call}{The matched call.}
-#'   \item{MaxLL}{The maximum log-likelihood value.}
-#'   \item{AIC}{The Akaike information criterion.}
-#'   \item{BIC}{The Bayesian information criterion.}
-#'   \item{coefficients}{A matrix with the estimates, standard errors, z-values and associated p-values.}
-#'   \item{residuals}{A summary of the residuals (min, 1st Qu., median, 3rd Qu., max).}
-#'   \item{nobs}{The number of observations.}
-#' }
-#'
+#' @rdname consensus-methods
+#' @export
+predict.consensus <- function(
+  object,
+  newdata = NULL,
+  type = c("response", "components"),
+  ...
+) {
+  type <- match.arg(type)
+
+  if (is.null(newdata)) {
+    mu <- object$mui
+  } else {
+    design <- .new_term_design(
+      term_info = object$term_info,
+      formula = object$formula,
+      newdata = newdata
+    )
+    mu <- .mean_direction_from_terms(
+      coef = as.numeric(object$kappa),
+      matx = design$matx,
+      matz = design$matz
+    )
+  }
+
+  if (type == "components") {
+    return(cbind(cos = cos(mu), sin = sin(mu)))
+  }
+  mu
+}
+
 #' @rdname consensus-methods
 #' @export
 summary.consensus <- function(object, ...) {
-  res <- residuals.consensus(object, ...)
-  resid_summary <- summary(res)
   s <- list(
     call = object$call,
     MaxLL = object$MaxLL,
     AIC = object$AIC,
     BIC = object$BIC,
     coefficients = object$parameters,
-    residuals = resid_summary,
-    nobs = length(object$y)
+    residuals = summary(residuals.consensus(object)),
+    nobs = object$nobs
   )
   class(s) <- "summary.consensus"
   s
 }
 
-#' Print Method for Summary of Consensus Objects
-#'
-#' This function prints a summary of a consensus model.
-#'
-#' @param x An object of class "summary.consensus".
-#' @param ... Further arguments passed to printing functions.
-#'
 #' @rdname consensus-methods
 #' @export
 print.summary.consensus <- function(x, ...) {
-  cat(
-    "Call:
-"
-  )
+  cat("Call:\n")
   print(x$call)
-  cat(
-    "
-Maximum log-likelihood:",
-    format(x$MaxLL, digits = 4),
-    "
-"
-  )
-  cat(
-    "AIC:",
-    format(x$AIC, digits = 4),
-    "
-"
-  )
-  cat(
-    "BIC:",
-    format(x$BIC, digits = 4),
-    "
-
-"
-  )
-  cat(
-    "Residuals:
-"
-  )
+  cat("\nMaximum log-likelihood:", format(x$MaxLL, digits = 5), "\n")
+  cat("AIC:", format(x$AIC, digits = 5), "\n")
+  cat("BIC:", format(x$BIC, digits = 5), "\n\n")
+  cat("Residuals:\n")
   print(x$residuals)
-  cat(
-    "
-Coefficients:
-"
-  )
+  cat("\nKappa coefficients:\n")
   stats::printCoefmat(
     x$coefficients,
     signif.stars = TRUE,
     signif.legend = TRUE,
     ...
   )
-  cat(
-    "
-Number of observations:",
-    x$nobs,
-    "
-"
-  )
+  cat("\nNumber of observations:", x$nobs, "\n")
   invisible(x)
 }
 
-#' Diagnostic Plots for Consensus Model
-#'
-#' This function produces a set of diagnostic plots for an object of class "consensus"
-#' in a layout similar to that of \code{plot.lm}. The diagnostics include:
-#' \enumerate{
-#'   \item Residuals vs Fitted values.
-#'   \item Histogram of scaled residuals with a normal density overlay.
-#'   \item Normal Q-Q plot.
-#'   \item A text display of a goodness-of-fit measure: the Spearman correlation between
-#'         the absolute raw residuals and the inverse of the length parameter.
-#' }
-#'
-#' @param x An object of class "consensus".
-#' @param ... Further arguments passed to plotting functions.
-#'
 #' @rdname consensus-methods
 #' @export
 plot.consensus <- function(x, ...) {
-  if (!requireNamespace("ggplot2", quietly = TRUE))
-    stop("Package 'ggplot2' is required for plotting.")
-  if (!requireNamespace("gridExtra", quietly = TRUE))
-    stop("Package 'gridExtra' is required for arranging plots.")
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for plotting.", call. = FALSE)
+  }
+  if (!requireNamespace("gridExtra", quietly = TRUE)) {
+    stop("Package 'gridExtra' is required for arranging plots.", call. = FALSE)
+  }
+
+  res <- as.numeric(residuals.consensus(x, ...))
 
   p1 <- ggplot2::ggplot(
-    data = data.frame(Fitted = x$mui, Residual = residuals.consensus(x, ...)),
+    data = data.frame(Fitted = x$mui, Residual = res),
     ggplot2::aes(x = Fitted, y = Residual)
   ) +
     ggplot2::geom_point(color = "blue") +
@@ -619,15 +475,15 @@ plot.consensus <- function(x, ...) {
     ) +
     ggplot2::theme_minimal()
 
-  res <- as.numeric(residuals.consensus(x, ...))
   res_mean <- mean(res)
   res_sd <- stats::sd(res)
+
   p2 <- ggplot2::ggplot(
     data = data.frame(Residual = res),
     ggplot2::aes(x = Residual)
   ) +
     ggplot2::geom_histogram(
-      ggplot2::aes(y = after_stat(density)),
+      ggplot2::aes(y = ggplot2::after_stat(density)),
       bins = 12,
       color = "black",
       fill = "gray"
@@ -636,17 +492,17 @@ plot.consensus <- function(x, ...) {
       fun = stats::dnorm,
       args = list(mean = res_mean, sd = res_sd),
       color = "red",
-      size = 1
+      linewidth = 1
     ) +
     ggplot2::labs(
       title = "Histogram of Residuals",
-      x = "Scaled Residuals",
+      x = "Residuals",
       y = "Density"
     ) +
     ggplot2::theme_minimal()
 
   p3 <- ggplot2::ggplot(
-    data = data.frame(Residual = as.numeric(res)),
+    data = data.frame(Residual = res),
     ggplot2::aes(sample = Residual)
   ) +
     ggplot2::stat_qq(color = "blue") +
@@ -664,7 +520,7 @@ plot.consensus <- function(x, ...) {
       x = 0.5,
       y = 0.5,
       label = paste(
-        "Spearman Correlation:\n|y - mui| vs 1/long =",
+        "Spearman Correlation:\n|residual| vs 1/long =",
         round(stats::cor(abs(res), 1 / x$long, method = "spearman"), 4)
       ),
       size = 5,
@@ -686,11 +542,8 @@ plot.consensus <- function(x, ...) {
   invisible(x)
 }
 
-# S3 methods AIC, BIC, logLik
 #' @rdname consensus-methods
-#' @param object An object of class "consensus".
-#' @param k Numeric. Penalty term used in the definition of AIC. Defaults to 2.
-#' @param ... Additional arguments passed to or from other methods.
+#' @param k Numeric penalty for AIC.
 #' @export
 AIC.consensus <- function(object, ..., k = 2) {
   ll <- object$logLik
@@ -702,8 +555,6 @@ AIC.consensus <- function(object, ..., k = 2) {
 }
 
 #' @rdname consensus-methods
-#' @param object An object of class "consensus".
-#' @param ... Additional arguments passed to or from other methods.
 #' @export
 BIC.consensus <- function(object, ...) {
   n <- object$nobs
@@ -716,8 +567,6 @@ BIC.consensus <- function(object, ...) {
 }
 
 #' @rdname consensus-methods
-#' @param object An object of class "consensus".
-#' @param ... Additional arguments passed to or from other methods.
 #' @export
 logLik.consensus <- function(object, ...) {
   val <- object$logLik

@@ -3,7 +3,10 @@
 \name{print.angular}
 \alias{print.angular}
 \alias{coef.angular}
+\alias{vcov.angular}
+\alias{fitted.angular}
 \alias{residuals.angular}
+\alias{predict.angular}
 \alias{summary.angular}
 \alias{print.summary.angular}
 \alias{plot.angular}
@@ -13,7 +16,13 @@
 
 \method{coef}{angular}(object, ...)
 
+\method{vcov}{angular}(object, robust = FALSE, ...)
+
+\method{fitted}{angular}(object, ...)
+
 \method{residuals}{angular}(object, ...)
+
+\method{predict}{angular}(object, newdata = NULL, type = c("response", "components"), ...)
 
 \method{summary}{angular}(object, ...)
 
@@ -22,38 +31,20 @@
 \method{plot}{angular}(x, ...)
 }
 \arguments{
-\item{x}{An object of class "angular".}
+\item{x}{An object of class \code{"angular"}.}
 
-\item{...}{Further arguments passed to plotting functions.}
+\item{...}{Additional arguments.}
 
-\item{object}{An object of class "angular".}
-}
-\value{
-An object of class "summary.angular", a list containing:
-\describe{
-  \item{call}{The matched call.}
-  \item{MaxCosine}{The maximum cosine value.}
-  \item{parameters}{A matrix with the estimates, standard errors, z-values and associated p-values.}
-  \item{residuals}{A summary of the residuals (min, 1st Qu., median, 3rd Qu., max).}
-  \item{nobs}{The number of observations.}
-}
+\item{object}{An object of class \code{"angular"}.}
+
+\item{robust}{Logical; for \code{vcov()}, return the sandwich covariance
+matrix when \code{TRUE}.}
+
+\item{newdata}{Optional data frame for prediction.}
+
+\item{type}{Prediction type. Use \code{"response"} for fitted angles in
+radians or \code{"components"} for cosine and sine components.}
 }
 \description{
-These functions provide methods for printing, extracting coefficients,
-summarizing, and retrieving residuals from an angular regression model.
-
-This function summarizes an object of class "angular" by providing key
-diagnostic statistics including the model call, maximum cosine, a summary of residuals,
-the parameter estimates, and the number of observations.
-
-This function prints a summary of an angular regression model.
-
-This function produces a set of diagnostic plots for an object of class
-"angular" in a layout similar to that of \code{plot.lm}. Three panels are
-displayed:
-\enumerate{
-  \item Residuals vs fitted values.
-  \item Histogram of residuals with a normal density overlay.
-  \item Normal Q-Q plot.
-}
+Methods for Angular Regression Objects
 }

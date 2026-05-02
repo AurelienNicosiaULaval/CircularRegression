@@ -2,29 +2,22 @@
 % Please edit documentation in R/LR_test.r
 \name{angular_lrtest}
 \alias{angular_lrtest}
-\title{Likelihood-ratio test between two homogeneous angular models}
+\title{Likelihood-ratio test (T2) between two homogeneous angular models}
 \usage{
 angular_lrtest(full, reduced, check = TRUE)
 }
 \arguments{
-\item{full}{An object of class "angular" (the larger model).}
+\item{full}{Object of class \code{"angular"} (full model).}
 
-\item{reduced}{An object of class "angular" (the nested model).}
+\item{reduced}{Object of class \code{"angular"} (nested reduced model).}
 
-\item{check}{Logical; run basic sanity checks (default TRUE).}
+\item{check}{Logical; perform consistency checks.}
 }
 \value{
-An object of class \code{"htest"} with fields:
-\itemize{
-  \item \code{statistic} The test statistic \(T_2\).
-  \item \code{parameter} The degrees of freedom (difference in number of \eqn{\beta}).
-  \item \code{p.value}   The \eqn{\chi^2} p-value.
-  \item \code{method}    A short description.
-  \item \code{data.name} Model names compared.
-  \item \code{details}   List with \code{n}, \code{kappa_full}, \code{Cbar_full}, \code{Cbar_reduced},
-                         and \code{LRT_logLik} (= 2*Delta_logLik, if \code{logLik.angular} is available).
-}
+An object of class \code{"htest"}.
 }
 \description{
-Likelihood-ratio test between two homogeneous angular models
+Computes the statistic from Rivest et al. (2016), Section 3.6:
+\deqn{T_2 = 2 n \hat\kappa_1 (\bar C_1 - \bar C_0),}
+where model 1 is the full model and model 0 the nested reduced model.
 }

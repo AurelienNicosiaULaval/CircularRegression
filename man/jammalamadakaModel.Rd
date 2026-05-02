@@ -2,37 +2,25 @@
 % Please edit documentation in R/wrapper.R
 \name{jammalamadakaModel}
 \alias{jammalamadakaModel}
-\title{Jammalamadaka-Sengupta Model Wrapper}
+\title{Jammalamadaka-Sengupta Model Wrapper (two-step workflow)}
 \usage{
 jammalamadakaModel(data, response, w, ...)
 }
 \arguments{
-\item{data}{A data frame containing at least the response variable and the angular explanatory variable.}
+\item{data}{A data frame containing \code{response} and \code{w}.}
 
-\item{response}{A character string representing the name of the response variable (an angular variable).}
+\item{response}{Name of the angular response variable.}
 
-\item{w}{A character string representing the name of the angular explanatory variable in \code{data}.}
+\item{w}{Name of the angular explanatory variable.}
 
-\item{...}{Additional arguments to be passed to the underlying \code{angular} estimation function.}
+\item{...}{Additional arguments passed to \code{angular_two_step()}.}
 }
 \value{
-An object representing the fitted model as returned by the \code{angular} function.
+A list with \code{consensus_fit}, \code{homogeneous_fit},
+  \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
+  outputs \code{natural_parameters}, \code{natural_vcov_model},
+  \code{natural_vcov_robust}, \code{natural_jacobian}.
 }
 \description{
-This function wraps the estimation of the circular regression model following the
-Jammalamadaka-Sengupta formulation (see end of page 447). In this formulation the model is given by:
-\deqn{y = 0 + \frac{\pi}{2} + w + (-w) + \left(w+\frac{\pi}{2}\right) + \left(-w+\frac{\pi}{2}\right),}
-where w is an angular explanatory variable. To implement this model, six covariates are created:
-\itemize{
-  \item{\code{const0}: a constant set to 0,}
-  \item{\code{constPi2}: a constant set to \eqn{\pi/2},}
-  \item{\code{w_orig}: the original value of w,}
-  \item{\code{neg_w}: the negative of w,}
-  \item{\code{w_pi2}: w shifted by \eqn{\pi/2} (i.e., w + pi/2),}
-  \item{\code{neg_w_pi2}: the negative of w shifted by \eqn{\pi/2} (i.e., -w + pi/2).}
-}
-}
-\details{
-The resulting model is estimated using the \code{angular} function with the formula:
-\deqn{y \sim const0 + constPi2 + w\_orig + neg\_w + w\_pi2 + neg\_w\_pi2.}
+Jammalamadaka-Sengupta Model Wrapper (two-step workflow)
 }

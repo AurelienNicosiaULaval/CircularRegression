@@ -3,7 +3,10 @@
 \name{print.consensus}
 \alias{print.consensus}
 \alias{coef.consensus}
+\alias{vcov.consensus}
+\alias{fitted.consensus}
 \alias{residuals.consensus}
+\alias{predict.consensus}
 \alias{summary.consensus}
 \alias{print.summary.consensus}
 \alias{plot.consensus}
@@ -14,9 +17,20 @@
 \usage{
 \method{print}{consensus}(x, ...)
 
-\method{coef}{consensus}(object, ...)
+\method{coef}{consensus}(
+  object,
+  type = c("kappa", "beta"),
+  reference = c("auto", "first", "name"),
+  ...
+)
+
+\method{vcov}{consensus}(object, robust = FALSE, ...)
+
+\method{fitted}{consensus}(object, ...)
 
 \method{residuals}{consensus}(object, ...)
+
+\method{predict}{consensus}(object, newdata = NULL, type = c("response", "components"), ...)
 
 \method{summary}{consensus}(object, ...)
 
@@ -31,43 +45,24 @@
 \method{logLik}{consensus}(object, ...)
 }
 \arguments{
-\item{x}{An object of class "consensus".}
+\item{x}{An object of class \code{"consensus"}.}
 
-\item{...}{Additional arguments passed to or from other methods.}
+\item{...}{Additional arguments.}
 
-\item{object}{An object of class "consensus".}
+\item{object}{An object of class \code{"consensus"}.}
 
-\item{k}{Numeric. Penalty term used in the definition of AIC. Defaults to 2.}
-}
-\value{
-An object of class "summary.consensus", a list containing:
-\describe{
-  \item{call}{The matched call.}
-  \item{MaxLL}{The maximum log-likelihood value.}
-  \item{AIC}{The Akaike information criterion.}
-  \item{BIC}{The Bayesian information criterion.}
-  \item{coefficients}{A matrix with the estimates, standard errors, z-values and associated p-values.}
-  \item{residuals}{A summary of the residuals (min, 1st Qu., median, 3rd Qu., max).}
-  \item{nobs}{The number of observations.}
-}
+\item{type}{For \code{coef.consensus()}, either \code{"kappa"} or
+\code{"beta"}. The latter returns ratios relative to a selected reference.}
+
+\item{reference}{Reference selection rule for \code{type = "beta"}.}
+
+\item{robust}{Logical; for \code{vcov()}, accepted for consistency and
+currently ignored because the consensus model stores one covariance matrix.}
+
+\item{newdata}{Optional data frame for prediction.}
+
+\item{k}{Numeric penalty for AIC.}
 }
 \description{
-These functions provide methods for printing, extracting coefficients,
-summarizing, and retrieving residuals from a consensus model.
-
-This function summarizes an object of class "consensus" by providing key
-diagnostic statistics including the model call, maximum log-likelihood, AIC, BIC, a summary of residuals,
-the coefficient estimates, and the number of observations.
-
-This function prints a summary of a consensus model.
-
-This function produces a set of diagnostic plots for an object of class "consensus"
-in a layout similar to that of \code{plot.lm}. The diagnostics include:
-\enumerate{
-  \item Residuals vs Fitted values.
-  \item Histogram of scaled residuals with a normal density overlay.
-  \item Normal Q-Q plot.
-  \item A text display of a goodness-of-fit measure: the Spearman correlation between
-        the absolute raw residuals and the inverse of the length parameter.
-}
+Methods for Consensus Objects
 }

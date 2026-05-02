@@ -2,34 +2,25 @@
 % Please edit documentation in R/wrapper.R
 \name{decentredPredictorModel}
 \alias{decentredPredictorModel}
-\title{Decentered Predictor Model Wrapper}
+\title{Decentered Predictor Model Wrapper (two-step workflow)}
 \usage{
 decentredPredictorModel(data, response, w, ...)
 }
 \arguments{
-\item{data}{A data frame containing at least the response variable and the explanatory variable.}
+\item{data}{A data frame containing \code{response} and \code{w}.}
 
-\item{response}{A character string representing the name of the response variable (an angular variable).}
+\item{response}{Name of the angular response variable.}
 
-\item{w}{A character string representing the name of the explanatory angular variable in \code{data}.}
+\item{w}{Name of the angular explanatory variable.}
 
-\item{...}{Additional arguments to be passed to the underlying \code{angular} estimation function.}
+\item{...}{Additional arguments passed to \code{angular_two_step()}.}
 }
 \value{
-An object representing the fitted model as returned by the \code{angular} function.
+A list with \code{consensus_fit}, \code{homogeneous_fit},
+  \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
+  outputs \code{natural_parameters}, \code{natural_vcov_model},
+  \code{natural_vcov_robust}, \code{natural_jacobian}.
 }
 \description{
-This function wraps the estimation of the "decentered predictor" model as described in Rivest (1997),
-which is based on a single angular explanatory variable. The synthetic model is built using four covariates:
-\itemize{
-  \item{\code{w}: the original explanatory angular variable,}
-  \item{\code{w_plus_pi2}: computed as \eqn{w + \pi/2},}
-  \item{\code{zero}: a constant covariate with value 0,}
-  \item{\code{pi2}: a constant covariate with value \eqn{\pi/2}.}
-}
-}
-\details{
-The model is expressed as:
-\deqn{y = w + \left(w + \frac{\pi}{2}\right) + 0 + \left(\frac{\pi}{2}\right),}
-which corresponds to the decentered predictor formulation.
+Decentered Predictor Model Wrapper (two-step workflow)
 }

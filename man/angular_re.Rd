@@ -4,7 +4,14 @@
 \alias{angular_re}
 \title{Angular mixed-effects regression with von Mises random intercepts}
 \usage{
-angular_re(formula, data, cluster, init = list(), control = list())
+angular_re(
+  formula,
+  data,
+  cluster,
+  init = list(),
+  control = list(),
+  na.action = stats::na.omit
+)
 }
 \arguments{
 \item{formula}{Model formula of the form \code{y ~ x1:z1 + x2:z2 + ...}. The
@@ -25,6 +32,9 @@ moment-based estimates.}
 \code{hessian} (\code{TRUE}), and \code{start_from_angular} (\code{TRUE})
 indicating whether \code{angular()} should be used to initialise the fixed
 effects.}
+
+\item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
+missing values. The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
 object of class \code{"angular_re"}

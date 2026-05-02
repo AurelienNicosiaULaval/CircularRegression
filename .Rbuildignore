@@ -1,3 +1,16 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.DS_Store$
+^\.RData$
+^\.Rhistory$
+^\.git$
+^\.gitignore$
+^audit$
+^benchmarks$
+^cran-comments\.md$
+^cran-readiness\.md$
+^vignettes/.*\.log$
+^doc$
+^Meta$
+^.*\.Rcheck$
+^CircularRegression_.*\.tar\.gz$

@@ -6,3 +6,7 @@
 .httr-oauth
 .DS_Store
 .quarto
+/doc/
+/Meta/
+*.Rcheck/
+CircularRegression_*.tar.gz

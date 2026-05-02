@@ -2,38 +2,25 @@
 % Please edit documentation in R/wrapper.R
 \name{presnellModel}
 \alias{presnellModel}
-\title{Presnell Model Wrapper}
+\title{Presnell Model Wrapper (two-step workflow)}
 \usage{
 presnellModel(data, response, w, ...)
 }
 \arguments{
-\item{data}{A data frame containing at least the response variable and the continuous covariate w.}
+\item{data}{A data frame containing \code{response} and \code{w}.}
 
-\item{response}{A character string representing the name of the response variable (an angular variable).}
+\item{response}{Name of the angular response variable.}
 
-\item{w}{A character string representing the name of the continuous covariate in \code{data}.}
+\item{w}{Name of the continuous covariate.}
 
-\item{...}{Additional arguments to be passed to the underlying \code{angular} estimation function.}
+\item{...}{Additional arguments passed to \code{angular_two_step()}.}
 }
 \value{
-An object representing the fitted model as returned by the \code{angular} function.
+A list with \code{consensus_fit}, \code{homogeneous_fit},
+  \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
+  outputs \code{natural_parameters}, \code{natural_vcov_model},
+  \code{natural_vcov_robust}, \code{natural_jacobian}.
 }
 \description{
-This function wraps the estimation of the "Presnell model" as described in Presnell et al. (1998),
-which incorporates one non-circular continuous covariate (w). The synthetic model is specified using
-the following form:
-\deqn{y = 0 + \frac{\pi}{2} + (0 : w) + \left(\frac{\pi}{2} : w\right),}
-where:
-\itemize{
-  \item The term 0 is represented by a constant covariate,
-  \item The term \eqn{\pi/2} is represented by a constant covariate,
-  \item 0 : w denotes the interaction between the constant 0 and the continuous covariate w,
-  \item \eqn{(\pi/2) : w} denotes the interaction between the constant \eqn{\pi/2} and w.
-}
-}
-\details{
-In order for the formula to be interpreted correctly by the underlying \code{angular} function,
-this wrapper first creates two variables in \code{data}: \code{zero} (set to 0) and \code{pi2} (set to pi/2).
-The model is then specified as:
-\deqn{y ~ zero + pi2 + zero:w + pi2:w.}
+Presnell Model Wrapper (two-step workflow)
 }

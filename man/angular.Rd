@@ -2,72 +2,40 @@
 % Please edit documentation in R/angular.R
 \name{angular}
 \alias{angular}
-\title{Angular Regression Model}
+\title{Angular Regression Model with Homogeneous von Mises Errors}
 \usage{
-angular(formula, data, initbeta = NULL, control = list())
+angular(
+  formula,
+  data,
+  reference = c("auto", "first", "name"),
+  initbeta = NULL,
+  control = list(),
+  na.action = stats::na.omit
+)
 }
 \arguments{
-\item{formula}{A formula with the dependent angle on the left of the
-\code{~} operator and terms specifying the explanatory variables on the
-right. The first term provides the reference direction.}
+\item{formula}{A formula with terms of the form \code{x} or \code{x:z}.}
 
-\item{data}{An optional data frame, list or environment containing the
-variables in the model formula.}
+\item{data}{A data frame, list or environment containing model variables.}
 
-\item{initbeta}{A numeric vector of initial beta parameter values. When
-\code{NULL} (default) a quasi-uniform grid search is used to select
-starting values. The required length equals the number of \code{x:z} terms
-after the reference direction.}
+\item{reference}{Reference-angle rule. Use \code{"auto"} (default, article
+criterion), \code{"first"}, or \code{c("name", "x_ref")}. A plain
+angle term \code{x_ref} must exist in the formula.}
 
-\item{control}{A list of control parameters. See Details.}
+\item{initbeta}{Optional numeric vector of initial values for non-reference
+coefficients.}
+
+\item{control}{Control list with optional components \code{pginit},
+\code{maxiter}, and \code{mindiff}.}
+
+\item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
+missing values. The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
-An object of class "angular" containing:
-\describe{
-  \item{MaxCosine}{the maximum cosine value.}
-  \item{parameters}{the parameter estimates and their standard errors, z-values and associated p-values.}
-  \item{varcov0}{the asymptotic estimated variance-covariance matrix.}
-  \item{varcov1}{the non-parametric estimated variance-covariance matrix (sandwich).}
-  \item{long}{the vector of predicted concentrations.}
-  \item{mui}{the vector of predicted mean angles.}
-  \item{y}{the response variable.}
-  \item{iter.detail}{the iteration details.}
-  \item{call}{the function call.}
-}
+An object of class \code{"angular"}.
 }
 \description{
-Fit the simplified angular regression model of Rivest et al. (2016). The
-first term in the formula provides the reference direction whose coefficient
-is fixed to one. Subsequent terms must be written \code{x:z}, where
-\code{x} is an angular covariate and \code{z} is a non-negative scaling
-variable. When \code{z} is omitted (or equal to \code{x}), a value of one is
-assumed. A reference-only model is obtained by including only the reference
-term on the right-hand side.
-}
-\details{
-The control argument is a list that can supply any of the following components:
-\describe{
-  \item{\code{pginit}}{Approximate number of points on the grid of possible
-    initial beta values when \code{initbeta} is not supplied (default 1000).}
-  \item{\code{maxiter}}{Maximum number of iterations for the Gauss--Newton
-    updates (default 1000).}
-  \item{\code{mindiff}}{Convergence tolerance on the increase of the mean
-    cosine (default 1e-6).}
-}
-}
-\examples{
-\dontrun{
-  # Example with the bison data set included in the package
-  data(bison)
-  an <- angular(y.dir ~ y.prec + y.prec2, data = bison)
-  print(an)
-  summary(an)
-  plot(an)
-}
-}
-\references{
-L.-P. Rivest, T. Duchesne, A. Nicosia & D. Fortin. A general angular regression model for the analysis of data on animal movement in ecology. Journal of the Royal Statistical Society, series C, to appear.
-}
-\author{
-Sophie Baillargeon, Louis-Paul Rivest, and Aurelien Nicosia
+Fits the homogeneous angular regression model of Rivest et al. (2016), where
+the mean direction is the orientation of a weighted resultant vector and one
+reference angle has coefficient fixed to 1.
 }

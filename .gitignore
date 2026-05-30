@@ -7,6 +7,7 @@
 .DS_Store
 .quarto
 /doc/
+/docs/
 /Meta/
 *.Rcheck/
 CircularRegression_*.tar.gz

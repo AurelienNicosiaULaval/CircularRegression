@@ -1,0 +1,128 @@
+---
+title: "Model Workflow and Diagnostics"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Model Workflow and Diagnostics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+This article gives a compact workflow for fitting, comparing and diagnosing
+fixed-effect circular regression models with CircularRegression. It is designed
+as a pkgdown article for users who want to move quickly from a formula to
+predictions and residual checks.
+
+## Prepare a reproducible example
+
+```{r}
+library(CircularRegression)
+
+wrap_angle <- function(x) atan2(sin(x), cos(x))
+
+set.seed(20260530)
+n <- 120
+x1 <- runif(n, -pi, pi)
+x2 <- runif(n, -pi, pi)
+z2 <- runif(n, 0.2, 1.8)
+
+mu <- atan2(
+  sin(x1) + 0.35 * z2 * sin(x2),
+  cos(x1) + 0.35 * z2 * cos(x2)
+)
+y <- wrap_angle(mu + rnorm(n, sd = 0.12))
+
+dat <- data.frame(y = y, x1 = x1, x2 = x2, z2 = z2)
+```
+
+## Fit the main workflow
+
+The default `circular_regression()` method is `"two_step"`. It first fits the
+consensus model, then fits the homogeneous angular model using the selected
+reference direction.
+
+```{r}
+fit <- circular_regression(y ~ x1 + x2:z2, data = dat)
+fit
+```
+
+For direct control, the homogeneous and consensus models can be fitted
+separately.
+
+```{r}
+fit_hom <- circular_regression(
+  y ~ x1 + x2:z2,
+  data = dat,
+  method = "homogeneous",
+  reference = c("name", "x1")
+)
+
+fit_cons <- circular_regression(
+  y ~ x1 + x2:z2,
+  data = dat,
+  method = "consensus"
+)
+
+coef(fit_hom)
+coef(fit_cons)
+```
+
+## Predict on new angular covariates
+
+Predictions are returned as angles in radians. The component form is useful
+when users want to plot or average fitted directions through their sine and
+cosine coordinates.
+
+```{r}
+new_dat <- dat[1:6, c("x1", "x2", "z2")]
+
+predict(fit, newdata = new_dat)
+predict(fit, newdata = new_dat, type = "components")
+```
+
+## Check residuals
+
+Residuals are circular differences between observed and fitted directions,
+wrapped to the interval implied by `atan2(sin(x), cos(x))`.
+
+```{r}
+res <- residuals(fit)
+summary(res)
+```
+
+A simple diagnostic plot can be produced with base R.
+
+```{r}
+plot(
+  fitted(fit),
+  res,
+  xlab = "Fitted direction",
+  ylab = "Circular residual",
+  pch = 19,
+  col = "gray30"
+)
+abline(h = 0, lty = 2)
+```
+
+The package also supplies `plot()` methods for fitted model objects when
+`ggplot2` and `gridExtra` are installed.
+
+## Use the article in pkgdown
+
+The pkgdown site groups this article with the introductory simulation vignette
+and the applied bison vignette. The site can be rebuilt locally with:
+
+```{r, eval = FALSE}
+pkgdown::build_site()
+```
+
+The package examples and vignettes are deterministic, so the rendered site
+should be reproducible across clean R sessions.

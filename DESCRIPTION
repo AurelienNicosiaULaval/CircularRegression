@@ -25,6 +25,7 @@ Suggests:
     ggplot2,
     gridExtra,
     knitr,
+    pkgdown,
     rmarkdown,
     testthat (>= 3.0.0)
 VignetteBuilder: knitr

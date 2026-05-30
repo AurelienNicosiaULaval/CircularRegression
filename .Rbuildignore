@@ -16,3 +16,5 @@
 ^CircularRegression_.*\.tar\.gz$
 ^CHANGELOG_0\.4\.0\.md$
 ^figure$
+^_pkgdown\.yml$
+^docs$

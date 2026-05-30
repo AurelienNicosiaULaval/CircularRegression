@@ -1,0 +1,86 @@
+template:
+  bootstrap: 5
+  bootswatch: flatly
+
+development:
+  mode: release
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get started
+      href: articles/introduction-to-circular-regression.html
+    articles:
+      text: Articles
+      menu:
+      - text: Introduction to circular regression
+        href: articles/introduction-to-circular-regression.html
+      - text: Applied bison example
+        href: articles/bison-applied-example.html
+      - text: Model workflow and diagnostics
+        href: articles/model-workflow-and-diagnostics.html
+
+home:
+  title: CircularRegression
+  description: Regression models for circular response data in R.
+
+reference:
+- title: Main model fitting functions
+  contents:
+  - circular_regression
+  - angular
+  - consensus
+  - angular_two_step
+  - angular_re
+
+- title: Special-case model wrappers
+  contents:
+  - meanDirectionModel
+  - decentredPredictorModel
+  - presnellModel
+  - jammalamadakaModel
+
+- title: Inference, prediction and random-effect helpers
+  contents:
+  - angular_lrtest
+  - ranef.angular_re
+  - plot_ranef.angular_re
+
+- title: S3 method documentation
+  contents:
+  - print.angular
+  - print.angular_two_step
+  - print.circular_regression
+  - print.consensus
+  - print.pick_reference_angle
+  - plot.angular_re
+  - predict.angular_re
+
+- title: Reference selection and data preparation
+  contents:
+  - select_reference_angle
+  - pick_reference_angle
+  - autoregressivedata
+
+- title: Datasets
+  contents:
+  - bison
+  - multiplebison
+  - noshiro
+  - Sandhopper
+
+articles:
+- title: Core workflows
+  navbar: ~
+  contents:
+  - introduction-to-circular-regression
+  - bison-applied-example
+  - model-workflow-and-diagnostics
+
+news:
+  releases:
+  - text: "Version 0.5.0"
+    href: news/index.html#circularregression-050

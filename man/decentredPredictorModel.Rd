@@ -22,5 +22,20 @@ A list with \code{consensus_fit}, \code{homogeneous_fit},
   \code{natural_vcov_robust}, \code{natural_jacobian}.
 }
 \description{
-Decentered Predictor Model Wrapper (two-step workflow)
+Fits the decentered-predictor special case by augmenting the data with
+synthetic orthogonal directions and applying \code{\link{angular_two_step}()}.
+Natural parameters are returned with model-based and robust delta-method
+standard errors.
+}
+\examples{
+data(bison)
+d <- na.omit(bison[seq_len(80), c("y.dir", "y.prec")])
+fit <- decentredPredictorModel(d, response = "y.dir", w = "y.prec")
+fit$natural_parameters
+}
+\references{
+Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+  A general angular regression model for the analysis of data on animal
+  movement in ecology. \emph{Journal of the Royal Statistical Society:
+  Series C (Applied Statistics)}, 65(3), 445-463.
 }

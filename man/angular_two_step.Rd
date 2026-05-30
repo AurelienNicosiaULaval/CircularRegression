@@ -39,3 +39,9 @@ Implements the strategy recommended by Rivest et al. (2016): fit the
 consensus model first, choose the reference angle, then fit the homogeneous
 model with the reference fixed and initialized from consensus ratios.
 }
+\references{
+Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+  A general angular regression model for the analysis of data on animal
+  movement in ecology. \emph{Journal of the Royal Statistical Society:
+  Series C (Applied Statistics)}, 65(3), 445-463.
+}

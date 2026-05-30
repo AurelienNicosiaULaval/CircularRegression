@@ -22,5 +22,19 @@ A list with \code{consensus_fit}, \code{homogeneous_fit},
   \code{natural_vcov_robust}, \code{natural_jacobian}.
 }
 \description{
-Jammalamadaka-Sengupta Model Wrapper (two-step workflow)
+Fits the Jammalamadaka-Sengupta special case by creating the required
+sine/cosine-equivalent angular terms and returning the corresponding natural
+parameters through a delta-method transformation.
+}
+\examples{
+data(bison)
+d <- na.omit(bison[seq_len(80), c("y.dir", "y.prec")])
+fit <- jammalamadakaModel(d, response = "y.dir", w = "y.prec")
+fit$natural_parameters
+}
+\references{
+Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+  A general angular regression model for the analysis of data on animal
+  movement in ecology. \emph{Journal of the Royal Statistical Society:
+  Series C (Applied Statistics)}, 65(3), 445-463.
 }

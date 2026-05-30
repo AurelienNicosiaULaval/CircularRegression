@@ -12,6 +12,7 @@ Description: Implements regression models for circular response data, including
     extension for clustered circular outcomes.
 License: GPL-3
 Encoding: UTF-8
+Language: en-US
 LazyData: true
 RoxygenNote: 7.3.3
 Imports:

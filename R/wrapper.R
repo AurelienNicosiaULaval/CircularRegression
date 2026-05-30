@@ -247,18 +247,62 @@
   )
 }
 
+.validate_wrapper_data <- function(data, response, w = NULL) {
+  if (!is.data.frame(data)) {
+    stop("'data' must be a data frame.", call. = FALSE)
+  }
+  if (!(response %in% names(data))) {
+    stop("The response variable provided in 'response' is not present in 'data'.", call. = FALSE)
+  }
+  .validate_numeric_vector(as.numeric(data[[response]]), response)
+  if (!is.null(w)) {
+    if (!(w %in% names(data))) {
+      stop("The 'w' variable provided (", w, ") is not present in 'data'.", call. = FALSE)
+    }
+    .validate_numeric_vector(as.numeric(data[[w]]), w)
+  }
+  invisible(TRUE)
+}
+
+.validate_mu0 <- function(mu0, n) {
+  if (is.null(mu0)) {
+    return(NULL)
+  }
+  if (!is.numeric(mu0) || any(!is.finite(mu0)) || !(length(mu0) %in% c(1L, n))) {
+    stop("'mu0' must be a finite numeric scalar or have length nrow(data).", call. = FALSE)
+  }
+  mu0
+}
+
 #' Mean Direction Model Wrapper (two-step workflow)
+#'
+#' Fits the mean-direction special case through the same two-step workflow used
+#' by \code{\link{angular_two_step}()}. The wrapper creates synthetic reference
+#' directions internally and returns natural-parameter summaries obtained by a
+#' delta-method transformation of the homogeneous fit.
 #'
 #' @param data A data frame containing at least the response variable.
 #' @param response Name of the angular response variable.
-#' @param mu0 Optional numeric scalar/vector.
+#' @param mu0 Optional finite numeric scalar or vector of length
+#'   \code{nrow(data)} used as a baseline direction.
 #' @param ... Additional arguments passed to \code{angular_two_step()}.
 #' @return A list with \code{consensus_fit}, \code{homogeneous_fit},
 #'   \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
 #'   outputs \code{natural_parameters}, \code{natural_vcov_model},
 #'   \code{natural_vcov_robust}, \code{natural_jacobian}.
+#' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+#'   A general angular regression model for the analysis of data on animal
+#'   movement in ecology. \emph{Journal of the Royal Statistical Society:
+#'   Series C (Applied Statistics)}, 65(3), 445-463.
+#' @examples
+#' data(bison)
+#' d <- na.omit(bison[seq_len(80), "y.dir", drop = FALSE])
+#' fit <- meanDirectionModel(d, response = "y.dir")
+#' fit$natural_parameters
 #' @export
 meanDirectionModel <- function(data, response, mu0 = NULL, ...) {
+  .validate_wrapper_data(data = data, response = response)
+  mu0 <- .validate_mu0(mu0, nrow(data))
   data_aug <- data
   if (is.null(mu0)) {
     data_aug$mu0 <- 0
@@ -285,6 +329,11 @@ meanDirectionModel <- function(data, response, mu0 = NULL, ...) {
 
 #' Decentered Predictor Model Wrapper (two-step workflow)
 #'
+#' Fits the decentered-predictor special case by augmenting the data with
+#' synthetic orthogonal directions and applying \code{\link{angular_two_step}()}.
+#' Natural parameters are returned with model-based and robust delta-method
+#' standard errors.
+#'
 #' @param data A data frame containing \code{response} and \code{w}.
 #' @param response Name of the angular response variable.
 #' @param w Name of the angular explanatory variable.
@@ -293,11 +342,18 @@ meanDirectionModel <- function(data, response, mu0 = NULL, ...) {
 #'   \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
 #'   outputs \code{natural_parameters}, \code{natural_vcov_model},
 #'   \code{natural_vcov_robust}, \code{natural_jacobian}.
+#' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+#'   A general angular regression model for the analysis of data on animal
+#'   movement in ecology. \emph{Journal of the Royal Statistical Society:
+#'   Series C (Applied Statistics)}, 65(3), 445-463.
+#' @examples
+#' data(bison)
+#' d <- na.omit(bison[seq_len(80), c("y.dir", "y.prec")])
+#' fit <- decentredPredictorModel(d, response = "y.dir", w = "y.prec")
+#' fit$natural_parameters
 #' @export
 decentredPredictorModel <- function(data, response, w, ...) {
-  if (!(w %in% names(data))) {
-    stop("The 'w' variable provided (", w, ") is not present in 'data'.", call. = FALSE)
-  }
+  .validate_wrapper_data(data = data, response = response, w = w)
 
   data_aug <- data
   w_pi2 <- paste0(w, "_plus_pi2")
@@ -323,6 +379,10 @@ decentredPredictorModel <- function(data, response, w, ...) {
 
 #' Presnell Model Wrapper (two-step workflow)
 #'
+#' Fits the Presnell special case by building the linear and orthogonal
+#' synthetic terms required by the homogeneous angular formulation. The returned
+#' natural parameters are ratios computed from the homogeneous coefficients.
+#'
 #' @param data A data frame containing \code{response} and \code{w}.
 #' @param response Name of the angular response variable.
 #' @param w Name of the continuous covariate.
@@ -331,11 +391,18 @@ decentredPredictorModel <- function(data, response, w, ...) {
 #'   \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
 #'   outputs \code{natural_parameters}, \code{natural_vcov_model},
 #'   \code{natural_vcov_robust}, \code{natural_jacobian}.
+#' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+#'   A general angular regression model for the analysis of data on animal
+#'   movement in ecology. \emph{Journal of the Royal Statistical Society:
+#'   Series C (Applied Statistics)}, 65(3), 445-463.
+#' @examples
+#' data(bison)
+#' d <- na.omit(bison[500:579, c("y.dir", "z.gap")])
+#' fit <- presnellModel(d, response = "y.dir", w = "z.gap")
+#' fit$natural_parameters
 #' @export
 presnellModel <- function(data, response, w, ...) {
-  if (!(w %in% names(data))) {
-    stop("The 'w' variable provided (", w, ") is not present in 'data'.", call. = FALSE)
-  }
+  .validate_wrapper_data(data = data, response = response, w = w)
 
   data_aug <- data
   data_aug$const0 <- 0
@@ -359,6 +426,10 @@ presnellModel <- function(data, response, w, ...) {
 
 #' Jammalamadaka-Sengupta Model Wrapper (two-step workflow)
 #'
+#' Fits the Jammalamadaka-Sengupta special case by creating the required
+#' sine/cosine-equivalent angular terms and returning the corresponding natural
+#' parameters through a delta-method transformation.
+#'
 #' @param data A data frame containing \code{response} and \code{w}.
 #' @param response Name of the angular response variable.
 #' @param w Name of the angular explanatory variable.
@@ -367,11 +438,18 @@ presnellModel <- function(data, response, w, ...) {
 #'   \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
 #'   outputs \code{natural_parameters}, \code{natural_vcov_model},
 #'   \code{natural_vcov_robust}, \code{natural_jacobian}.
+#' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+#'   A general angular regression model for the analysis of data on animal
+#'   movement in ecology. \emph{Journal of the Royal Statistical Society:
+#'   Series C (Applied Statistics)}, 65(3), 445-463.
+#' @examples
+#' data(bison)
+#' d <- na.omit(bison[seq_len(80), c("y.dir", "y.prec")])
+#' fit <- jammalamadakaModel(d, response = "y.dir", w = "y.prec")
+#' fit$natural_parameters
 #' @export
 jammalamadakaModel <- function(data, response, w, ...) {
-  if (!(w %in% names(data))) {
-    stop("The 'w' variable provided (", w, ") is not present in 'data'.", call. = FALSE)
-  }
+  .validate_wrapper_data(data = data, response = response, w = w)
 
   data_aug <- data
   data_aug$const0 <- 0

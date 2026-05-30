@@ -3,7 +3,7 @@
 \docType{data}
 \name{noshiro}
 \alias{noshiro}
-\title{nishiro}
+\title{Noshiro earthquake direction data}
 \format{
 data.frame containing 678 rows and 2 columns:
 \describe{
@@ -11,10 +11,15 @@ data.frame containing 678 rows and 2 columns:
   \item{DIRMV}{the direction of movement}
 }
 }
+\source{
+Package data file. The original bibliographic provenance is not
+  documented in this repository.
+}
 \usage{
 data(noshiro)
 }
 \description{
-This file contains 2 circular variables for 678 locations concerned with the Noshiro earthquake.
+This data frame contains two circular variables for 678 locations associated
+with the Noshiro earthquake.
 }
 \keyword{datasets}

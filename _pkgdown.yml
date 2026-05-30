@@ -22,6 +22,8 @@ navbar:
         href: articles/bison-applied-example.html
       - text: Model workflow and diagnostics
         href: articles/model-workflow-and-diagnostics.html
+      - text: Angular regression workflow
+        href: articles/angular-regression-workflow.html
 
 home:
   title: CircularRegression
@@ -53,6 +55,7 @@ reference:
   contents:
   - print.angular
   - print.angular_two_step
+  - print.angular_re
   - print.circular_regression
   - print.consensus
   - print.pick_reference_angle
@@ -79,6 +82,7 @@ articles:
   - introduction-to-circular-regression
   - bison-applied-example
   - model-workflow-and-diagnostics
+  - angular-regression-workflow
 
 news:
   releases:

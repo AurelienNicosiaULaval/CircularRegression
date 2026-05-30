@@ -118,7 +118,7 @@ logLik.angular <- function(object, ...) {
   kappa <- as.numeric(object$kappahat)
   Cbar <- as.numeric(object$MaxCosine)
 
-  log_i0 <- log(besselI(kappa, nu = 0, expon.scaled = TRUE)) + kappa
+  log_i0 <- .logI0(kappa)
   ll <- n * (kappa * Cbar - log(2 * pi) - log_i0)
 
   attr(ll, "df") <- nrow(object$parameters) + 1L

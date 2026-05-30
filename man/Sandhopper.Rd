@@ -31,6 +31,11 @@ A data frame with 72 rows and 22 variables:
   \item{Artsx}{Morphometric measurement.}
 }
 }
+\source{
+Package data file corresponding to the sandhopper example discussed
+  by D'Elia (2001) and Rivest and Kato (2019). The repository does not
+  include a raw-data reconstruction script.
+}
 \usage{
 data(Sandhopper)
 }

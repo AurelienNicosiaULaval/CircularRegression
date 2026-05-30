@@ -1,0 +1,185 @@
+---
+title: "Angular Regression Workflow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Angular Regression Workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+This vignette gives a compact package workflow using only datasets distributed
+with CircularRegression. It focuses on the package interface rather than on a
+full ecological analysis.
+
+```{r}
+library(CircularRegression)
+
+data(bison)
+
+d <- bison[seq_len(180), c("y.dir", "y.prec", "x.meadow", "z.meadow")]
+d <- na.omit(d)
+```
+
+The response `y.dir` and angular covariates are in radians. The modifier
+`z.meadow` is non-negative and enters through the weighted term
+`x.meadow:z.meadow`.
+
+## Select a Reference Direction
+
+The homogeneous angular model fixes one plain angular term as the reference.
+The package can select the reference direction using the empirical mean-cosine
+criterion.
+
+```{r}
+ref <- select_reference_angle(
+  y.dir ~ y.prec + x.meadow:z.meadow,
+  data = d
+)
+ref
+```
+
+## Fit Homogeneous and Consensus Models
+
+The homogeneous model can be fitted directly once the reference is known.
+
+```{r}
+fit_hom <- angular(
+  y.dir ~ y.prec + x.meadow:z.meadow,
+  data = d,
+  reference = c("name", ref$ref_name)
+)
+
+summary(fit_hom)
+```
+
+The consensus model estimates one concentration-like coefficient for each
+directional term.
+
+```{r}
+fit_cons <- consensus(
+  y.dir ~ y.prec + x.meadow:z.meadow,
+  data = d
+)
+
+summary(fit_cons)
+```
+
+The default high-level workflow fits the consensus model first, then fits the
+homogeneous model with the selected reference direction.
+
+```{r}
+fit_two <- angular_two_step(
+  y.dir ~ y.prec + x.meadow:z.meadow,
+  data = d
+)
+
+coef(fit_two)
+```
+
+The coefficient for `x.meadow:z.meadow` is interpreted relative to the selected
+reference direction. In this subset, its sign and magnitude describe how the
+weighted meadow direction contributes to the fitted mean resultant vector after
+the reference direction has coefficient one.
+
+## Predictions and Residuals
+
+Predictions are angles in radians. Residuals are wrapped circular differences.
+
+```{r}
+new_d <- d[seq_len(5), c("y.prec", "x.meadow", "z.meadow")]
+
+predict(fit_hom, newdata = new_d)
+head(fitted(fit_hom))
+head(residuals(fit_hom))
+```
+
+A lightweight base-R residual plot is often sufficient for a first diagnostic
+check.
+
+```{r}
+plot(
+  fitted(fit_hom),
+  residuals(fit_hom),
+  xlab = "Fitted direction",
+  ylab = "Circular residual",
+  pch = 19,
+  col = "gray30"
+)
+abline(h = 0, lty = 2)
+```
+
+## Special-Case Wrappers
+
+The special-case wrappers keep the two-step fitting machinery but return
+natural-parameter summaries for model forms used in the circular-regression
+literature.
+
+```{r}
+mean_fit <- meanDirectionModel(
+  data = d["y.dir"],
+  response = "y.dir"
+)
+
+dec_fit <- decentredPredictorModel(
+  data = d[c("y.dir", "y.prec")],
+  response = "y.dir",
+  w = "y.prec"
+)
+
+pres_fit <- presnellModel(
+  data = na.omit(bison[500:579, c("y.dir", "z.gap")]),
+  response = "y.dir",
+  w = "z.gap"
+)
+
+jam_fit <- jammalamadakaModel(
+  data = d[c("y.dir", "y.prec")],
+  response = "y.dir",
+  w = "y.prec"
+)
+
+mean_fit$natural_parameters
+dec_fit$natural_parameters
+pres_fit$natural_parameters
+jam_fit$natural_parameters
+```
+
+## Random-Intercept Fit
+
+The random-intercept model is separate from `circular_regression()` in this
+version. It can be used when clustered circular observations are available. The
+following small example uses the `Sandhopper` data and converts degree variables
+to radians before modeling.
+
+```{r}
+data(Sandhopper)
+
+sh <- Sandhopper[seq_len(24), ]
+sh$y <- sh$LN1 * pi / 180
+sh$ref <- sh$Azimuth * pi / 180
+sh$wind <- sh$DirW * pi / 180
+sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
+
+fit_re <- angular_re(
+  y ~ ref + wind:wind_speed,
+  data = sh,
+  cluster = sh$Anim,
+  control = list(maxit = 50, reltol = 1e-8)
+)
+
+coef(fit_re)
+head(ranef.angular_re(fit_re))
+head(predict(fit_re))
+```
+
+This example is intentionally small so that it remains suitable for package
+checks and pkgdown builds.

@@ -9,11 +9,21 @@
 - 0 failures
 - 0 warnings
 - 0 skipped tests
-- 73 passed expectations
+- 107 passed expectations
 
 `devtools::build_vignettes()`:
 
 - completed successfully
+
+`devtools::check(args = "--no-manual", error_on = "never")`:
+
+- 0 errors
+- 0 warnings
+- 0 notes
+
+`spelling::spell_check_package(".")`:
+
+- no spelling errors found
 
 `R CMD check --as-cran` on a clean external source copy:
 
@@ -37,9 +47,12 @@ Notes:
   Bessel-ratio and log-Bessel computations.
 - Added validation for finite angles, non-negative modifiers, valid weights,
   control values and initial values.
-- Replaced the old draft vignette with two short reproducible HTML vignettes.
+- Replaced the old draft vignette with reproducible HTML vignettes and added a
+  package-data workflow vignette for reviewer support.
 - Expanded the test suite for estimation, predictions, NA handling, weights,
-  small samples and modulo invariance.
+  small samples, modulo invariance, package datasets, wrapper outputs and
+  random-effect methods.
+- Added pkgdown configuration and a GitHub Actions R CMD check workflow.
 
 ## Downstream dependencies
 

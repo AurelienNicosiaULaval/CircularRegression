@@ -1,10 +1,11 @@
 # CRAN readiness checklist
 
-Date: 2026-05-02
+Date: 2026-05-30
 
 ## Package metadata
 
 - DESCRIPTION includes a maintainer, license, URL and BugReports field.
+- DESCRIPTION includes `Language: en-US`.
 - Strong dependencies are limited to packages used by core functionality.
 - Plotting dependencies are kept in Suggests and used conditionally.
 - .Rbuildignore excludes local project files, audit files, benchmark scripts,
@@ -17,7 +18,9 @@ Date: 2026-05-02
 - S3 methods are implemented for model objects where appropriate.
 - Documentation is regenerated with roxygen2.
 - Examples are short and reproducible.
-- Two vignettes provide an introduction and an applied bison example.
+- Four vignettes provide an introduction, an applied bison example, diagnostics
+  and a package-data workflow.
+- `inst/CITATION` returns version 0.5.0 from a temporary source installation.
 
 ## Statistical and numerical checks
 
@@ -29,18 +32,20 @@ Date: 2026-05-02
 
 ## Test and check commands
 
-Commands run successfully on 2026-05-02:
+Commands run successfully on 2026-05-30:
 
 ```r
 devtools::document()
 devtools::test()
 devtools::build_vignettes()
+pkgdown::build_site(preview = FALSE)
+spelling::spell_check_package(".")
 ```
 
-Then build and check the source tarball:
+Commands run successfully on 2026-05-30:
 
 ```sh
-R CMD build .
+R CMD build <clean temporary source copy>
 R CMD check --as-cran CircularRegression_0.5.0.tar.gz
 ```
 
@@ -52,3 +57,9 @@ Observed result in a clean external check directory:
 
 The two notes were the expected CRAN incoming "New submission" note and a local
 HTML Tidy version note.
+
+`devtools::check(args = "--no-manual", error_on = "never")` returned 0 errors,
+0 warnings and 0 notes.
+
+`pkgdown::build_site(preview = FALSE)` returned successfully with a non-blocking
+pkgdown metadata warning that no canonical site URL is configured.

@@ -4,6 +4,7 @@
 ^\.RData$
 ^\.Rhistory$
 ^\.git$
+^\.github$
 ^\.gitignore$
 ^audit$
 ^benchmarks$

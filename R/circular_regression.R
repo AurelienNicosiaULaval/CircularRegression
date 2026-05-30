@@ -31,6 +31,10 @@
 #'
 #' @return An object of class \code{"circular_regression"} containing the fitted
 #'   model, the method used, the original call, and the formula.
+#' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+#'   A general angular regression model for the analysis of data on animal
+#'   movement in ecology. \emph{Journal of the Royal Statistical Society:
+#'   Series C (Applied Statistics)}, 65(3), 445-463.
 #' @examples
 #' data(bison)
 #' d <- bison[seq_len(100), ]

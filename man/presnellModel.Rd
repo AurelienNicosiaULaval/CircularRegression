@@ -22,5 +22,19 @@ A list with \code{consensus_fit}, \code{homogeneous_fit},
   \code{natural_vcov_robust}, \code{natural_jacobian}.
 }
 \description{
-Presnell Model Wrapper (two-step workflow)
+Fits the Presnell special case by building the linear and orthogonal
+synthetic terms required by the homogeneous angular formulation. The returned
+natural parameters are ratios computed from the homogeneous coefficients.
+}
+\examples{
+data(bison)
+d <- na.omit(bison[500:579, c("y.dir", "z.gap")])
+fit <- presnellModel(d, response = "y.dir", w = "z.gap")
+fit$natural_parameters
+}
+\references{
+Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+  A general angular regression model for the analysis of data on animal
+  movement in ecology. \emph{Journal of the Royal Statistical Society:
+  Series C (Applied Statistics)}, 65(3), 445-463.
 }

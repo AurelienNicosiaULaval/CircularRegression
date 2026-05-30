@@ -11,7 +11,8 @@ meanDirectionModel(data, response, mu0 = NULL, ...)
 
 \item{response}{Name of the angular response variable.}
 
-\item{mu0}{Optional numeric scalar/vector.}
+\item{mu0}{Optional finite numeric scalar or vector of length
+\code{nrow(data)} used as a baseline direction.}
 
 \item{...}{Additional arguments passed to \code{angular_two_step()}.}
 }
@@ -22,5 +23,20 @@ A list with \code{consensus_fit}, \code{homogeneous_fit},
   \code{natural_vcov_robust}, \code{natural_jacobian}.
 }
 \description{
-Mean Direction Model Wrapper (two-step workflow)
+Fits the mean-direction special case through the same two-step workflow used
+by \code{\link{angular_two_step}()}. The wrapper creates synthetic reference
+directions internally and returns natural-parameter summaries obtained by a
+delta-method transformation of the homogeneous fit.
+}
+\examples{
+data(bison)
+d <- na.omit(bison[seq_len(80), "y.dir", drop = FALSE])
+fit <- meanDirectionModel(d, response = "y.dir")
+fit$natural_parameters
+}
+\references{
+Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+  A general angular regression model for the analysis of data on animal
+  movement in ecology. \emph{Journal of the Royal Statistical Society:
+  Series C (Applied Statistics)}, 65(3), 445-463.
 }

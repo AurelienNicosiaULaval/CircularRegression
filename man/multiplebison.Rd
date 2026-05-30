@@ -6,14 +6,14 @@
 \title{Two plains bison tracked by GPS (Prince Albert National Park, 2013)}
 \format{
 A data frame with \eqn{n = 1475} rows (hours kept after filtering) and the
-following columns (angles in radians unless stated otherwise):
+following columns (direction and turning-angle variables are in degrees):
 \describe{
   \item{datetime_round_next}{POSIXct. Timestamp of the retained hourly record.}
   \item{heure}{integer. Hour of day (0-23).}
   \item{bearing_ang}{numeric. Bearing from bison 1044-a to 1045-a.}
-  \item{diff}{numeric. Difference between the animals' movement directions (1044-a minus 1045-a).}
-  \item{direction_1044-a}{numeric. Movement direction of bison 1044-a.}
-  \item{direction_1045-a}{numeric. Movement direction of bison 1045-a.}
+  \item{diff}{numeric. Source variable retained from the merged GPS-derived data.}
+  \item{direction_1044-a}{numeric. Movement direction of bison 1044-a, in degrees.}
+  \item{direction_1045-a}{numeric. Movement direction of bison 1045-a, in degrees.}
   \item{distance_1044-a}{numeric. Step length (m) of bison 1044-a between consecutive fixes.}
   \item{distance_1045-a}{numeric. Step length (m) of bison 1045-a between consecutive fixes.}
   \item{distance}{numeric. Inter-animal distance (m) at the timestamp.}
@@ -21,9 +21,14 @@ following columns (angles in radians unless stated otherwise):
   \item{lat_1045-a}{numeric. Latitude of bison 1045-a (decimal degrees).}
   \item{long_1044-a}{numeric. Longitude of bison 1044-a (decimal degrees).}
   \item{long_1045-a}{numeric. Longitude of bison 1045-a (decimal degrees).}
-  \item{turn_ang_1044}{numeric. Turning angle of bison 1044-a between consecutive directions.}
-  \item{turn_ang_1045}{numeric. Turning angle of bison 1045-a between consecutive directions.}
+  \item{turn_ang_1044}{numeric. Turning angle of bison 1044-a between consecutive directions, in degrees.}
+  \item{turn_ang_1045}{numeric. Turning angle of bison 1045-a between consecutive directions, in degrees.}
 }
+}
+\source{
+Derived package dataset prepared from GPS tracks of two plains bison
+  monitored in Prince Albert National Park in 2013. The repository does not
+  include raw GPS files or a reconstruction script.
 }
 \usage{
 multiplebison
@@ -43,13 +48,13 @@ and reshaping to a "wide" format with one row per timestamp holding both
 animals' variables. Turning-angles are computed from consecutive directions.
 
 
-- Angles are measured around the circle; if stored in degrees in your copy,
-  convert to radians with \code{circular::rad(x, units = "degrees")}, or
-  \code{circular::deg2rad()} before modeling.
+- Angles are measured around the circle and stored in degrees in this package
+  dataset. Convert to radians before modeling, for example with
+  \code{x * pi / 180}.
 - Step lengths and distances were computed from consecutive GPS fixes; rows
   are kept only when the time difference equals one hour.
-- The turning-angle is the signed circular difference between consecutive
-  movement directions (current minus previous, wrapped to \eqn{(-\pi,\pi]}).
+- The turning-angle columns are circular differences between consecutive
+  movement directions, stored in degrees on a 0-360 scale.
 }
 \examples{
 ## Basic glimpse
@@ -57,7 +62,7 @@ head(multiplebison)
 
 
 ## Example: inter-animal proximity rate (< 500 m)
-# mean(multiplebison$Distance < 500, na.rm = TRUE)
+# mean(multiplebison$distance < 500, na.rm = TRUE)
 
 }
 \references{

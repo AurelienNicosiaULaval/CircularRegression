@@ -14,14 +14,15 @@ angular_re(
 )
 }
 \arguments{
-\item{formula}{Model formula of the form \code{y ~ x1:z1 + x2:z2 + ...}. The
-first angular covariate supplies the reference direction whose coefficient
-is fixed to one.}
+\item{formula}{Model formula with a circular response and terms of the form
+\code{x} or \code{x:z}. The first angular covariate supplies the reference
+direction whose coefficient is fixed to one.}
 
 \item{data}{A data frame containing the variables used in \code{formula}.}
 
-\item{cluster}{Factor or vector of cluster identifiers (must have the same
-length as the response).}
+\item{cluster}{Factor or vector of cluster identifiers. It must have length
+equal to \code{nrow(data)} or to the model-frame size after missing-value
+handling.}
 
 \item{init}{Optional list with components \code{beta}, \code{kappa_e}, and
 \code{kappa_a} providing starting values. Missing entries are filled with
@@ -37,7 +38,10 @@ effects.}
 missing values. The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
-object of class \code{"angular_re"}
+An object of class \code{"angular_re"} containing fixed-effect
+  estimates, model-based and cluster-robust covariance matrices, concentration
+  estimates, fitted marginal mean directions, fixed and conditional
+  residuals, and estimated random intercepts.
 }
 \description{
 Fits the homogeneous angular regression of Rivest et al. (2016) augmented
@@ -48,5 +52,28 @@ and unit-errors \eqn{e_{ij} \sim \mathrm{VM}(0, \kappa_e)}, following Rivest
 subsequent terms are written \code{x:z}.
 }
 \examples{
-# See README example below with Sandhopper data
+data(Sandhopper)
+sh <- Sandhopper[seq_len(24), ]
+sh$y <- sh$LN1 * pi / 180
+sh$ref <- sh$Azimuth * pi / 180
+sh$wind <- sh$DirW * pi / 180
+sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
+
+fit <- angular_re(
+  y ~ ref + wind:wind_speed,
+  data = sh,
+  cluster = sh$Anim,
+  control = list(maxit = 25, reltol = 1e-6)
+)
+coef(fit)
+head(predict(fit))
+}
+\references{
+Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+  A general angular regression model for the analysis of data on animal
+  movement in ecology. \emph{Journal of the Royal Statistical Society:
+  Series C (Applied Statistics)}, 65(3), 445-463.
+
+  Rivest, L.-P., and Kato, S. (2019). A random-effects model for clustered
+  circular data. \emph{Canadian Journal of Statistics}, 47(4), 712-728.
 }

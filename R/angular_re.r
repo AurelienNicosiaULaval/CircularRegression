@@ -7,12 +7,13 @@
 #' \code{angular()}, where the first term provides the reference direction and
 #' subsequent terms are written \code{x:z}.
 #'
-#' @param formula Model formula of the form \code{y ~ x1:z1 + x2:z2 + ...}. The
-#'   first angular covariate supplies the reference direction whose coefficient
-#'   is fixed to one.
+#' @param formula Model formula with a circular response and terms of the form
+#'   \code{x} or \code{x:z}. The first angular covariate supplies the reference
+#'   direction whose coefficient is fixed to one.
 #' @param data A data frame containing the variables used in \code{formula}.
-#' @param cluster Factor or vector of cluster identifiers (must have the same
-#'   length as the response).
+#' @param cluster Factor or vector of cluster identifiers. It must have length
+#'   equal to \code{nrow(data)} or to the model-frame size after missing-value
+#'   handling.
 #' @param init Optional list with components \code{beta}, \code{kappa_e}, and
 #'   \code{kappa_a} providing starting values. Missing entries are filled with
 #'   moment-based estimates.
@@ -23,10 +24,34 @@
 #'   effects.
 #' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
 #'   missing values. The default is \code{\link[stats]{na.omit}}.
-#' @return object of class \code{"angular_re"}
+#' @return An object of class \code{"angular_re"} containing fixed-effect
+#'   estimates, model-based and cluster-robust covariance matrices, concentration
+#'   estimates, fitted marginal mean directions, fixed and conditional
+#'   residuals, and estimated random intercepts.
+#' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+#'   A general angular regression model for the analysis of data on animal
+#'   movement in ecology. \emph{Journal of the Royal Statistical Society:
+#'   Series C (Applied Statistics)}, 65(3), 445-463.
+#'
+#'   Rivest, L.-P., and Kato, S. (2019). A random-effects model for clustered
+#'   circular data. \emph{Canadian Journal of Statistics}, 47(4), 712-728.
 #' @importFrom stats model.frame optim pnorm
 #' @examples
-#' # See README example below with Sandhopper data
+#' data(Sandhopper)
+#' sh <- Sandhopper[seq_len(24), ]
+#' sh$y <- sh$LN1 * pi / 180
+#' sh$ref <- sh$Azimuth * pi / 180
+#' sh$wind <- sh$DirW * pi / 180
+#' sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
+#'
+#' fit <- angular_re(
+#'   y ~ ref + wind:wind_speed,
+#'   data = sh,
+#'   cluster = sh$Anim,
+#'   control = list(maxit = 25, reltol = 1e-6)
+#' )
+#' coef(fit)
+#' head(predict(fit))
 #' @export
 angular_re <- function(
   formula,
@@ -36,7 +61,9 @@ angular_re <- function(
   control = list(),
   na.action = stats::na.omit
 ) {
-  stopifnot(!missing(cluster))
+  if (missing(cluster)) {
+    stop("'cluster' must be provided.", call. = FALSE)
+  }
   call <- match.call()
 
   ## ---- Parse model frame exactly like angular() ----
@@ -131,15 +158,7 @@ angular_re <- function(
 
   ## ---- helpers ----
   wrap <- function(a) atan2(sin(a), cos(a))
-  A1 <- function(k) {
-    # safe ratio I1/I0 using scaled Bessel to avoid overflow
-    if (any(k < 0)) stop("kappa must be >= 0")
-    num <- besselI(k, 1, expon.scaled = TRUE)
-    den <- besselI(k, 0, expon.scaled = TRUE)
-    r <- num / den
-    r[k == 0] <- 0
-    r
-  }
+  A1 <- function(k) .A1_ratio(k)
   A1inv <- function(r) {
     # use circular::A1inv if available, else Newton
     if (requireNamespace("circular", quietly = TRUE)) {
@@ -158,13 +177,13 @@ angular_re <- function(
       )
       for (iter in 1:10) {
         f <- A1(k) - r
-        df <- 1 - A1(k) / k - A1(k)^2
+        df <- 1 - A1(k) / pmax(k, .Machine$double.eps) - A1(k)^2
         k <- pmax(0, k - f / df)
       }
       return(k)
     }
   }
-  logI0 <- function(k) log(besselI(k, 0, expon.scaled = TRUE)) + k
+  logI0 <- function(k) .logI0(k)
 
   compute_mu <- function(beta) {
     sinmu <- sin(x0)
@@ -203,6 +222,16 @@ angular_re <- function(
   if (!is.numeric(ctrl$reltol) || length(ctrl$reltol) != 1L || !is.finite(ctrl$reltol) || ctrl$reltol <= 0) {
     stop("'control$reltol' must be a finite positive scalar.", call. = FALSE)
   }
+  if (!is.numeric(ctrl$trace) || length(ctrl$trace) != 1L || !is.finite(ctrl$trace) || ctrl$trace < 0) {
+    stop("'control$trace' must be a finite non-negative scalar.", call. = FALSE)
+  }
+  ctrl$trace <- as.integer(ctrl$trace)
+  if (!is.logical(ctrl$hessian) || length(ctrl$hessian) != 1L || is.na(ctrl$hessian)) {
+    stop("'control$hessian' must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (!is.logical(ctrl$start_from_angular) || length(ctrl$start_from_angular) != 1L || is.na(ctrl$start_from_angular)) {
+    stop("'control$start_from_angular' must be TRUE or FALSE.", call. = FALSE)
+  }
 
   coalesce_null <- function(x, default) if (is.null(x)) default else x
 
@@ -213,7 +242,7 @@ angular_re <- function(
       warning("angular() not found; starting beta at zeros.")
       beta0 <- rep(0, p)
     } else {
-      an0 <- angular(formula, data = data, reference = "first")
+      an0 <- angular(formula, data = data, reference = "first", na.action = na.action)
       beta0 <- as.numeric(an0$parameters[betaname, "estimate"])
       beta0[is.na(beta0)] <- 0
     }
@@ -455,6 +484,21 @@ angular_re <- function(
   out
 }
 
+#' Methods for Angular Random-Effects Fits
+#'
+#' @param x,object An object of class \code{"angular_re"}.
+#' @param robust Logical. For \code{vcov()}, return the cluster-robust
+#'   covariance matrix when \code{TRUE}; otherwise return the model-based
+#'   covariance matrix.
+#' @param type Residual type. \code{"fixed"} returns residuals from the marginal
+#'   fixed-effect mean direction. \code{"conditional"} subtracts the estimated
+#'   cluster random intercepts.
+#' @param ... Additional arguments, currently unused.
+#' @return \code{coef()} returns the parameter estimates. \code{vcov()} returns
+#'   the requested covariance matrix. \code{fitted()} returns marginal fitted
+#'   mean directions. \code{residuals()} returns wrapped circular residuals.
+#'   \code{print()} invisibly returns the input object.
+#' @rdname angular_re-methods
 #' @export
 print.angular_re <- function(x, ...) {
   cat("Call:\n")
@@ -485,16 +529,19 @@ print.angular_re <- function(x, ...) {
   invisible(x)
 }
 
+#' @rdname angular_re-methods
 #' @export
 coef.angular_re <- function(object, ...) {
   object$coefficients[, "estimate"]
 }
 
+#' @rdname angular_re-methods
 #' @export
 vcov.angular_re <- function(object, robust = FALSE, ...) {
   if (robust) object$vcov_robust else object$vcov_model
 }
 
+#' @rdname angular_re-methods
 #' @export
 residuals.angular_re <- function(
   object,
@@ -516,6 +563,7 @@ residuals.angular_re <- function(
 #' @export
 ranef.angular_re <- function(object, ...) object$ranef
 
+#' @rdname angular_re-methods
 #' @export
 fitted.angular_re <- function(object, ...) object$mu
 
@@ -668,12 +716,16 @@ predict.angular_re <- function(
     }, character(2)))
     ref_name <- term_matrix[1, 1]
     x0 <- mf[[ref_name]]
+    .validate_numeric_vector(as.numeric(x0), ref_name)
     betaname <- if (length(term_labels) > 1) term_labels[-1] else character(0)
     p <- length(betaname)
     if (p > 0) {
       x_names <- term_matrix[-1, 1]
       z_names <- term_matrix[-1, 2]
       matx <- as.matrix(mf[, x_names, drop = FALSE])
+      for (j in seq_len(ncol(matx))) {
+        .validate_numeric_vector(as.numeric(matx[, j]), x_names[j])
+      }
       matz <- matrix(1, nrow = nrow(mf), ncol = p)
       for (j in seq_len(p)) {
         if (!identical(z_names[j], x_names[j])) {
@@ -683,7 +735,14 @@ predict.angular_re <- function(
               call. = FALSE
             )
           }
-          matz[, j] <- mf[[z_names[j]]]
+          z <- as.numeric(mf[[z_names[j]]])
+          if (any(!is.finite(z)) || any(z < 0)) {
+            stop(
+              sprintf("Modifier '%s' must be finite and non-negative.", z_names[j]),
+              call. = FALSE
+            )
+          }
+          matz[, j] <- z
         }
       }
     } else {

@@ -38,6 +38,10 @@
 #' A general angular regression model for the analysis of data on animal movement in ecology.
 #' \emph{Journal of the Royal Statistical Society: Series C (Applied Statistics)}, 65(3), 445-463.
 #'
+#' @source Reduced package dataset derived from the bison movement application
+#'   described by Rivest et al. (2016). The repository does not include raw GPS
+#'   files or a reconstruction script for this reduced teaching dataset.
+#'
 #' @seealso \code{\link{angular}}, \code{\link{consensus}}, \code{\link{pick_reference_angle}}
 #'
 #' @examples

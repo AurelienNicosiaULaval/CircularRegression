@@ -20,6 +20,10 @@
 #' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
 #'   missing values. The default is \code{\link[stats]{na.omit}}.
 #' @return An object of class \code{"angular"}.
+#' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+#'   A general angular regression model for the analysis of data on animal
+#'   movement in ecology. \emph{Journal of the Royal Statistical Society:
+#'   Series C (Applied Statistics)}, 65(3), 445-463.
 #' @export
 angular <- function(
   formula,

@@ -39,3 +39,9 @@ Fits the homogeneous angular regression model of Rivest et al. (2016), where
 the mean direction is the orientation of a weighted resultant vector and one
 reference angle has coefficient fixed to 1.
 }
+\references{
+Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+  A general angular regression model for the analysis of data on animal
+  movement in ecology. \emph{Journal of the Royal Statistical Society:
+  Series C (Applied Statistics)}, 65(3), 445-463.
+}

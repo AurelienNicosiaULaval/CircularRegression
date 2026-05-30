@@ -9,6 +9,9 @@
   and initial values.
 * Replace the draft overview vignette with two reproducible HTML vignettes.
 * Add pkgdown configuration and a workflow diagnostics article.
+* Add a package-data workflow vignette for R Journal reviewer support.
+* Add a minimal GitHub Actions R CMD check workflow.
+* Clarify random-effects and special-wrapper documentation.
 * Expand tests for simulation recovery, predictions, NA handling, weights,
   modulo invariance and small-sample fits.
 

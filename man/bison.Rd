@@ -16,6 +16,11 @@ A data frame with \code{5,696} rows and 7 columns:
   \item{z.gap}{Distance toward the nearest canopy gap associated with \code{x.gap}.}
 }
 }
+\source{
+Reduced package dataset derived from the bison movement application
+  described by Rivest et al. (2016). The repository does not include raw GPS
+  files or a reconstruction script for this reduced teaching dataset.
+}
 \usage{
 bison
 }

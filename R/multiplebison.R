@@ -42,18 +42,30 @@
 #'   movement directions, stored in degrees on a 0-360 scale.
 #' - Scientific provenance is partially documented in the repository. The
 #'   maintainer identifies these GPS tracks as associated with doctoral work
-#'   and/or an article on bison movement, but the exact thesis or article
-#'   reference has not been verified in the repository.
+#'   and/or an article on bison movement. A closely related scientific article
+#'   is Nicosia et al. (2017), which analyzes GPS-collared bison movement in
+#'   Prince Albert National Park using an individual winter trajectory from
+#'   November 2013 to April 2014. The repository does not verify whether the
+#'   current two-bison July-October 2013 data file is a direct subset or
+#'   preprocessing product of that analysis.
 #' - The repository does not include raw GPS files, a full reconstruction
-#'   script, an exact thesis or article reference, or a
-#'   redistribution-permission record for this processed dataset. Redistribution
-#'   permission should be explicitly confirmed or archived before CRAN
-#'   submission.
+#'   script, or a redistribution-permission record for this processed dataset.
+#'   Redistribution permission should be explicitly confirmed or archived before
+#'   CRAN submission.
 #'
 #' @source Derived package dataset prepared from GPS tracks of two plains bison
 #'   monitored in Prince Albert National Park in 2013. The repository does not
-#'   include raw GPS files, a reconstruction script, an exact thesis or article
-#'   reference, or an archived redistribution-permission record.
+#'   include raw GPS files, a reconstruction script, or an archived
+#'   redistribution-permission record. Nicosia et al. (2017) is a related
+#'   bison movement article from the same study context, but the exact mapping
+#'   from that article to this processed data file is not verified in the
+#'   repository.
+#'
+#' @references
+#' Nicosia, A., Duchesne, T., Rivest, L.-P., and Fortin, D. (2017).
+#' A multi-state conditional logistic regression model for the analysis of
+#' animal movement. \emph{The Annals of Applied Statistics}, 11(3), 1537-1560.
+#' DOI: \doi{10.1214/17-AOAS1045}.
 #'
 #' @examples
 #' ## Basic glimpse

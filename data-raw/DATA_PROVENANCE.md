@@ -46,8 +46,14 @@ repository alone.
   Saskatchewan, Canada, during July to October 2013.
 - Scientific provenance status: partially documented. The maintainer identifies
   these data as associated with doctoral work and/or an article on bison
-  movement, but the exact thesis or article reference has not been verified in
-  the repository. No exact reference is cited until this can be confirmed.
+  movement. A related article has been identified: Nicosia, Duchesne, Rivest and
+  Fortin (2017), "A multi-state conditional logistic regression model for the
+  analysis of animal movement", The Annals of Applied Statistics, 11(3),
+  1537-1560, doi:10.1214/17-AOAS1045. This article analyzes GPS-collared bison
+  movement in Prince Albert National Park using an individual winter trajectory
+  from November 2013 to April 2014. The repository does not verify whether the
+  current two-bison July-October 2013 data file is a direct subset or
+  preprocessing product of that analysis.
 - Known transformations from package documentation: individual hourly GPS tracks
   were merged, rows were retained when the time gap between successive fixes was
   exactly one hour, and data were reshaped to a wide format with one row per

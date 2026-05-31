@@ -94,6 +94,9 @@ notes.
 - Clarified `noshiro` provenance using maintainer-supplied information from
   Louis-Paul Rivest and documented the remaining unverified provenance items for
   `multiplebison`.
+- Added Nicosia et al. (2017) as a related scientific reference for the
+  `multiplebison` study context while documenting that the exact mapping to the
+  processed package dataset remains unverified from the repository.
 
 ## Downstream dependencies
 
@@ -114,5 +117,7 @@ source and states that the processed data were provided by Louis-Paul Rivest to
 the maintainer after duplicate observations had been removed. The repository
 does not include raw Noshiro data, a reconstruction script, documented angular
 units, or an archived redistribution-permission record. For `multiplebison`,
-the exact doctoral or article reference remains not verifiable from the
-repository and is documented as pending maintainer confirmation.
+Nicosia et al. (2017) is documented as a related scientific reference for
+GPS-collared bison movement in Prince Albert National Park. The exact mapping
+between that article and the processed two-bison July-October 2013 package file
+remains not verifiable from the repository.

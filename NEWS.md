@@ -20,6 +20,7 @@
 * Clarify random-effects and special-wrapper documentation.
 * Clarify documented provenance for `noshiro` and the remaining provenance
   limitations for `multiplebison`.
+* Add a related scientific reference for the `multiplebison` study context.
 * Expand tests for simulation recovery, predictions, NA handling, weights,
   modulo invariance and small-sample fits.
 

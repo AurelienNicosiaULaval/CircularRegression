@@ -44,6 +44,10 @@ repository alone.
 - Described source: GPS-derived movement metrics for two plains bison
   (`1044-a` and `1045-a`) monitored in Prince Albert National Park,
   Saskatchewan, Canada, during July to October 2013.
+- Scientific provenance status: partially documented. The maintainer identifies
+  these data as associated with doctoral work and/or an article on bison
+  movement, but the exact thesis or article reference has not been verified in
+  the repository. No exact reference is cited until this can be confirmed.
 - Known transformations from package documentation: individual hourly GPS tracks
   were merged, rows were retained when the time gap between successive fixes was
   exactly one hour, and data were reshaped to a wide format with one row per
@@ -52,7 +56,8 @@ repository alone.
 - Angular units: degrees.
 - Raw-data reconstruction status: raw GPS files and a reconstruction script are
   not present in the repository.
-- Redistribution status: maintainer confirmation required.
+- Redistribution status: redistribution permission should be explicitly
+  confirmed or archived before CRAN submission.
 
 ## Sandhopper
 
@@ -72,16 +77,26 @@ repository alone.
 
 - Package file: `data/noshiro.rda`
 - Documentation: `R/noshiro.R`, `man/noshiro.Rd`
-- Described source: package data file containing direction of steepest descent
-  and direction of movement for 678 locations associated with the Noshiro
-  earthquake.
-- Known transformations from package documentation: no transformations are
-  documented beyond the processed two-column data frame.
-- Angular units: not documented in the repository.
+- Described source: processed Noshiro earthquake direction data used in Rivest
+  (1997), containing direction of steepest descent (`DIRDSC`) and direction of
+  movement (`DIRMV`) for 678 locations.
+- Scientific provenance status: documented by maintainer notes. Louis-Paul
+  Rivest informed the maintainer that the data are treated in Rivest (1997),
+  that duplicate observations were removed before inclusion, and that the
+  resulting processed dataset has `n = 678`.
+- Original analysis: `DIRMV` is the response variable to be predicted from
+  `DIRDSC`.
+- Bibliographic provenance: Rivest, L.-P. (1997). A decentered predictor for
+  circular-circular regression. Biometrika, 84, 717-726.
+- Known transformations from package documentation: duplicate observations were
+  removed before inclusion in this package. No additional transformations are
+  documented in the repository.
+- Angular units: not documented in the repository or in the provenance notes
+  provided to the maintainer.
 - Raw-data reconstruction status: raw data and a reconstruction script are not
   present in the repository.
-- Original bibliographic provenance: not documented in the repository.
-- Redistribution status: maintainer confirmation required.
+- Redistribution status: redistribution permission should be explicitly
+  confirmed or archived before CRAN submission.
 
 ## Suggested future reconstruction scripts
 

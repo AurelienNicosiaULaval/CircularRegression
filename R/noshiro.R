@@ -1,21 +1,35 @@
 #' Noshiro earthquake direction data
 #'
 #' This data frame contains two circular variables for 678 locations associated
-#' with the Noshiro earthquake.
+#' with the Noshiro earthquake. The variables are \code{DIRDSC}, the direction
+#' of steepest descent, and \code{DIRMV}, the direction of movement.
 #'
 #' @details
-#' The angular units are not documented in the repository. The original
-#' bibliographic provenance, raw data, reconstruction steps and redistribution
-#' rights also cannot be verified from the repository alone. These items should
-#' be confirmed by the maintainer before CRAN submission if the dataset is kept
-#' in the submitted package.
+#' The data were used by Rivest (1997) for circular-circular regression. The
+#' processed version included in this package was provided by Louis-Paul Rivest
+#' to the package maintainer after duplicate observations had been removed,
+#' yielding \eqn{n = 678}. In the original analysis, \code{DIRMV} is the
+#' response variable to be predicted from \code{DIRDSC}.
 #'
-#' @format data.frame containing 678 rows and 2 columns:
+#' The angular units are not documented in the repository or in the provenance
+#' notes provided to the maintainer. Raw data and a reconstruction script are not
+#' present in the repository. Redistribution permission should be explicitly
+#' confirmed or archived before CRAN submission.
+#'
+#' @format A data frame with 678 rows and 2 columns:
 #' \describe{
-#'   \item{DIRDSC}{the direction of steepest descent}
-#'   \item{DIRMV}{the direction of movement}
+#'   \item{DIRDSC}{Direction of steepest descent.}
+#'   \item{DIRMV}{Direction of movement.}
 #' }
-#' @source Package data file. The original bibliographic provenance is not
-#'   documented in this repository.
+#' @source Processed Noshiro earthquake data used in Rivest (1997), provided by
+#'   Louis-Paul Rivest to the package maintainer. Duplicate observations were
+#'   removed before inclusion in this package, yielding \eqn{n = 678}.
+#'   Redistribution permission should be explicitly confirmed or archived before
+#'   CRAN submission.
+#'
+#' @references
+#' Rivest, L.-P. (1997). A decentered predictor for circular-circular
+#' regression. \emph{Biometrika}, 84, 717--726.
+#'
 #' @usage data(noshiro)
 "noshiro"

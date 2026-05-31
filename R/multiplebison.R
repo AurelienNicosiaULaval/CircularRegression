@@ -40,17 +40,20 @@
 #'   are kept only when the time difference equals one hour.
 #' - The turning-angle columns are circular differences between consecutive
 #'   movement directions, stored in degrees on a 0-360 scale.
+#' - Scientific provenance is partially documented in the repository. The
+#'   maintainer identifies these GPS tracks as associated with doctoral work
+#'   and/or an article on bison movement, but the exact thesis or article
+#'   reference has not been verified in the repository.
 #' - The repository does not include raw GPS files, a full reconstruction
-#'   script, or a redistribution-permission record for this processed dataset.
-#'   Redistribution rights therefore cannot be verified from the repository
-#'   alone and should be confirmed by the maintainer before CRAN submission.
+#'   script, an exact thesis or article reference, or a
+#'   redistribution-permission record for this processed dataset. Redistribution
+#'   permission should be explicitly confirmed or archived before CRAN
+#'   submission.
 #'
 #' @source Derived package dataset prepared from GPS tracks of two plains bison
 #'   monitored in Prince Albert National Park in 2013. The repository does not
-#'   include raw GPS files or a reconstruction script.
-#'
-#' @references
-#' Mardia, K. V., & Jupp, P. E. (2000). \emph{Directional Statistics}. Wiley.
+#'   include raw GPS files, a reconstruction script, an exact thesis or article
+#'   reference, or an archived redistribution-permission record.
 #'
 #' @examples
 #' ## Basic glimpse

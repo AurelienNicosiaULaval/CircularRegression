@@ -91,6 +91,9 @@ notes.
 - Added pkgdown configuration and a GitHub Actions R CMD check workflow.
 - Added a maintainer-facing `data-raw/DATA_PROVENANCE.md` checklist for dataset
   sources, transformations and redistribution-permission confirmation.
+- Clarified `noshiro` provenance using maintainer-supplied information from
+  Louis-Paul Rivest and documented the remaining unverified provenance items for
+  `multiplebison`.
 
 ## Downstream dependencies
 
@@ -105,3 +108,11 @@ repository also tracks a maintainer-facing checklist in
 package. The checklist records the transformations currently documented in the
 package and identifies redistribution permissions that must be confirmed by the
 maintainer before upload.
+
+For `noshiro`, the Rd file now identifies Rivest (1997) as the scientific
+source and states that the processed data were provided by Louis-Paul Rivest to
+the maintainer after duplicate observations had been removed. The repository
+does not include raw Noshiro data, a reconstruction script, documented angular
+units, or an archived redistribution-permission record. For `multiplebison`,
+the exact doctoral or article reference remains not verifiable from the
+repository and is documented as pending maintainer confirmation.

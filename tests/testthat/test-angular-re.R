@@ -71,3 +71,27 @@ test_that("angular_re aligns cluster with model-frame NA handling", {
 
   expect_equal(length(fit$cluster), n - 1)
 })
+
+test_that("summary.angular_re is available and coherent", {
+  data(Sandhopper)
+  sh <- Sandhopper[seq_len(24), ]
+  sh$y <- sh$LN1 * pi / 180
+  sh$ref <- sh$Azimuth * pi / 180
+  sh$wind <- sh$DirW * pi / 180
+  sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
+
+  fit <- angular_re(
+    y ~ ref + wind:wind_speed,
+    data = sh,
+    cluster = sh$Anim,
+    control = list(maxit = 50, reltol = 1e-8)
+  )
+
+  s <- summary(fit)
+  expect_s3_class(s, "summary.angular_re")
+  expect_true(is.finite(s$logLik))
+  expect_true("coefficients" %in% names(s))
+  expect_true("n_clusters" %in% names(s))
+  expect_equal(s$nobs, nrow(sh))
+  expect_equal(s$n_clusters, length(unique(sh$Anim)))
+})

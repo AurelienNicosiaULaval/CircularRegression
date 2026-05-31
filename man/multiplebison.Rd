@@ -55,6 +55,10 @@ animals' variables. Turning-angles are computed from consecutive directions.
   are kept only when the time difference equals one hour.
 - The turning-angle columns are circular differences between consecutive
   movement directions, stored in degrees on a 0-360 scale.
+- The repository does not include raw GPS files, a full reconstruction
+  script, or a redistribution-permission record for this processed dataset.
+  Redistribution rights therefore cannot be verified from the repository
+  alone and should be confirmed by the maintainer before CRAN submission.
 }
 \examples{
 ## Basic glimpse

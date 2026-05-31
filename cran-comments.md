@@ -3,8 +3,6 @@
 - Local macOS 26.5, R 4.5.0, aarch64-apple-darwin20.
 - GitHub Actions R-CMD-check workflow on macOS, Windows and Ubuntu
   (latest observed run on 2026-05-31: success).
-- win-builder R-release and R-devel submissions were sent on 2026-05-31;
-  replace this line with the email results before CRAN upload.
 
 ## R CMD check results
 
@@ -15,7 +13,7 @@ This is a new submission.
 - 0 failures
 - 0 warnings
 - 0 skipped tests
-- 107 passed expectations
+- 118 passed expectations
 
 `devtools::build_vignettes()`:
 
@@ -30,6 +28,10 @@ This is a new submission.
 `spelling::spell_check_package(".")`:
 
 - no spelling errors found
+
+`urlchecker::url_check()`:
+
+- all URLs are correct
 
 `R CMD check --as-cran` on a clean external source copy:
 
@@ -46,8 +48,24 @@ Notes:
 The HTML validation note is environment-specific. No WARNING or ERROR was
 observed.
 
-Pending before upload:
+## External checks
 
+win-builder R-release: submitted on 2026-05-31 for the current 0.5.0 source.
+Result not verifiable from the repository; to be completed before CRAN upload
+with the result received by email.
+
+win-builder R-devel: submitted on 2026-05-31 for the current 0.5.0 source.
+Result not verifiable from the repository; to be completed before CRAN upload
+with the result received by email.
+
+R-hub: not run in this session. Result not verifiable from the repository; to be
+completed before CRAN upload if an R-hub result is required in the submission
+notes.
+
+## Pending before upload
+
+- Confirm redistribution rights for all package datasets or remove/replace any
+  dataset whose rights cannot be confirmed.
 - Copy the win-builder R-release and R-devel email results into this file.
 - Run or record R-hub results if required for the final submission notes.
 
@@ -56,11 +74,15 @@ Pending before upload:
 - Added `circular_regression()` as the main fixed-effect interface.
 - Added S3 methods for printing, summaries, coefficients, fitted values,
   residuals, predictions, plots, log-likelihoods and information criteria.
+- Added `summary.angular_re()` and `print.summary.angular_re()`.
 - Added `angular_two_step()` as an explicit consensus-then-homogeneous workflow.
 - Improved numerical stability for the consensus likelihood through stable
   Bessel-ratio and log-Bessel computations.
+- Aligned consensus `logLik`, `AIC` and `BIC` with the full von Mises
+  likelihood by including the normalizing constant.
 - Added validation for finite angles, non-negative modifiers, valid weights,
   control values and initial values.
+- Preserved model-frame `na.action` information in `angular()` objects.
 - Replaced the old draft vignette with reproducible HTML vignettes and added a
   package-data workflow vignette for reviewer support.
 - Expanded the test suite for estimation, predictions, NA handling, weights,

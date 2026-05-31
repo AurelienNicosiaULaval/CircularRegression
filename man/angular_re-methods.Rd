@@ -2,6 +2,8 @@
 % Please edit documentation in R/angular_re.r
 \name{print.angular_re}
 \alias{print.angular_re}
+\alias{summary.angular_re}
+\alias{print.summary.angular_re}
 \alias{coef.angular_re}
 \alias{vcov.angular_re}
 \alias{residuals.angular_re}
@@ -9,6 +11,10 @@
 \title{Methods for Angular Random-Effects Fits}
 \usage{
 \method{print}{angular_re}(x, ...)
+
+\method{summary}{angular_re}(object, ...)
+
+\method{print}{summary.angular_re}(x, ...)
 
 \method{coef}{angular_re}(object, ...)
 
@@ -35,7 +41,9 @@ cluster random intercepts.}
 \code{coef()} returns the parameter estimates. \code{vcov()} returns
   the requested covariance matrix. \code{fitted()} returns marginal fitted
   mean directions. \code{residuals()} returns wrapped circular residuals.
-  \code{print()} invisibly returns the input object.
+  \code{summary()} returns a list with convergence information, likelihood,
+  sample sizes, concentration estimates, residual summaries and coefficient
+  table. \code{print()} invisibly returns the input object.
 }
 \description{
 Methods for Angular Random-Effects Fits

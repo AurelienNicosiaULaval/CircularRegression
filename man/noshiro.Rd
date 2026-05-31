@@ -22,4 +22,11 @@ data(noshiro)
 This data frame contains two circular variables for 678 locations associated
 with the Noshiro earthquake.
 }
+\details{
+The angular units are not documented in the repository. The original
+bibliographic provenance, raw data, reconstruction steps and redistribution
+rights also cannot be verified from the repository alone. These items should
+be confirmed by the maintainer before CRAN submission if the dataset is kept
+in the submitted package.
+}
 \keyword{datasets}

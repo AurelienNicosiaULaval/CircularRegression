@@ -318,6 +318,7 @@
   keep <- setdiff(seq_len(ncol(des$matx)), ref_idx)
 
   list(
+    mf = des$mf,
     y = des$y,
     nobs = des$nobs,
     x0 = as.numeric(des$matx[, ref_idx]),

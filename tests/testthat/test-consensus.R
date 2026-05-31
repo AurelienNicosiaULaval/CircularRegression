@@ -29,6 +29,25 @@ test_that("consensus supports maxiter=0 without crashing", {
   expect_true(is.matrix(fit$iter.detail))
 })
 
+test_that("consensus logLik includes von Mises normalizing constant", {
+  set.seed(10)
+  n <- 40
+  df <- data.frame(
+    y = runif(n, -pi, pi),
+    x1 = runif(n, -pi, pi)
+  )
+
+  fit <- consensus(
+    y ~ x1,
+    data = df,
+    initkappa = 0,
+    control = list(maxiter = 0)
+  )
+
+  expect_equal(as.numeric(logLik(fit)), -n * log(2 * pi), tolerance = 1e-8)
+  expect_true(as.numeric(logLik(fit)) < 0)
+})
+
 test_that("consensus BIC in object and method are coherent", {
   set.seed(22)
   n <- 60

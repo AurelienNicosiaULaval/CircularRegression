@@ -33,6 +33,8 @@ from GPS-tracked bison trajectories and environmental variables describing
 landscape features such as meadows and canopy gaps.
 }
 \details{
+All angular variables in this processed dataset are stored in radians.
+
 This reduced dataset is designed to work directly with the functions of the
 \emph{CircularRegression} package implementing the general angular regression
 model of Rivest et al. (2016). Each \code{x:z} pair represents a weighted
@@ -46,6 +48,11 @@ Ecologically, these variables describe the orientation of bison movement
 relative to attractive features in the landscape: open meadows and canopy
 gaps. The dataset serves as a clean example for model testing, illustration,
 and teaching applications involving directional movement analysis.
+
+The repository does not include the raw GPS files, a full reconstruction
+script, or a redistribution-permission record for this processed dataset.
+Redistribution rights therefore cannot be verified from the repository alone
+and should be confirmed by the maintainer before CRAN submission.
 }
 \examples{
 # View structure

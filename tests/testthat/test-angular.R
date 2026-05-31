@@ -29,6 +29,22 @@ test_that("angular supports maxiter=0 without crashing", {
   expect_true(is.matrix(fit$iter.detail))
 })
 
+test_that("angular stores na.action after missing-value handling", {
+  set.seed(1)
+  df <- data.frame(
+    y = runif(10, -pi, pi),
+    x1 = runif(10, -pi, pi),
+    x2 = runif(10, -pi, pi),
+    z2 = runif(10, 0.2, 1)
+  )
+  df$y[2] <- NA
+
+  fit <- angular(y ~ x1 + x2:z2, data = df)
+  expect_equal(fit$nobs, 9)
+  expect_false(is.null(fit$na.action))
+  expect_s3_class(fit$na.action, "omit")
+})
+
 test_that("automatic reference selection follows mean-cos criterion", {
   set.seed(42)
   n <- 80

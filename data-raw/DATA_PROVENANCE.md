@@ -32,6 +32,7 @@ repository alone.
   seven variables for angular-regression examples. Variables include movement
   direction, lagged movement directions, angles toward meadows and canopy gaps,
   and corresponding distance or weight variables.
+- Angular units: radians.
 - Raw-data reconstruction status: raw GPS files and a reconstruction script are
   not present in the repository.
 - Redistribution status: maintainer confirmation required.
@@ -48,6 +49,7 @@ repository alone.
   exactly one hour, and data were reshaped to a wide format with one row per
   timestamp. Turning angles were computed from consecutive movement directions.
   Direction and turning-angle variables are stored in degrees.
+- Angular units: degrees.
 - Raw-data reconstruction status: raw GPS files and a reconstruction script are
   not present in the repository.
 - Redistribution status: maintainer confirmation required.
@@ -61,6 +63,7 @@ repository alone.
 - Known transformations from package documentation: processed package data
   contain 72 rows and 22 variables, including individual identifiers, repeated
   escape orientations, environmental variables and morphometric variables.
+- Angular units: degrees for `Azimuth`, `LN1`-`LN5` and `DirW`.
 - Raw-data reconstruction status: a raw-data reconstruction script is not
   present in the repository.
 - Redistribution status: maintainer confirmation required.
@@ -74,6 +77,7 @@ repository alone.
   earthquake.
 - Known transformations from package documentation: no transformations are
   documented beyond the processed two-column data frame.
+- Angular units: not documented in the repository.
 - Raw-data reconstruction status: raw data and a reconstruction script are not
   present in the repository.
 - Original bibliographic provenance: not documented in the repository.

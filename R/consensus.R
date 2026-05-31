@@ -69,6 +69,7 @@ consensus <- function(
   if (all(weight == 0)) {
     stop("'weights' cannot be all zero.", call. = FALSE)
   }
+  weight_total <- sum(weight)
 
   if (!is.null(initkappa) && !is.null(initbeta)) {
     stop("Use only one of 'initkappa' or 'initbeta'.", call. = FALSE)
@@ -102,7 +103,9 @@ consensus <- function(
   loglik_components <- function(kappa) {
     comp <- compute_components(kappa)
     term1 <- as.vector((matz * cos_y_minus_x) %*% kappa)
-    ll <- sum(weight * term1) - sum(weight * .logI0(comp$long))
+    ll <- sum(weight * term1) -
+      sum(weight * .logI0(comp$long)) -
+      weight_total * log(2 * pi)
     if (!is.finite(ll)) {
       ll <- -Inf
     }

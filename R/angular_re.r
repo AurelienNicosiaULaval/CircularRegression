@@ -497,7 +497,9 @@ angular_re <- function(
 #' @return \code{coef()} returns the parameter estimates. \code{vcov()} returns
 #'   the requested covariance matrix. \code{fitted()} returns marginal fitted
 #'   mean directions. \code{residuals()} returns wrapped circular residuals.
-#'   \code{print()} invisibly returns the input object.
+#'   \code{summary()} returns a list with convergence information, likelihood,
+#'   sample sizes, concentration estimates, residual summaries and coefficient
+#'   table. \code{print()} invisibly returns the input object.
 #' @rdname angular_re-methods
 #' @export
 print.angular_re <- function(x, ...) {
@@ -526,6 +528,92 @@ print.angular_re <- function(x, ...) {
     round(x$rho_SS, 3),
     "\n"
   )
+  invisible(x)
+}
+
+#' @rdname angular_re-methods
+#' @export
+summary.angular_re <- function(object, ...) {
+  coef_tab <- object$coefficients
+  model_se <- coef_tab[, "se_model"]
+  robust_se <- coef_tab[, "se_robust"]
+  model_ok <- all(is.finite(model_se))
+  robust_ok <- all(is.finite(robust_se))
+  se_type <- if (model_ok && robust_ok) {
+    "model-based and cluster-robust"
+  } else if (model_ok) {
+    "model-based only; cluster-robust SE contain NA"
+  } else if (robust_ok) {
+    "cluster-robust only; model-based SE contain NA"
+  } else {
+    "not available; covariance matrices contain NA"
+  }
+
+  out <- list(
+    call = object$call,
+    logLik = object$logLik,
+    convergence = object$convergence,
+    nobs = length(object$mu),
+    n_clusters = length(object$ranef),
+    coefficients = coef_tab,
+    kappa_e = object$kappa_e,
+    kappa_a = object$kappa_a,
+    rho_SS = object$rho_SS,
+    se_type = se_type,
+    se_model_available = model_ok,
+    se_robust_available = robust_ok,
+    residuals_fixed = summary(object$resid_fixed),
+    residuals_conditional = summary(object$resid_conditional)
+  )
+  class(out) <- "summary.angular_re"
+  out
+}
+
+#' @rdname angular_re-methods
+#' @export
+print.summary.angular_re <- function(x, ...) {
+  cat("Call:\n")
+  print(x$call)
+  cat(
+    "\nLog-likelihood:",
+    format(x$logLik, digits = 5),
+    "\nConverged:",
+    x$convergence,
+    "\nNumber of observations:",
+    x$nobs,
+    "\nNumber of clusters:",
+    x$n_clusters,
+    "\n"
+  )
+  cat(
+    "\nConcentration estimates:\n",
+    "kappa_e:",
+    format(x$kappa_e, digits = 5),
+    "\n kappa_a:",
+    format(x$kappa_a, digits = 5),
+    "\n rho_SS:",
+    format(x$rho_SS, digits = 5),
+    "\n",
+    sep = ""
+  )
+  cat("\nStandard errors:", x$se_type, "\n")
+  if (!isTRUE(x$se_robust_available)) {
+    cat("Cluster-robust SE contain NA; inspect vcov(object, robust = TRUE).\n")
+  }
+  if (!isTRUE(x$se_model_available)) {
+    cat("Model-based SE contain NA; inspect vcov(object).\n")
+  }
+  cat("\nFixed-effect and concentration parameters:\n")
+  stats::printCoefmat(
+    x$coefficients,
+    P.values = TRUE,
+    has.Pvalue = TRUE,
+    ...
+  )
+  cat("\nFixed residuals:\n")
+  print(x$residuals_fixed)
+  cat("\nConditional residuals:\n")
+  print(x$residuals_conditional)
   invisible(x)
 }
 

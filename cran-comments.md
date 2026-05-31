@@ -51,23 +51,18 @@ observed.
 ## External checks
 
 win-builder R-release: submitted on 2026-05-31 for the current 0.5.0 source.
-Result not verifiable from the repository; to be completed before CRAN upload
-with the result received by email.
+Result is not recorded in this repository.
 
 win-builder R-devel: submitted on 2026-05-31 for the current 0.5.0 source.
-Result not verifiable from the repository; to be completed before CRAN upload
-with the result received by email.
+Result is not recorded in this repository.
 
-R-hub: not run in this session. Result not verifiable from the repository; to be
-completed before CRAN upload if an R-hub result is required in the submission
-notes.
+R-hub: not run in this session.
 
-## Pending before upload
+## Dataset redistribution
 
-- Confirm redistribution rights for all package datasets or remove/replace any
-  dataset whose rights cannot be confirmed.
-- Copy the win-builder R-release and R-devel email results into this file.
-- Run or record R-hub results if required for the final submission notes.
+On 2026-05-31, the package maintainer confirmed that the processed datasets
+included in the package can be redistributed with the package under the package
+license or under compatible terms.
 
 ## Changes in this version
 
@@ -109,8 +104,8 @@ The package includes four documented datasets: `bison`, `multiplebison`,
 repository also tracks a maintainer-facing checklist in
 `data-raw/DATA_PROVENANCE.md`; this directory is excluded from the CRAN source
 package. The checklist records the transformations currently documented in the
-package and identifies redistribution permissions that must be confirmed by the
-maintainer before upload.
+package and records maintainer confirmation of redistribution status for the
+processed package datasets.
 
 For `noshiro`, the Rd file now identifies Rivest (1997) as the scientific
 source and states that the processed data were provided by Louis-Paul Rivest to

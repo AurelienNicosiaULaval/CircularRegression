@@ -48,18 +48,17 @@
 #'   November 2013 to April 2014. The repository does not verify whether the
 #'   current two-bison July-October 2013 data file is a direct subset or
 #'   preprocessing product of that analysis.
-#' - The repository does not include raw GPS files, a full reconstruction
-#'   script, or a redistribution-permission record for this processed dataset.
-#'   Redistribution permission should be explicitly confirmed or archived before
-#'   CRAN submission.
+#' - The repository does not include raw GPS files or a full reconstruction
+#'   script for this processed dataset. The package maintainer has confirmed
+#'   that this processed package dataset may be redistributed with the package.
 #'
 #' @source Derived package dataset prepared from GPS tracks of two plains bison
 #'   monitored in Prince Albert National Park in 2013. The repository does not
-#'   include raw GPS files, a reconstruction script, or an archived
-#'   redistribution-permission record. Nicosia et al. (2017) is a related
-#'   bison movement article from the same study context, but the exact mapping
-#'   from that article to this processed data file is not verified in the
-#'   repository.
+#'   include raw GPS files or a reconstruction script. The package maintainer
+#'   has confirmed that this processed package dataset may be redistributed with
+#'   the package. Nicosia et al. (2017) is a related bison movement article from
+#'   the same study context, but the exact mapping from that article to this
+#'   processed data file is not verified in the repository.
 #'
 #' @references
 #' Nicosia, A., Duchesne, T., Rivest, L.-P., and Fortin, D. (2017).

@@ -15,8 +15,8 @@ A data frame with 678 rows and 2 columns:
 Processed Noshiro earthquake data used in Rivest (1997), provided by
   Louis-Paul Rivest to the package maintainer. Duplicate observations were
   removed before inclusion in this package, yielding \eqn{n = 678}.
-  Redistribution permission should be explicitly confirmed or archived before
-  CRAN submission.
+  The package maintainer has confirmed that this processed package dataset
+  may be redistributed with the package.
 }
 \usage{
 data(noshiro)
@@ -35,8 +35,8 @@ response variable to be predicted from \code{DIRDSC}.
 
 The angular units are not documented in the repository or in the provenance
 notes provided to the maintainer. Raw data and a reconstruction script are not
-present in the repository. Redistribution permission should be explicitly
-confirmed or archived before CRAN submission.
+present in the repository. The package maintainer has confirmed that this
+processed package dataset may be redistributed with the package.
 }
 \references{
 Rivest, L.-P. (1997). A decentered predictor for circular-circular

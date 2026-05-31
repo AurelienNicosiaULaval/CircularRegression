@@ -12,15 +12,12 @@ not contain the original raw files or complete reconstruction scripts for all
 datasets. Therefore, this file is a maintainer-facing provenance checklist, not
 a raw-data reconstruction workflow.
 
-## Required maintainer action before CRAN upload
+## Redistribution confirmation for CRAN upload
 
-Before submitting to CRAN, confirm that every dataset included in `data/` can be
-redistributed with the package under the package license or under compatible
-terms. If this cannot be confirmed for a dataset, remove that dataset from the
-CRAN submission or replace it with a fully documented redistributable example.
-
-The redistribution rights listed below cannot be independently verified from the
-repository alone.
+On 2026-05-31, the package maintainer confirmed that every processed dataset
+included in `data/` can be redistributed with the package under the package
+license or under compatible terms. Original raw-data permission records are not
+stored in this repository.
 
 ## bison
 
@@ -35,7 +32,9 @@ repository alone.
 - Angular units: radians.
 - Raw-data reconstruction status: raw GPS files and a reconstruction script are
   not present in the repository.
-- Redistribution status: maintainer confirmation required.
+- Redistribution status: maintainer confirmed redistribution of the processed
+  package dataset on 2026-05-31. Original permission records are not stored in
+  this repository.
 
 ## multiplebison
 
@@ -62,8 +61,9 @@ repository alone.
 - Angular units: degrees.
 - Raw-data reconstruction status: raw GPS files and a reconstruction script are
   not present in the repository.
-- Redistribution status: redistribution permission should be explicitly
-  confirmed or archived before CRAN submission.
+- Redistribution status: maintainer confirmed redistribution of the processed
+  package dataset on 2026-05-31. Original permission records are not stored in
+  this repository.
 
 ## Sandhopper
 
@@ -77,7 +77,9 @@ repository alone.
 - Angular units: degrees for `Azimuth`, `LN1`-`LN5` and `DirW`.
 - Raw-data reconstruction status: a raw-data reconstruction script is not
   present in the repository.
-- Redistribution status: maintainer confirmation required.
+- Redistribution status: maintainer confirmed redistribution of the processed
+  package dataset on 2026-05-31. Original permission records are not stored in
+  this repository.
 
 ## noshiro
 
@@ -101,8 +103,9 @@ repository alone.
   provided to the maintainer.
 - Raw-data reconstruction status: raw data and a reconstruction script are not
   present in the repository.
-- Redistribution status: redistribution permission should be explicitly
-  confirmed or archived before CRAN submission.
+- Redistribution status: maintainer confirmed redistribution of the processed
+  package dataset on 2026-05-31. Original permission records are not stored in
+  this repository.
 
 ## Suggested future reconstruction scripts
 

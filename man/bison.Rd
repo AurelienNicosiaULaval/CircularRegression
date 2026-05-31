@@ -49,10 +49,9 @@ relative to attractive features in the landscape: open meadows and canopy
 gaps. The dataset serves as a clean example for model testing, illustration,
 and teaching applications involving directional movement analysis.
 
-The repository does not include the raw GPS files, a full reconstruction
-script, or a redistribution-permission record for this processed dataset.
-Redistribution rights therefore cannot be verified from the repository alone
-and should be confirmed by the maintainer before CRAN submission.
+The repository does not include the raw GPS files or a full reconstruction
+script for this processed dataset. The package maintainer has confirmed that
+this processed package dataset may be redistributed with the package.
 }
 \examples{
 # View structure

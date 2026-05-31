@@ -53,10 +53,9 @@ models with repeated measures.
 
 Angular variables such as \code{Azimuth}, \code{LN1}-\code{LN5} and
 \code{DirW} are stored in degrees. The repository does not include a full
-raw-data reconstruction script or a redistribution-permission record for
-this processed dataset. Redistribution rights therefore cannot be verified
-from the repository alone and should be confirmed by the maintainer before
-CRAN submission.
+raw-data reconstruction script for this processed dataset. The package
+maintainer has confirmed that this processed package dataset may be
+redistributed with the package.
 }
 \references{
 D'Elia, G. (2001). Orientation in sandhoppers. *Behavioural Ecology*.

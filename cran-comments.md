@@ -2,7 +2,7 @@
 
 - Local macOS 26.5, R 4.5.0, aarch64-apple-darwin20.
 - GitHub Actions R-CMD-check workflow on macOS, Windows and Ubuntu
-  (latest observed run on 2026-05-30: success).
+  (latest observed run on 2026-05-31: success).
 - win-builder R-release and R-devel submissions were sent on 2026-05-31;
   replace this line with the email results before CRAN upload.
 

@@ -10,6 +10,7 @@
 ^benchmarks$
 ^cran-comments\.md$
 ^cran-readiness\.md$
+^data-raw$
 ^vignettes/.*\.log$
 ^doc$
 ^Meta$

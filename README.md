@@ -6,6 +6,14 @@ general angular regression framework of Rivest, Duchesne, Nicosia and Fortin
 (2016), including homogeneous angular regression, consensus regression, a
 two-step workflow, and selected special-case wrappers.
 
+## Part of the research ecosystem
+
+This repository is part of Aurélien Nicosia's open research and teaching ecosystem in computational statistics, scientific R software, reproducible data science and statistical education.
+
+* Research Lab: [https://aureliennicosiaulaval.github.io/web_site/research-lab.html](https://aureliennicosiaulaval.github.io/web_site/research-lab.html)
+* GitHub profile: [https://github.com/AurelienNicosiaULaval](https://github.com/AurelienNicosiaULaval)
+* Related projects: [`ggcircular`](https://github.com/AurelienNicosiaULaval/ggcircular), [`gmov`](https://github.com/AurelienNicosiaULaval/gmov)
+
 ## Installation
 
 ```r

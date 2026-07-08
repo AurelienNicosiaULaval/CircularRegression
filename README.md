@@ -58,6 +58,16 @@ The package provides S3 methods for printing, summarising, coefficients,
 fitted values, residuals, predictions, plots, information criteria, and
 log-likelihoods where appropriate.
 
+## Citation
+
+To cite `CircularRegression` from R, use:
+
+```r
+citation("CircularRegression")
+```
+
+Citation metadata is also provided in `inst/CITATION`.
+
 ## References
 
 Rivest, L.-P., Duchesne, T., Nicosia, A. and Fortin, D. (2016). A general

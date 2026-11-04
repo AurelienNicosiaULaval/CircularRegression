@@ -21,6 +21,9 @@
 #'   \code{mindiff}.
 #' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
 #'   missing values. The default is \code{\link[stats]{na.omit}}.
+#'   \code{na.exclude} restores omitted rows in in-sample fitted values,
+#'   residuals and predictions. Weights may match the original or retained
+#'   rows, including when \code{data} is a list or environment.
 #' @return An object of class \code{"consensus"}.
 #' @details The object stores \code{convergence}, \code{score_norm}, model
 #'   covariance \code{varcov_kappa}, and \code{varcov_robust}. The legacy
@@ -80,14 +83,7 @@ consensus <- function(
   } else {
     if (!is.numeric(weights)) stop("'weights' must be numeric.", call. = FALSE)
     w_raw <- as.numeric(weights)
-    if (length(w_raw) == nobs) {
-      weight <- w_raw
-    } else if (is.data.frame(data) && length(w_raw) == nrow(data)) {
-      keep_idx <- .model_frame_rows(des$mf, data)
-      weight <- w_raw[keep_idx]
-    } else {
-      stop("'weights' must have length equal to nrow(data) or to the model-frame size.", call. = FALSE)
-    }
+    weight <- .align_model_vector(w_raw, des$mf, "weights")
   }
 
   if (any(!is.finite(weight)) || any(weight < 0)) {
@@ -465,6 +461,7 @@ coef.consensus <- function(
 #' @rdname consensus-methods
 #' @export
 vcov.consensus <- function(object, robust = FALSE, ...) {
+  .check_logical_scalar(robust, "robust")
   if (isTRUE(robust)) {
     if (is.null(object$varcov_robust)) {
       stop("Refit this object with CircularRegression >= 0.7.1 to obtain a robust covariance.", call. = FALSE)
@@ -477,13 +474,13 @@ vcov.consensus <- function(object, robust = FALSE, ...) {
 #' @rdname consensus-methods
 #' @export
 fitted.consensus <- function(object, ...) {
-  object$mui
+  .restore_excluded(object, object$mui)
 }
 
 #' @rdname consensus-methods
 #' @export
 residuals.consensus <- function(object, ...) {
-  .wrap_angle(object$y - object$mui)
+  .restore_excluded(object, .wrap_angle(object$y - object$mui), residual = TRUE)
 }
 
 #' @rdname consensus-methods
@@ -497,7 +494,7 @@ predict.consensus <- function(
   type <- match.arg(type)
 
   if (is.null(newdata)) {
-    mu <- object$mui
+    mu <- .restore_excluded(object, object$mui)
   } else {
     design <- .new_term_design(
       term_info = object$term_info,
@@ -570,7 +567,7 @@ plot.consensus <- function(
   type <- match.arg(type)
   .plot_fixed_circular_diagnostics(
     x = x,
-    residuals = residuals.consensus(x),
+    residuals = .wrap_angle(x$y - x$mui),
     fitted = x$mui,
     kappa = x$long,
     type = type,
@@ -583,24 +580,13 @@ plot.consensus <- function(
 #' @param k Numeric penalty for AIC.
 #' @export
 AIC.consensus <- function(object, ..., k = 2) {
-  ll <- object$logLik
-  nparam <- object$k
-  out <- -2 * ll + k * nparam
-  attr(out, "df") <- nparam
-  attr(out, "nobs") <- object$nobs
-  out
+  NextMethod("AIC")
 }
 
 #' @rdname consensus-methods
 #' @export
 BIC.consensus <- function(object, ...) {
-  n <- object$nobs
-  nparam <- object$k
-  ll <- object$logLik
-  out <- -2 * ll + log(n) * nparam
-  attr(out, "df") <- nparam
-  attr(out, "nobs") <- n
-  out
+  NextMethod("BIC")
 }
 
 #' @rdname consensus-methods

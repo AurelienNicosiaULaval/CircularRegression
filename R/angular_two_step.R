@@ -136,7 +136,9 @@ angular_two_step <- function(
 #' Methods for two-step angular regression objects
 #'
 #' @param x,object An object of class \code{"angular_two_step"}.
-#' @param step Which fitted step to use for \code{coef()}.
+#' @param step Which fitted step to use for \code{coef()} or \code{vcov()}.
+#' @param robust Logical; request the covariance based on independent observation
+#'   scores rather than the model covariance.
 #' @param newdata Optional data frame for prediction.
 #' @param type Prediction type passed to \code{\link{predict.angular}()}.
 #' @param k Numeric penalty used by \code{AIC()}.
@@ -222,6 +224,15 @@ coef.angular_two_step <- function(
 
 #' @rdname angular_two_step-methods
 #' @export
+vcov.angular_two_step <- function(object, robust = FALSE,
+                                  step = c("homogeneous", "consensus"), ...) {
+  step <- match.arg(step)
+  fit <- if (step == "consensus") object$consensus_fit else object$homogeneous_fit
+  stats::vcov(fit, robust = robust, ...)
+}
+
+#' @rdname angular_two_step-methods
+#' @export
 fitted.angular_two_step <- function(object, ...) {
   fitted(object$homogeneous_fit, ...)
 }
@@ -260,11 +271,11 @@ logLik.angular_two_step <- function(object, ...) {
 #' @rdname angular_two_step-methods
 #' @export
 AIC.angular_two_step <- function(object, ..., k = 2) {
-  stats::AIC(object$homogeneous_fit, ..., k = k)
+  NextMethod("AIC")
 }
 
 #' @rdname angular_two_step-methods
 #' @export
 BIC.angular_two_step <- function(object, ...) {
-  stats::BIC(object$homogeneous_fit, ...)
+  NextMethod("BIC")
 }

@@ -22,6 +22,9 @@
 #'   \code{maxiter}, and \code{mindiff}.
 #' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
 #'   missing values. The default is \code{\link[stats]{na.omit}}.
+#'   With \code{na.exclude}, in-sample fitted values, residuals and predictions
+#'   restore omitted rows as \code{NA}. Angular \code{circular} objects must
+#'   declare radian units; degree or hour units are rejected before coercion.
 #' @return An object of class \code{"angular"}.
 #' @details Convergence requires a scaled score norm no larger than
 #'   \code{control$mindiff}; a small objective increment alone is insufficient.
@@ -48,10 +51,10 @@ angular <- function(
   formula,
   data,
   reference = c("auto", "first", "name"),
-  reference_sign = 1,
   initbeta = NULL,
   control = list(),
-  na.action = stats::na.omit
+  na.action = stats::na.omit,
+  reference_sign = 1
 ) {
   call <- match.call()
   des <- .angular_design(
@@ -427,19 +430,20 @@ coef.angular <- function(object, ...) {
 #' @rdname angular-methods
 #' @export
 vcov.angular <- function(object, robust = FALSE, ...) {
+  .check_logical_scalar(robust, "robust")
   if (isTRUE(robust)) object$varcov1 else object$varcov0
 }
 
 #' @rdname angular-methods
 #' @export
 fitted.angular <- function(object, ...) {
-  object$mui
+  .restore_excluded(object, object$mui)
 }
 
 #' @rdname angular-methods
 #' @export
 residuals.angular <- function(object, ...) {
-  .wrap_angle(object$y - object$mui)
+  .restore_excluded(object, .wrap_angle(object$y - object$mui), residual = TRUE)
 }
 
 #' @rdname angular-methods
@@ -453,7 +457,7 @@ predict.angular <- function(
   type <- match.arg(type)
 
   if (is.null(newdata)) {
-    mu <- object$mui
+    mu <- .restore_excluded(object, object$mui)
   } else {
     design <- .new_term_design(
       term_info = object$term_info,
@@ -532,7 +536,7 @@ plot.angular <- function(
   type <- match.arg(type)
   .plot_fixed_circular_diagnostics(
     x = x,
-    residuals = residuals.angular(x),
+    residuals = .wrap_angle(x$y - x$mui),
     fitted = x$mui,
     kappa = x$kappahat,
     type = type,

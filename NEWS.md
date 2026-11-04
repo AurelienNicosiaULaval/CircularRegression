@@ -8,6 +8,16 @@
   errors when convergence has not been established.
 * Refine grouped fits that stop on objective change before meeting the stated
   score tolerance.
+* Compare every supplied object in AIC and BIC calls. Add covariance methods
+  for the common interface and the two-step workflow.
+* Keep the public positional argument order of `angular()`; supply
+  `reference_sign` by name. Align case weights and group identifiers after
+  missing-value handling for data frames, lists and environments.
+* Respect `na.exclude` in fitted values, residuals and in-sample predictions.
+  Reject circular objects with degree or hour units, matrix-valued variables,
+  unsupported offsets and formulas without a response.
+* Parse quoted variable names containing colons and reject ambiguous reversed
+  direction/modifier terms.
 
 # CircularRegression 0.7.1
 

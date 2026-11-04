@@ -169,10 +169,20 @@
 }
 
 .make_model_frame <- function(formula, data, na.action = stats::na.omit) {
-  mf <- stats::model.frame(formula = formula, data = data, na.action = na.action)
+  mf <- stats::model.frame(formula = formula, data = data, na.action = stats::na.pass)
+  model_terms <- attr(mf, "terms")
+  if (attr(model_terms, "response") != 1L) {
+    stop("'formula' must include a circular response.", call. = FALSE)
+  }
+  if (length(attr(model_terms, "offset"))) {
+    stop("Offset terms are not supported; use explicit directional terms.", call. = FALSE)
+  }
+  original_rows <- rownames(mf)
+  if (!is.null(na.action)) mf <- match.fun(na.action)(mf)
   if (nrow(mf) == 0) {
     stop("No observations available.", call. = FALSE)
   }
+  attr(mf, "original_rows") <- original_rows
   mf
 }
 
@@ -184,7 +194,15 @@
     )
   }
 
-  parts <- strsplit(term_labels, ":", fixed = TRUE)
+  parts <- lapply(term_labels, function(label) {
+    term <- parse(text = label, keep.source = FALSE)[[1L]]
+    if (is.symbol(term)) return(as.character(term))
+    if (is.call(term) && identical(term[[1L]], as.name(":")) &&
+        length(term) == 3L && is.symbol(term[[2L]]) && is.symbol(term[[3L]])) {
+      return(c(as.character(term[[2L]]), as.character(term[[3L]])))
+    }
+    stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
+  })
   # terms() may reverse x:z into z:x when z appeared in an earlier term.
   # Unlike an ordinary product, direction:modifier is ordered in this API.
   written_pairs <- list()
@@ -201,8 +219,10 @@
   }
   if (!is.null(formula)) collect_pairs(formula[[3L]])
   parts <- lapply(parts, function(part) {
-    part <- gsub("^`|`$", "", trimws(part))
     matching <- Filter(function(pair) setequal(pair, part), written_pairs)
+    if (length(unique(vapply(matching, paste, character(1), collapse = "\r"))) > 1L) {
+      stop("The same R interaction cannot use opposite direction/modifier roles.", call. = FALSE)
+    }
     if (length(matching)) return(matching[[1L]])
     part
   })
@@ -242,15 +262,44 @@
 }
 
 .validate_numeric_vector <- function(x, name) {
-  if (!is.numeric(x) || any(!is.finite(x))) {
+  if (!is.numeric(x) || !is.null(dim(x)) || any(!is.finite(x))) {
     stop(sprintf("'%s' must be numeric and finite after NA handling.", name), call. = FALSE)
   }
   x
 }
 
+.validate_angle_vector <- function(x, name) {
+  .validate_numeric_vector(x, name)
+  units <- attr(x, "circularp")$units
+  if (!is.null(units) && !identical(units, "radians")) {
+    stop(sprintf("'%s' must be supplied in radians; its circular units are '%s'.", name, units), call. = FALSE)
+  }
+  x
+}
+
+.restore_excluded <- function(object, value, residual = FALSE) {
+  if (residual) stats::naresid(object$na.action, value) else stats::napredict(object$na.action, value)
+}
+
+.check_logical_scalar <- function(x, name) {
+  if (!is.logical(x) || length(x) != 1L || is.na(x)) {
+    stop(sprintf("'%s' must be TRUE or FALSE.", name), call. = FALSE)
+  }
+  x
+}
+
+.align_model_vector <- function(x, mf, name) {
+  original <- attr(mf, "original_rows")
+  if (!is.null(original) && length(x) == length(original)) {
+    return(x[.model_frame_rows(mf)])
+  }
+  if (length(x) == nrow(mf)) return(x)
+  stop(sprintf("'%s' must have length equal to the original data or to the model-frame size.", name), call. = FALSE)
+}
+
 .circular_design <- function(formula, data, na.action = stats::na.omit) {
   mf <- .make_model_frame(formula = formula, data = data, na.action = na.action)
-  y <- as.numeric(.validate_numeric_vector(mf[[1]], names(mf)[1]))
+  y <- as.numeric(.validate_angle_vector(mf[[1]], names(mf)[1]))
   term_labels <- attr(attr(mf, "terms"), "term.labels")
   term_info <- .parse_term_labels(term_labels, formula)
 
@@ -271,7 +320,7 @@
 
   for (j in seq_len(p)) {
     ang_name <- term_info$angle[j]
-    matx[, j] <- as.numeric(.validate_numeric_vector(mf[[ang_name]], ang_name))
+    matx[, j] <- as.numeric(.validate_angle_vector(mf[[ang_name]], ang_name))
 
     if (isTRUE(term_info$has_modifier[j])) {
       mod_name <- term_info$modifier[j]
@@ -507,7 +556,13 @@ print.select_reference_angle <- function(x, digits = 4, ...) {
   invisible(x)
 }
 
-.model_frame_rows <- function(mf, data) {
+.model_frame_rows <- function(mf, data = NULL) {
+  original <- attr(mf, "original_rows")
+  if (!is.null(original)) {
+    idx <- match(rownames(mf), original)
+    if (anyNA(idx)) stop("Could not align model-frame rows with the original data.", call. = FALSE)
+    return(idx)
+  }
   if (!is.data.frame(data)) {
     return(seq_len(nrow(mf)))
   }
@@ -537,7 +592,7 @@ print.select_reference_angle <- function(x, digits = 4, ...) {
     if (!angle_name %in% names(mf)) {
       stop(sprintf("Angle variable '%s' not found in 'newdata'.", angle_name), call. = FALSE)
     }
-    matx[, j] <- as.numeric(.validate_numeric_vector(mf[[angle_name]], angle_name))
+    matx[, j] <- as.numeric(.validate_angle_vector(mf[[angle_name]], angle_name))
 
     if (isTRUE(term_info$has_modifier[j])) {
       modifier_name <- term_info$modifier[j]

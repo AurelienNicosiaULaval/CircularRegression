@@ -132,6 +132,7 @@ circular_regression <- function(
 #' @param newdata Optional data frame for prediction.
 #' @param type Prediction type passed to the underlying model.
 #' @param k Numeric penalty used by \code{AIC()}.
+#' @param robust Logical; return the independent-observation sandwich covariance.
 #' @param ... Additional arguments passed to the underlying method.
 #' @rdname circular_regression-methods
 #' @examples
@@ -182,6 +183,12 @@ coef.circular_regression <- function(object, ...) {
 
 #' @rdname circular_regression-methods
 #' @export
+vcov.circular_regression <- function(object, robust = FALSE, ...) {
+  stats::vcov(.primary_circular_fit(object), robust = robust, ...)
+}
+
+#' @rdname circular_regression-methods
+#' @export
 fitted.circular_regression <- function(object, ...) {
   fitted(.primary_circular_fit(object), ...)
 }
@@ -220,11 +227,11 @@ logLik.circular_regression <- function(object, ...) {
 #' @rdname circular_regression-methods
 #' @export
 AIC.circular_regression <- function(object, ..., k = 2) {
-  stats::AIC(.primary_circular_fit(object), ..., k = k)
+  NextMethod("AIC")
 }
 
 #' @rdname circular_regression-methods
 #' @export
 BIC.circular_regression <- function(object, ...) {
-  stats::BIC(.primary_circular_fit(object), ...)
+  NextMethod("BIC")
 }

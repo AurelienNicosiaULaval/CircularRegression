@@ -93,16 +93,7 @@ angular_re <- function(
   n <- des$nobs
   keep_idx <- .model_frame_rows(mf, data)
   cluster_vec <- as.vector(cluster)
-  if (length(cluster_vec) == n) {
-    cluster_mf <- cluster_vec
-  } else if (is.data.frame(data) && length(cluster_vec) == nrow(data)) {
-    cluster_mf <- cluster_vec[keep_idx]
-  } else {
-    stop(
-      "cluster must have length equal to nrow(data) or to the model-frame size after NA handling.",
-      call. = FALSE
-    )
-  }
+  cluster_mf <- .align_model_vector(cluster_vec, mf, "cluster")
   if (anyNA(cluster_mf)) {
     stop("cluster contains missing values after applying model-frame NA handling.", call. = FALSE)
   }
@@ -695,6 +686,7 @@ coef.angular_re <- function(object, ...) {
 #' @rdname angular_re-methods
 #' @export
 vcov.angular_re <- function(object, robust = FALSE, ...) {
+  .check_logical_scalar(robust, "robust")
   if (robust) object$vcov_robust else object$vcov_model
 }
 
@@ -706,7 +698,8 @@ residuals.angular_re <- function(
   ...
 ) {
   type <- match.arg(type)
-  if (type == "fixed") object$resid_fixed else object$resid_conditional
+  value <- if (type == "fixed") object$resid_fixed else object$resid_conditional
+  .restore_excluded(object, value, residual = TRUE)
 }
 
 #' Extract estimated random intercepts from an angular mixed model
@@ -730,7 +723,7 @@ ranef.angular_re <- function(object, ...) object$ranef
 
 #' @rdname angular_re-methods
 #' @export
-fitted.angular_re <- function(object, ...) object$mu
+fitted.angular_re <- function(object, ...) .restore_excluded(object, object$mu)
 
 .angular_re_residual_plots <- function(
   x,
@@ -936,7 +929,7 @@ predict.angular_re <- function(
   }
 
   if (type == "marginal") {
-    return(mu)
+    return(if (is.null(newdata)) .restore_excluded(object, mu) else mu)
   }
 
   if (is.null(cluster) && is.null(a_hat)) {
@@ -978,7 +971,8 @@ predict.angular_re <- function(
     }
   }
 
-  as.numeric(wrap(mu + a_used))
+  result <- as.numeric(wrap(mu + a_used))
+  if (is.null(newdata)) .restore_excluded(object, result) else result
 }
 #' Plot random-intercept directions for an angular_re fit
 #'

@@ -5,6 +5,7 @@
 \alias{summary.circular_regression}
 \alias{print.summary.circular_regression}
 \alias{coef.circular_regression}
+\alias{vcov.circular_regression}
 \alias{fitted.circular_regression}
 \alias{residuals.circular_regression}
 \alias{predict.circular_regression}
@@ -21,6 +22,8 @@
 \method{print}{summary.circular_regression}(x, ...)
 
 \method{coef}{circular_regression}(object, ...)
+
+\method{vcov}{circular_regression}(object, robust = FALSE, ...)
 
 \method{fitted}{circular_regression}(object, ...)
 
@@ -40,6 +43,8 @@
 \item{x, object}{A \code{"circular_regression"} object.}
 
 \item{...}{Additional arguments passed to the underlying method.}
+
+\item{robust}{Logical; return the independent-observation sandwich covariance.}
 
 \item{newdata}{Optional data frame for prediction.}
 

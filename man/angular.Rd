@@ -8,10 +8,10 @@ angular(
   formula,
   data,
   reference = c("auto", "first", "name"),
-  reference_sign = 1,
   initbeta = NULL,
   control = list(),
-  na.action = stats::na.omit
+  na.action = stats::na.omit,
+  reference_sign = 1
 )
 }
 \arguments{
@@ -23,10 +23,6 @@ angular(
 criterion), \code{"first"}, or \code{c("name", "x_ref")}. A plain
 angle term \code{x_ref} must exist in the formula.}
 
-\item{reference_sign}{Sign of the fixed reference coefficient. The default is
-\code{1}; \code{-1} selects the opposite signed coordinate chart without
-changing the scale normalization.}
-
 \item{initbeta}{Optional numeric vector of initial values for non-reference
 coefficients.}
 
@@ -34,7 +30,14 @@ coefficients.}
 \code{maxiter}, and \code{mindiff}.}
 
 \item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
-missing values. The default is \code{\link[stats]{na.omit}}.}
+missing values. The default is \code{\link[stats]{na.omit}}.
+With \code{na.exclude}, in-sample fitted values, residuals and predictions
+restore omitted rows as \code{NA}. Angular \code{circular} objects must
+declare radian units; degree or hour units are rejected before coercion.}
+
+\item{reference_sign}{Sign of the fixed reference coefficient. The default is
+\code{1}; \code{-1} selects the opposite signed coordinate chart without
+changing the scale normalization.}
 }
 \value{
 An object of class \code{"angular"}.

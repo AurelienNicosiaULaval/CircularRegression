@@ -33,7 +33,10 @@ backward compatibility.}
 \code{mindiff}.}
 
 \item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
-missing values. The default is \code{\link[stats]{na.omit}}.}
+missing values. The default is \code{\link[stats]{na.omit}}.
+\code{na.exclude} restores omitted rows in in-sample fitted values,
+residuals and predictions. Weights may match the original or retained
+rows, including when \code{data} is a list or environment.}
 }
 \value{
 An object of class \code{"consensus"}.

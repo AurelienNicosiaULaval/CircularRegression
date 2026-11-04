@@ -2,7 +2,7 @@
 title: "Applied Example with Bison Movement Data"
 output:
   rmarkdown::html_vignette:
-    math_method: katex
+    math_method: mathml
 vignette: >
   %\VignetteIndexEntry{Applied Example with Bison Movement Data}
   %\VignetteEngine{knitr::rmarkdown}

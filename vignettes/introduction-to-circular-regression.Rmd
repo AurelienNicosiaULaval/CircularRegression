@@ -2,7 +2,7 @@
 title: "Introduction to Circular Regression"
 output:
   rmarkdown::html_vignette:
-    math_method: katex
+    math_method: mathml
 vignette: >
   %\VignetteIndexEntry{Introduction to Circular Regression}
   %\VignetteEngine{knitr::rmarkdown}

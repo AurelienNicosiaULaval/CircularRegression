@@ -2,7 +2,7 @@
 title: "Model Checking and Comparisons"
 output:
   rmarkdown::html_vignette:
-    math_method: katex
+    math_method: mathml
 vignette: >
   %\VignetteIndexEntry{Model Checking and Comparisons}
   %\VignetteEngine{knitr::rmarkdown}

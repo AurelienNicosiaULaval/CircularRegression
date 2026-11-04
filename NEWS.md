@@ -23,7 +23,8 @@
   consensus likelihood is unbounded.
 * Revise the four vignettes around distinct tasks: first fitting, diagnostics
   and comparisons, bison movement, and special curves with repeated outcomes.
-  Simulated homogeneous examples now use exact von Mises errors.
+  Simulated homogeneous examples now use exact von Mises errors. Standalone
+  HTML vignettes render equations as native MathML without external scripts.
 
 # CircularRegression 0.7.1
 

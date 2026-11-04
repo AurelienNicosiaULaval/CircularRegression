@@ -2,7 +2,7 @@
 title: "Special Mean Curves and Repeated Observations"
 output:
   rmarkdown::html_vignette:
-    math_method: katex
+    math_method: mathml
 vignette: >
   %\VignetteIndexEntry{Special Mean Curves and Repeated Observations}
   %\VignetteEngine{knitr::rmarkdown}

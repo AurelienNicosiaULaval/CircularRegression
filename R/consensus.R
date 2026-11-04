@@ -595,6 +595,9 @@ logLik.consensus <- function(object, ...) {
   if (isTRUE(object$alignment_boundary)) {
     stop("The consensus likelihood has no finite maximum.", call. = FALSE)
   }
+  if (identical(object$convergence, FALSE)) {
+    stop("Log-likelihood comparison requires a converged fit.", call. = FALSE)
+  }
   val <- object$logLik
   attr(val, "df") <- object$k
   attr(val, "nobs") <- object$nobs

@@ -55,5 +55,14 @@ test_that("unconverged fixed fits do not report Wald standard errors", {
     expect_true(all(is.na(vcov(fit))))
     expect_true(all(is.na(vcov(fit, robust = TRUE))))
     expect_output(print(fit), "Converged: FALSE")
+    expect_error(logLik(fit), "converged")
   }
+})
+
+test_that("the two-step workflow stops when initialization is unbounded", {
+  d <- data.frame(y = rep(0, 10), ref = 0)
+  expect_warning(
+    expect_error(angular_two_step(y ~ ref, d), "use angular\\(\\) directly"),
+    "no finite maximum"
+  )
 })

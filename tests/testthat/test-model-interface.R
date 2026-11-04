@@ -90,3 +90,26 @@ test_that("na.exclude restores fitted values, residuals and in-sample prediction
     expect_length(predict(fit, newdata = d[-3L, ]), 4L)
   }
 })
+
+test_that("grouped exclusions retain original group alignment and output rows", {
+  data(Sandhopper)
+  wide <- Sandhopper[1:24, ]
+  d <- wide[rep(seq_len(nrow(wide)), each = 5), ]
+  d$y <- as.vector(t(as.matrix(wide[paste0("LN", 1:5)]))) * pi / 180
+  d$ref <- d$Azimuth * pi / 180
+  d$y[3] <- NA
+  fit <- angular_re(y ~ ref, as.list(d), d$Anim, na.action = na.exclude)
+  expect_length(fitted(fit), nrow(d))
+  expect_length(residuals(fit), nrow(d))
+  expect_length(predict(fit, type = "conditional"), nrow(d))
+  expect_true(is.na(predict(fit)[3]))
+  expect_equal(as.character(fit$cluster), as.character(d$Anim[-3]))
+})
+
+test_that("control components are checked before optimization", {
+  d <- data.frame(y = c(.1, .2, -.1, -.2), ref = 0, id = rep(1:2, each = 2))
+  expect_error(angular(y ~ ref, d, control = list(maxiter = NULL)), "NULL")
+  expect_error(consensus(y ~ ref, d, control = list(maxiter = 5, maxiter = 8)), "duplicated")
+  expect_error(angular_re(y ~ ref, d, d$id, control = list(5)), "unnamed")
+  expect_error(angular_re(y ~ ref, d, d$id, init = list(kappa_unknown = 1)), "Unknown")
+})

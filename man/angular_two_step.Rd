@@ -37,6 +37,9 @@ An object of class \code{"angular_two_step"}. The
   \code{reference_stability} component records the selected consensus
   coefficient, its scale-relative threshold, and the signed reference chart
   used to preserve the orientation of the consensus resultant.
+  \code{convergence}, \code{fit_status}, \code{inference_available} and
+  \code{score_norm} describe the final homogeneous fit. An unbounded
+  consensus initialization stops the two-step procedure.
 }
 \description{
 Implements the strategy recommended by Rivest et al. (2016): fit the

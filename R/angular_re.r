@@ -174,6 +174,17 @@ angular_re <- function(
   }
 
   ## ---- initial values ----
+  if (!is.list(control) || !is.list(init)) stop("'control' and 'init' must be lists.", call. = FALSE)
+  valid_control <- c("maxit", "reltol", "trace", "hessian", "start_from_angular")
+  valid_init <- c("beta", "kappa_e", "kappa_a")
+  for (input in c("control", "init")) {
+    value <- if (input == "control") control else init
+    allowed <- if (input == "control") valid_control else valid_init
+    if (length(value) && (is.null(names(value)) || anyDuplicated(names(value)) ||
+        any(!names(value) %in% allowed) || any(vapply(value, is.null, logical(1))))) {
+      stop(sprintf("Unknown, duplicated, unnamed or NULL component in '%s'.", input), call. = FALSE)
+    }
+  }
   ctrl <- modifyList(
     list(
       maxit = 2000,
@@ -184,14 +195,12 @@ angular_re <- function(
     ),
     control
   )
-  if (!is.list(control) || !is.list(init)) stop("'control' and 'init' must be lists.", call. = FALSE)
-  if (any(!names(control) %in% c("maxit", "reltol", "trace", "hessian", "start_from_angular"))) {
-    stop("Unknown component in 'control'.", call. = FALSE)
-  }
   if (!is.numeric(ctrl$maxit) || length(ctrl$maxit) != 1L || !is.finite(ctrl$maxit) || ctrl$maxit < 0) {
     stop("'control$maxit' must be a finite non-negative scalar.", call. = FALSE)
   }
-  if (ctrl$maxit != floor(ctrl$maxit)) stop("'control$maxit' must be an integer.", call. = FALSE)
+  if (ctrl$maxit != floor(ctrl$maxit) || ctrl$maxit >= .Machine$integer.max) {
+    stop("'control$maxit' must be an integer below .Machine$integer.max.", call. = FALSE)
+  }
   if (!is.numeric(ctrl$reltol) || length(ctrl$reltol) != 1L || !is.finite(ctrl$reltol) || ctrl$reltol <= 0) {
     stop("'control$reltol' must be a finite positive scalar.", call. = FALSE)
   }
@@ -207,6 +216,10 @@ angular_re <- function(
   }
 
   coalesce_null <- function(x, default) if (is.null(x)) default else x
+  if (!is.null(init$beta) && (!is.numeric(init$beta) || length(init$beta) != p ||
+      any(!is.finite(init$beta)))) {
+    stop(sprintf("'init$beta' must have length %d and finite numeric values.", p), call. = FALSE)
+  }
 
   if (p == 0) {
     beta0 <- numeric(0)

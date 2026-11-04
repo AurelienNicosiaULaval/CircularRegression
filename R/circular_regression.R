@@ -98,12 +98,17 @@ circular_regression <- function(
     )
   )
 
+  primary <- .primary_circular_fit(fit)
   out <- list(
     call = call,
     formula = formula,
     method = method,
     fit = fit,
-    nobs = .fit_nobs(.primary_circular_fit(fit))
+    nobs = .fit_nobs(primary),
+    convergence = primary$convergence,
+    fit_status = primary$fit_status,
+    inference_available = primary$inference_available,
+    score_norm = primary$score_norm
   )
   class(out) <- c(
     "circular_regression",

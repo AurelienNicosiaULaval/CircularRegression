@@ -27,8 +27,9 @@
     stop(sprintf("'%s' must be a list.", prefix), call. = FALSE)
   }
   if (length(control) && (is.null(names(control)) ||
-      any(!names(control) %in% names(defaults)))) {
-    stop(sprintf("Unknown or unnamed component in '%s'.", prefix), call. = FALSE)
+      anyDuplicated(names(control)) || any(!names(control) %in% names(defaults)) ||
+      any(vapply(control, is.null, logical(1))))) {
+    stop(sprintf("Unknown, duplicated, unnamed or NULL component in '%s'.", prefix), call. = FALSE)
   }
   out <- utils::modifyList(defaults, control)
   if (!is.null(out$pginit)) {

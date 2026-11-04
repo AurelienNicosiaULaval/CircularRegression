@@ -174,14 +174,13 @@ logLik.angular <- function(object, ...) {
   n <- length(object$y)
   kappa <- as.numeric(object$kappahat)
   Cbar <- as.numeric(object$MaxCosine)
-
-  if (is.infinite(kappa)) {
-    ll <- Inf
-    attr(ll, "df") <- nrow(object$parameters) + 1L
-    attr(ll, "nobs") <- n
-    class(ll) <- "logLik"
-    return(ll)
+  if (!is.finite(kappa)) {
+    stop("The homogeneous likelihood has no finite concentration maximum.", call. = FALSE)
   }
+  if (identical(object$convergence, FALSE)) {
+    stop("Log-likelihood comparison requires a converged regular fit.", call. = FALSE)
+  }
+
   log_i0 <- .logI0(kappa)
   ll <- n * (kappa * Cbar - log(2 * pi) - log_i0)
 

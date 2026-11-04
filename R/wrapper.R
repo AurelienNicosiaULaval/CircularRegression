@@ -29,6 +29,7 @@
 }
 
 .delta_method_transform <- function(theta_hat, vcov_theta, g, jacobian = NULL, eps = 1e-06) {
+  theta_names <- names(theta_hat)
   theta_hat <- as.numeric(theta_hat)
   est <- as.numeric(g(theta_hat))
   est_names <- names(g(theta_hat))
@@ -64,7 +65,7 @@
   rownames(vc) <- est_names
   colnames(vc) <- est_names
   rownames(J) <- est_names
-  colnames(J) <- names(theta_hat)
+  colnames(J) <- theta_names
 
   list(
     estimate = est,

@@ -44,8 +44,14 @@ test_that("consensus logLik includes von Mises normalizing constant", {
     control = list(maxiter = 0)
   )
 
-  expect_equal(as.numeric(logLik(fit)), -n * log(2 * pi), tolerance = 1e-8)
-  expect_true(as.numeric(logLik(fit)) < 0)
+  expect_equal(fit$logLik, -n * log(2 * pi), tolerance = 1e-8)
+  expect_error(logLik(fit), "converged fit")
+
+  converged <- consensus(y ~ x1, data = df)
+  kappa <- converged$kappa[[1L]]
+  expected <- sum(kappa * cos(df$y - df$x1)) -
+    n * (log(2 * pi) + log(besselI(abs(kappa), 0)))
+  expect_equal(as.numeric(logLik(converged)), expected, tolerance = 1e-8)
 })
 
 test_that("consensus BIC in object and method are coherent", {

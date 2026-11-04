@@ -18,6 +18,9 @@
 #'   \code{reference_stability} component records the selected consensus
 #'   coefficient, its scale-relative threshold, and the signed reference chart
 #'   used to preserve the orientation of the consensus resultant.
+#'   \code{convergence}, \code{fit_status}, \code{inference_available} and
+#'   \code{score_norm} describe the final homogeneous fit. An unbounded
+#'   consensus initialization stops the two-step procedure.
 #' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
 #'   A general angular regression model for the analysis of data on animal
 #'   movement in ecology. \emph{Journal of the Royal Statistical Society:
@@ -46,6 +49,9 @@ angular_two_step <- function(
     control = control_consensus,
     na.action = na.action
   )
+  if (isTRUE(fit_cons$alignment_boundary)) {
+    stop("The consensus step has no finite maximum; use angular() directly to specify a homogeneous fit.", call. = FALSE)
+  }
 
   ref <- .resolve_reference(
     reference = reference,
@@ -96,7 +102,11 @@ angular_two_step <- function(
     consensus_fit = fit_cons,
     homogeneous_fit = fit_hom,
     initbeta_from_consensus = initbeta,
-    nobs = fit_hom$nobs
+    nobs = fit_hom$nobs,
+    convergence = fit_hom$convergence,
+    fit_status = fit_hom$fit_status,
+    inference_available = fit_hom$inference_available,
+    score_norm = fit_hom$score_norm
   )
   class(out) <- "angular_two_step"
   out
@@ -153,6 +163,7 @@ angular_two_step <- function(
 #' @export
 print.angular_two_step <- function(x, ...) {
   cat("Two-step angular workflow (Rivest et al., 2016)\n")
+  .print_fit_status(x)
   cat("Reference angle:", x$reference, "\n")
   if (!is.null(x$reference_stability)) {
     cat(

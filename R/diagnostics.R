@@ -246,6 +246,17 @@ utils::globalVariables(".data")
 }
 
 .pit_qq_plot <- function(residuals, kappa, title, subtitle = NULL) {
+  keep <- is.finite(residuals)
+  if (length(kappa) > 1L) {
+    if (length(kappa) != length(residuals)) {
+      stop("The PIT diagnostic requires one concentration per residual.", call. = FALSE)
+    }
+    kappa <- kappa[keep]
+  }
+  residuals <- residuals[keep]
+  if (!length(residuals)) {
+    stop("At least one finite residual is required for the PIT diagnostic.", call. = FALSE)
+  }
   pit <- sort(.vonmises_pit(residuals, kappa))
   diagnostic_data <- data.frame(expected = stats::ppoints(length(pit)), observed = pit)
 
@@ -283,10 +294,13 @@ utils::globalVariables(".data")
 }
 
 .residual_by_index_plot <- function(residual_data, title) {
+  line <- if (sum(is.finite(residual_data$.resid)) > 1L) {
+    ggplot2::geom_line(colour = "grey70", linewidth = 0.35, na.rm = TRUE)
+  } else NULL
   ggplot2::ggplot(residual_data, ggplot2::aes(x = .data$.index, y = .data$.resid)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey45", linetype = "dashed") +
-    ggplot2::geom_line(colour = "grey70", linewidth = 0.35) +
-    ggplot2::geom_point(colour = "#2C7FB8", alpha = 0.7, size = 1.3) +
+    line +
+    ggplot2::geom_point(colour = "#2C7FB8", alpha = 0.7, size = 1.3, na.rm = TRUE) +
     ggplot2::scale_y_continuous(
       limits = c(-pi, pi),
       breaks = .radian_breaks(),
@@ -305,14 +319,22 @@ utils::globalVariables(".data")
     .resid = .wrap_angle(as.numeric(residuals)),
     .index = seq_along(residuals)
   )
+  finite_residual <- is.finite(residual_data$.resid)
+  if (!any(finite_residual)) {
+    stop("At least one finite residual is required for circular diagnostics.", call. = FALSE)
+  }
+  note <- if (all(finite_residual)) NULL else sprintf(
+    "Residuals are undefined for %d of %d observations.",
+    sum(!finite_residual), nrow(residual_data)
+  )
   pit_subtitle <- if (length(kappa) == 1L) {
     "Fitted common concentration"
   } else {
     "Fitted observation-specific concentration"
   }
-  panels <- list(
-    rose = .residual_rose_plot(
-      residuals = residual_data$.resid,
+  panel_builders <- list(
+    rose = function() .residual_rose_plot(
+      residuals = residual_data$.resid[finite_residual],
       kappa = if (length(kappa) == 1L) kappa else NULL,
       bins = bins,
       title = "Circular residuals",
@@ -322,19 +344,24 @@ utils::globalVariables(".data")
         "Rose and kernel density"
       }
     ),
-    pit = .pit_qq_plot(residual_data$.resid, kappa, "PIT Q-Q plot", pit_subtitle),
-    fitted = .residual_vs_fitted_plot(residual_data, "Residuals vs fitted direction"),
-    index = .residual_by_index_plot(residual_data, "Residuals by observation order")
+    pit = function() .pit_qq_plot(residual_data$.resid, kappa, "PIT Q-Q plot", pit_subtitle),
+    fitted = function() .residual_vs_fitted_plot(
+      residual_data[finite_residual, , drop = FALSE], "Residuals vs fitted direction"
+    ),
+    index = function() .residual_by_index_plot(residual_data, "Residuals by observation order")
   )
+  selected <- if (type == "all") names(panel_builders) else type
+  panels <- lapply(panel_builders[selected], function(build) build())
 
   if (type == "all") {
     gridExtra::grid.arrange(
       grobs = panels,
       ncol = 2,
-      top = grid::textGrob(title, gp = grid::gpar(fontsize = 12))
+      top = grid::textGrob(title, gp = grid::gpar(fontsize = 12)),
+      bottom = if (is.null(note)) NULL else grid::textGrob(note, gp = grid::gpar(fontsize = 9))
     )
   } else {
-    print(panels[[type]])
+    print(panels[[type]] + ggplot2::labs(caption = note))
   }
   invisible(x)
 }

@@ -103,3 +103,61 @@ test_that("angular_re residual roses retain fixed and conditional diagnostics", 
   grDevices::dev.off()
   expect_gt(file.info(output)$size, 0)
 })
+
+test_that("consensus plots handle observations with zero resultant length", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("ggcircular")
+  skip_if_not_installed("gridExtra")
+
+  output <- tempfile(fileext = ".pdf")
+  grDevices::pdf(output, width = 9, height = 7)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  for (d in list(
+    data.frame(y = c(-0.5, 0.5, 0), x = 0, z = c(1, 1, 0)),
+    data.frame(y = c(0.5, 0, 0), x = 0, z = c(1, 0, 0))
+  )) {
+    fit <- consensus(y ~ x:z, d)
+    expect_true(fit$convergence)
+    expect_equal(fit$long[3], 0)
+    expect_true(is.na(residuals(fit)[3]))
+    for (type in c("rose", "pit", "fitted", "index", "all")) {
+      expect_silent(plot(fit, type = type))
+    }
+  }
+})
+
+test_that("PIT exclusion keeps each residual with its own concentration", {
+  skip_if_not_installed("ggplot2")
+  residuals <- c(-0.5, NA_real_, 0.25)
+  kappa <- c(1, 100, 3)
+  panel <- CircularRegression:::.pit_qq_plot(residuals, kappa, "PIT")
+  expected <- sort(c(
+    circular::pvonmises(circular::circular(pi - 0.5),
+      mu = circular::circular(pi), kappa = 1, from = circular::circular(0)),
+    circular::pvonmises(circular::circular(pi + 0.25),
+      mu = circular::circular(pi), kappa = 3, from = circular::circular(0))
+  ))
+  expect_equal(panel$data$observed, as.numeric(expected), tolerance = 1e-12)
+  expect_equal(panel$data$expected, ppoints(2))
+  expect_error(CircularRegression:::.pit_qq_plot(NA_real_, 0, "PIT"),
+               "At least one finite residual")
+})
+
+test_that("index plots do not evaluate a degenerate von Mises CDF", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("ggcircular")
+  fit <- suppressWarnings(angular(y ~ ref, data.frame(y = rep(0, 5), ref = 0)))
+  expect_true(is.infinite(fit$kappahat))
+  output <- tempfile(fileext = ".pdf")
+  grDevices::pdf(output)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_silent(plot(fit, type = "index"))
+})
+
+test_that("all-undefined consensus residuals give an explicit diagnostic error", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("ggcircular")
+  fit <- consensus(y ~ x, data.frame(y = c(-pi / 2, pi / 2), x = 0), initkappa = 0)
+  expect_true(all(is.na(residuals(fit))))
+  expect_error(plot(fit, type = "index"), "At least one finite residual")
+})

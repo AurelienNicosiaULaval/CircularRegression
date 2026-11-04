@@ -1,5 +1,8 @@
 # CircularRegression 0.7.2
 
+* Handle undefined consensus residuals in diagnostic plots. Keep residuals and
+  concentrations aligned in the PIT, preserve gaps in observation order, and
+  construct only requested panels. Report the number of undefined residuals.
 * Check ordered direction/modifier roles when comparing nested models with T2.
 * Detect consensus recession directions, including zero-modifier and zero-weight
   rows, and flag perfect within-group alignment in random-intercept fits.

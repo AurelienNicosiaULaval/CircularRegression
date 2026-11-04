@@ -83,6 +83,11 @@ observation-specific fitted concentrations \eqn{L_i}; the PIT is therefore
 computed with \eqn{\mathrm{VM}(0,L_i)} for each observation. The Q-Q plot is
 descriptive rather than a formal goodness-of-fit test because the parameters
 were estimated from the displayed observations.
+Observations with an undefined fitted direction have no residual. They are
+omitted from the rose, fitted-direction and PIT panels, with the matching
+concentrations omitted from the PIT calculation. The index panel preserves
+their positions as gaps. A note reports their number. Only requested panels
+are constructed; no diagnostic is available when every residual is undefined.
 
 The diagnostic plots require the suggested packages \pkg{ggplot2} and
 \pkg{ggcircular}; \code{type = "all"} additionally requires

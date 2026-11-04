@@ -6,13 +6,16 @@
 #'
 #' Fits the homogeneous angular regression model of Rivest et al. (2016), where
 #' the mean direction is the orientation of a weighted resultant vector and one
-#' reference angle has coefficient fixed to 1.
+#' reference angle has coefficient fixed to either 1 or -1.
 #'
 #' @param formula A formula with terms of the form \code{x} or \code{x:z}.
 #' @param data A data frame, list or environment containing model variables.
 #' @param reference Reference-angle rule. Use \code{"auto"} (default, article
 #'   criterion), \code{"first"}, or \code{c("name", "x_ref")}. A plain
 #'   angle term \code{x_ref} must exist in the formula.
+#' @param reference_sign Sign of the fixed reference coefficient. The default is
+#'   \code{1}; \code{-1} selects the opposite signed coordinate chart without
+#'   changing the scale normalization.
 #' @param initbeta Optional numeric vector of initial values for non-reference
 #'   coefficients.
 #' @param control Control list with optional components \code{pginit},
@@ -20,6 +23,19 @@
 #' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
 #'   missing values. The default is \code{\link[stats]{na.omit}}.
 #' @return An object of class \code{"angular"}.
+#' @details Convergence requires a scaled score norm no larger than
+#'   \code{control$mindiff}; a small objective increment alone is insufficient.
+#'   The object stores \code{convergence}, \code{score_norm}, and the observed
+#'   derivative matrix. A positive-definite derivative matrix is required for
+#'   sandwich inference. Both covariance choices assume independent observations;
+#'   neither is a serial-dependence correction. Zero resultant vectors are
+#'   excluded because they have no mean direction.
+#' @examples
+#' data(bison)
+#' d <- na.omit(bison[1:100, c("y.dir", "y.prec", "x.meadow", "z.meadow")])
+#' fit <- angular(y.dir ~ y.prec + x.meadow:z.meadow, d, reference = "first")
+#' coef(fit)
+#' fit$convergence
 #' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
 #'   A general angular regression model for the analysis of data on animal
 #'   movement in ecology. \emph{Journal of the Royal Statistical Society:
@@ -29,6 +45,7 @@ angular <- function(
   formula,
   data,
   reference = c("auto", "first", "name"),
+  reference_sign = 1,
   initbeta = NULL,
   control = list(),
   na.action = stats::na.omit
@@ -49,6 +66,12 @@ angular <- function(
   p <- length(betaname)
   nobs <- des$nobs
 
+  if (!is.numeric(reference_sign) || length(reference_sign) != 1L ||
+      !is.finite(reference_sign) || !(reference_sign %in% c(-1, 1))) {
+    stop("'reference_sign' must be either 1 or -1.", call. = FALSE)
+  }
+  reference_sign <- as.numeric(reference_sign)
+
   if (!is.null(initbeta) && (!is.numeric(initbeta) || any(!is.finite(initbeta)) || length(initbeta) != p)) {
     stop(sprintf("'initbeta' must have length %d for this model.", p), call. = FALSE)
   }
@@ -62,8 +85,8 @@ angular <- function(
   mindiff <- ctrl$mindiff
 
   compute_components <- function(beta) {
-    sinmu <- sin(x0)
-    cosmu <- cos(x0)
+    sinmu <- reference_sign * sin(x0)
+    cosmu <- reference_sign * cos(x0)
     if (p > 0) {
       sinmu <- sinmu + as.vector((matz * sin(matx)) %*% beta)
       cosmu <- cosmu + as.vector((matz * cos(matx)) %*% beta)
@@ -75,14 +98,18 @@ angular <- function(
 
   maxcos <- function(beta) {
     cm <- compute_components(beta)
+    scale <- 1 + if (p > 0L) as.vector(abs(matz) %*% abs(beta)) else 0
+    if (any(cm$long <= sqrt(.Machine$double.eps) * scale)) {
+      return(list(maxcos = -Inf, long = cm$long, mui = cm$mui))
+    }
     val <- mean(cos(y - cm$mui))
     list(maxcos = val, long = cm$long, mui = cm$mui)
   }
 
   beta_update <- function(betak, long, mui) {
-    denom <- pmax(as.vector(long), .Machine$double.eps)
-    matd <- (matz * sin(matx - mui)) / denom
-    res <- sin(y - mui)
+    deriv <- .angular_derivatives(y, mui, long, matx, matz)
+    matd <- deriv$D
+    res <- deriv$residual
 
     qr_obj <- qr(matd)
     if (qr_obj$rank < ncol(matd)) {
@@ -93,7 +120,13 @@ angular <- function(
     }
 
     dbeta <- as.vector(qr.coef(qr_obj, res))
-    list(betak1 = betak + dbeta, dbeta = dbeta, matd = matd, res = res)
+    # Newton acceleration near a local maximum; otherwise retain an ascent
+    # Gauss-Newton step and let the line search control the step length.
+    ch <- tryCatch(chol(deriv$information), error = function(e) NULL)
+    if (!is.null(ch)) dbeta <- as.vector(chol2inv(ch) %*% deriv$score)
+    list(betak1 = betak + dbeta, dbeta = dbeta, matd = matd, res = res,
+         score = deriv$score, information = deriv$information,
+         score_norm = .score_norm(deriv$score, crossprod(matd), nobs))
   }
 
   if (p == 0) {
@@ -114,12 +147,15 @@ angular <- function(
   }
 
   calc <- maxcos(betak)
+  if (!is.finite(calc$maxcos)) {
+    stop("Initial values produce a zero or numerically singular resultant vector.", call. = FALSE)
+  }
   maxcosk <- calc$maxcos
   long <- calc$long
   mui <- calc$mui
 
   iter <- 0L
-  conv <- FALSE
+  conv <- p == 0L
   iter.detail <- matrix(NA_real_, nrow = maxiter + 1L, ncol = p + 3L)
   colnames(iter.detail) <- c(betaname, "maxcosine", "iter", "nitersh")
   iter.detail[1L, ] <- c(betak, maxcosk, iter, 0)
@@ -127,6 +163,10 @@ angular <- function(
   if (p > 0 && maxiter > 0) {
     while (!conv && iter < maxiter) {
       step <- beta_update(betak = betak, long = long, mui = mui)
+      if (step$score_norm <= mindiff) {
+        conv <- TRUE
+        break
+      }
       betak1 <- step$betak1
       dbeta <- step$dbeta
 
@@ -153,7 +193,11 @@ angular <- function(
         break
       }
 
-      conv <- (maxcosk1 - maxcosk) <= mindiff
+      if (identical(betak1, betak) ||
+          (maxcosk1 == maxcosk && iter.sh > 20L)) {
+        warning("Angular iteration stagnated with a nonzero score; convergence was not established.", call. = FALSE)
+        break
+      }
       betak <- betak1
       maxcosk <- maxcosk1
       long <- long1
@@ -173,7 +217,7 @@ angular <- function(
   # explicit identifiability check (Proposition 1 matrix rank p-1)
   nterm <- length(des$term_labels)
   beta_full <- numeric(nterm)
-  beta_full[des$ref_idx] <- 1
+  beta_full[des$ref_idx] <- reference_sign
   if (p > 0) beta_full[-des$ref_idx] <- betak
 
   id_mat <- .identifiability_matrix(
@@ -197,13 +241,17 @@ angular <- function(
     last_step <- beta_update(betak = betak, long = long, mui = mui)
     matd <- last_step$matd
     res <- last_step$res
+    conv <- conv || (maxiter > 0L && last_step$score_norm <= mindiff)
   } else {
     matd <- matrix(0, nrow = nobs, ncol = 0)
     res <- sin(y - mui)
   }
 
   Akappa <- as.numeric(maxcosk)
-  kappahat <- if (Akappa <= 0) 0 else circular::A1inv(min(Akappa, 0.999999))
+  kappahat <- .A1_inverse(min(max(Akappa, 0), 1))
+  if (!is.finite(kappahat)) {
+    warning("A unit mean cosine has no finite concentration MLE; Wald inference is unavailable.", call. = FALSE)
+  }
 
   if (p > 0) {
     XtX <- crossprod(matd)
@@ -214,7 +262,7 @@ angular <- function(
     }
     XtX_inv <- chol2inv(chol_xtx)
 
-    if (Akappa > 0 && kappahat > 0) {
+    if (Akappa > 0 && kappahat > 0 && is.finite(kappahat)) {
       v0 <- XtX_inv / (Akappa * kappahat)
       se0 <- sqrt(diag(v0))
       zvalue <- betak / se0
@@ -226,9 +274,11 @@ angular <- function(
       pvals <- rep(NA_real_, p)
     }
 
-    res_sq <- res^2
-    matd_res <- matd * res_sq
-    v2 <- XtX_inv %*% crossprod(matd, matd_res) %*% XtX_inv
+    # Rivest et al. (2016), equations 13-14: the observed derivative
+    # includes the second derivative of the mean direction, not just D'D.
+    bread <- .information_inverse(last_step$information)
+    v2 <- bread %*% crossprod(matd * res) %*% bread
+    if (!is.finite(kappahat) || kappahat == 0) v2[,] <- NA_real_
 
     parameters <- cbind(
       estimate = betak,
@@ -258,11 +308,18 @@ angular <- function(
     mui = mui,
     y = y,
     iter.detail = iter.detail,
+    convergence = conv,
+    convergence_tolerance = mindiff,
+    score = if (p > 0L) last_step$score else numeric(0),
+    score_norm = if (p > 0L) last_step$score_norm else 0,
+    information = if (p > 0L) last_step$information else matrix(numeric(0), 0, 0),
+    model_data = des$mf,
     call = call,
     formula = formula,
     nobs = nobs,
     k = p + 1L,
     reference = des$reference$ref_name,
+    reference_sign = reference_sign,
     reference_scores = des$reference$scores,
     term_info = des$term_info,
     term_labels = des$term_labels,
@@ -281,20 +338,45 @@ angular <- function(
 
 #' Methods for Angular Regression Objects
 #'
+#' @details The \code{plot()} method uses wrapped residuals
+#' \eqn{e_i = \mathrm{atan2}(\sin(y_i-\hat\mu_i),
+#' \cos(y_i-\hat\mu_i))}. It provides a circular rose and density display,
+#' a von Mises probability-integral-transform (PIT) Q-Q plot, and residual
+#' plots against fitted direction and observation order. For an \code{angular}
+#' fit, the rose overlays the fitted \eqn{\mathrm{VM}(0,\hat\kappa)} density
+#' and the PIT uses the same common concentration. The Q-Q plot is descriptive:
+#' its diagonal is not a formal goodness-of-fit test because the parameters were
+#' estimated from the displayed observations.
+#'
+#' The diagnostic plots require the suggested packages \pkg{ggplot2} and
+#' \pkg{ggcircular}; \code{type = "all"} additionally requires
+#' \pkg{gridExtra}.
+#'
 #' @param object An object of class \code{"angular"}.
 #' @param x An object of class \code{"angular"}.
 #' @param newdata Optional data frame for prediction.
-#' @param type Prediction type. Use \code{"response"} for fitted angles in
-#'   radians or \code{"components"} for cosine and sine components.
+#' @param type For \code{predict()}, use \code{"response"} for fitted angles in
+#'   radians or \code{"components"} for cosine and sine components. For
+#'   \code{plot()}, select \code{"all"}, \code{"rose"}, \code{"pit"},
+#'   \code{"fitted"}, or \code{"index"}.
+#' @param bins Number of bins in a circular residual rose plot.
 #' @param robust Logical; for \code{vcov()}, return the sandwich covariance
 #'   matrix when \code{TRUE}.
 #' @param ... Additional arguments.
 #' @rdname angular-methods
+#' @examples
+#' data(bison)
+#' fit <- angular(y.dir ~ y.prec, bison[1:100, ])
+#' summary(fit)
+#' head(predict(fit))
+#' head(residuals(fit))
+#' vcov(fit, robust = TRUE)
 #' @export
 print.angular <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
   cat("\nReference angle:", x$reference, "\n")
+  cat("Reference coefficient:", x$reference_sign %||% 1, "\n")
   cat("Maximum cosine:", format(x$MaxCosine, digits = 4), "\n")
   cat("Concentration parameter:", format(x$kappahat, digits = 4), "\n\n")
   cat("Parameters (non-reference terms):\n")
@@ -381,7 +463,8 @@ summary.angular <- function(object, ...) {
     kappahat = object$kappahat,
     residuals = summary(res),
     nobs = object$nobs,
-    reference = object$reference
+    reference = object$reference,
+    reference_sign = object$reference_sign %||% 1
   )
   class(s) <- "summary.angular"
   s
@@ -393,6 +476,7 @@ print.summary.angular <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
   cat("\nReference angle:", x$reference, "\n")
+  cat("Reference coefficient:", x$reference_sign %||% 1, "\n")
   cat("Maximum cosine:", format(x$MaxCosine, digits = 4), "\n")
   cat("Concentration parameter:", format(x$kappahat, digits = 4), "\n\n")
   cat("Residuals:\n")
@@ -414,76 +498,20 @@ print.summary.angular <- function(x, ...) {
 
 #' @rdname angular-methods
 #' @export
-plot.angular <- function(x, ...) {
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required for plotting.", call. = FALSE)
-  }
-  if (!requireNamespace("gridExtra", quietly = TRUE)) {
-    stop("Package 'gridExtra' is required for arranging plots.", call. = FALSE)
-  }
-
-  fitted_vals <- as.numeric(x$mui)
-  residuals_num <- as.numeric(residuals.angular(x))
-
-  p1 <- ggplot2::ggplot(
-    data = data.frame(Fitted = fitted_vals, Residual = residuals_num),
-    ggplot2::aes(x = Fitted, y = Residual)
-  ) +
-    ggplot2::geom_point(color = "blue") +
-    ggplot2::geom_hline(ggplot2::aes(yintercept = 0), linetype = "dashed") +
-    ggplot2::labs(
-      title = "Residuals vs Fitted",
-      x = "Fitted Values",
-      y = "Residuals"
-    ) +
-    ggplot2::theme_minimal()
-
-  res_mean <- mean(residuals_num)
-  res_sd <- stats::sd(residuals_num)
-  p2 <- ggplot2::ggplot(
-    data = data.frame(Residual = residuals_num),
-    ggplot2::aes(x = Residual)
-  ) +
-    ggplot2::geom_histogram(
-      ggplot2::aes(y = ggplot2::after_stat(density)),
-      bins = 12,
-      color = "black",
-      fill = "gray"
-    ) +
-    ggplot2::stat_function(
-      fun = stats::dnorm,
-      args = list(mean = res_mean, sd = res_sd),
-      color = "red",
-      linewidth = 1
-    ) +
-    ggplot2::labs(
-      title = "Histogram of Residuals",
-      x = "Residuals",
-      y = "Density"
-    ) +
-    ggplot2::theme_minimal()
-
-  p3 <- ggplot2::ggplot(
-    data = data.frame(Residual = residuals_num),
-    ggplot2::aes(sample = Residual)
-  ) +
-    ggplot2::stat_qq(color = "blue") +
-    ggplot2::stat_qq_line(color = "red") +
-    ggplot2::labs(
-      title = "Normal Q-Q",
-      x = "Theoretical Quantiles",
-      y = "Sample Quantiles"
-    ) +
-    ggplot2::theme_minimal()
-
-  layout <- rbind(c(1, 2), c(3, 3))
-  gridExtra::grid.arrange(
-    p1,
-    p2,
-    p3,
-    layout_matrix = layout,
-    top = sprintf("Diagnostic Plots for Angular Model (ref: %s)", x$reference)
+plot.angular <- function(
+  x,
+  type = c("all", "rose", "pit", "fitted", "index"),
+  bins = 24,
+  ...
+) {
+  type <- match.arg(type)
+  .plot_fixed_circular_diagnostics(
+    x = x,
+    residuals = residuals.angular(x),
+    fitted = x$mui,
+    kappa = x$kappahat,
+    type = type,
+    bins = bins,
+    title = sprintf("Homogeneous angular model diagnostics (reference: %s)", x$reference)
   )
-
-  invisible(x)
 }

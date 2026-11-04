@@ -32,3 +32,7 @@ the angle variable maximizing the empirical mean cosine
 \eqn{\overline{\cos(y-x_j)}} among plain angle terms \code{x} present in the
 formula.
 }
+\examples{
+data(bison)
+select_reference_angle(y.dir ~ y.prec + x.meadow, bison[1:100, ])
+}

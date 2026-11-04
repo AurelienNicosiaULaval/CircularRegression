@@ -11,7 +11,10 @@ angular_lrtest(full, reduced, check = TRUE)
 
 \item{reduced}{Object of class \code{"angular"} (nested reduced model).}
 
-\item{check}{Logical; perform consistency checks.}
+\item{check}{Logical; check that samples, shared variables, term nesting,
+reference directions and signs agree, and both fits have converged.
+Setting this to \code{FALSE} bypasses these structural checks only and
+places responsibility for the test assumptions on the caller.}
 }
 \value{
 An object of class \code{"htest"}.
@@ -20,4 +23,16 @@ An object of class \code{"htest"}.
 Computes the statistic from Rivest et al. (2016), Section 3.6:
 \deqn{T_2 = 2 n \hat\kappa_1 (\bar C_1 - \bar C_0),}
 where model 1 is the full model and model 0 the nested reduced model.
+}
+\details{
+The chi-squared calibration assumes regular, identifiable nested
+  homogeneous models with independent errors and finite positive concentration.
+  This is not a serially robust test or a test at singular independence submodels.
+}
+\examples{
+data(bison)
+d <- bison[1:150, ]
+full <- angular(y.dir ~ y.prec + x.meadow:z.meadow, d, reference = "first")
+reduced <- angular(y.dir ~ y.prec, d, reference = "first")
+angular_lrtest(full, reduced)
 }

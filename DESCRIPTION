@@ -1,7 +1,7 @@
 Package: CircularRegression
 Type: Package
 Title: Circular Regression Models
-Version: 0.5.0
+Version: 0.7.1
 Authors@R: c(
     person( "Aurelien", "Nicosia",
            email = "aurelien.nicosia@mat.ulaval.ca",
@@ -14,22 +14,12 @@ License: GPL-3
 Encoding: UTF-8
 Language: en-US
 LazyData: true
-RoxygenNote: 7.3.3
-Imports:
-    circular,
-    graphics,
-    stats,
-    utils
-Depends:
-    R (>= 3.5.0)
-Suggests:
-    ggplot2,
-    gridExtra,
-    knitr,
-    pkgdown,
-    rmarkdown,
-    testthat (>= 3.0.0)
+Imports: circular, graphics, stats, utils
+Depends: R (>= 3.5.0)
+Suggests: ggplot2, ggcircular (>= 0.1.0), gridExtra, knitr, pkgdown,
+        rmarkdown, testthat (>= 3.0.0)
 VignetteBuilder: knitr
 URL: https://github.com/AurelienNicosiaULaval/CircularRegression
 BugReports: https://github.com/AurelienNicosiaULaval/CircularRegression/issues
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0

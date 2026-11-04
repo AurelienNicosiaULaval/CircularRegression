@@ -19,5 +19,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Aurelien Nicosia \email{aurelien.nicosia@mat.ulaval.ca}
 
+Authors:
+\itemize{
+  \item Aurelien Nicosia \email{aurelien.nicosia@mat.ulaval.ca}
+}
+
 }
 \keyword{internal}

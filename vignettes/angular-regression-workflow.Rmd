@@ -153,18 +153,27 @@ pres_fit$natural_parameters
 jam_fit$natural_parameters
 ```
 
+For affine and first-harmonic curves, the ratios alone are not enough:
+`natural_orientation` gives the sign by which both vector components must be
+multiplied before calling `atan2()`. Natural covariances use analytic
+Jacobians and require stable, identifiable parameterizations. Equality of a
+mean curve does not imply equality with a projected-normal probability model.
+
 ## Random-Intercept Fit
 
 The random-intercept model is separate from `circular_regression()` in this
 version. It can be used when clustered circular observations are available. The
-following small example uses the `Sandhopper` data and converts degree variables
-to radians before modeling.
+following small example uses five repeated trials per animal in `Sandhopper`
+and converts degree variables to radians before modeling. A complete-individual
+rule is used for transparency; the fitter also accepts unequal cluster sizes.
 
 ```{r}
 data(Sandhopper)
 
-sh <- Sandhopper[seq_len(24), ]
-sh$y <- sh$LN1 * pi / 180
+wide <- Sandhopper[stats::complete.cases(Sandhopper[c("LN1", "LN2", "LN3", "LN4", "LN5", "Azimuth", "DirW", "SpeedW")]), ]
+wide <- wide[seq_len(min(24L, nrow(wide))), ]
+sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
+sh$y <- as.vector(t(as.matrix(wide[paste0("LN", 1:5)]))) * pi / 180
 sh$ref <- sh$Azimuth * pi / 180
 sh$wind <- sh$DirW * pi / 180
 sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
@@ -178,8 +187,16 @@ fit_re <- angular_re(
 
 coef(fit_re)
 head(ranef.angular_re(fit_re))
-head(predict(fit_re))
+head(predict(fit_re, type = "marginal"))
+head(predict(fit_re, type = "conditional"))
+fit_re$convergence
 ```
 
 This example is intentionally small so that it remains suitable for package
 checks and pkgdown builds.
+The two predictions distinguish environmental effects from the estimated
+animal-specific shift. Within-animal and random-intercept concentrations are
+not linear variances. The cluster sandwich assumes independent animals and is
+asymptotic in their number. Fixed-effect sandwiches are neither cluster-robust
+nor serially robust. The residual roses are descriptive, with a common scale
+and bandwidth; conditional residuals are affected by intercept estimation.

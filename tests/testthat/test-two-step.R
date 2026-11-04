@@ -5,7 +5,7 @@ wrap_angle <- function(a) atan2(sin(a), cos(a))
 .full_coef <- function(fit_hom) {
   beta <- as.numeric(fit_hom$parameters[, "estimate"])
   out <- numeric(length(fit_hom$term_labels))
-  out[fit_hom$ref_idx] <- 1
+  out[fit_hom$ref_idx] <- if (is.null(fit_hom$reference_sign)) 1 else fit_hom$reference_sign
   out[-fit_hom$ref_idx] <- beta
   out
 }
@@ -37,6 +37,50 @@ test_that("angular_two_step returns coherent pipeline object", {
   expect_s3_class(fit$consensus_fit, "consensus")
   expect_s3_class(fit$homogeneous_fit, "angular")
   expect_true(is.character(fit$reference))
+  expect_true(fit$reference_stability$stable)
+  expect_gt(
+    abs(fit$reference_stability$coefficient),
+    fit$reference_stability$threshold
+  )
+})
+
+test_that("two-step reference stability is scale relative", {
+  stable <- CircularRegression:::.reference_coefficient_stability(
+    kappa = c(1, 2),
+    ref_idx = 1L
+  )
+  unstable <- CircularRegression:::.reference_coefficient_stability(
+    kappa = c(1e-12, 1),
+    ref_idx = 1L
+  )
+  reversed <- CircularRegression:::.reference_coefficient_stability(
+    kappa = c(-1, 2),
+    ref_idx = 1L
+  )
+
+  expect_true(stable$stable)
+  expect_false(unstable$stable)
+  expect_equal(reversed$reference_sign, -1)
+  expect_equal(
+    unstable$threshold,
+    sqrt(.Machine$double.eps) * sqrt(1 + 1e-24)
+  )
+})
+
+test_that("signed reference chart preserves a negative consensus orientation", {
+  set.seed(9041)
+  n <- 100
+  y <- wrap_angle(-2.2 + rnorm(n, sd = 0.15))
+  fit <- meanDirectionModel(data.frame(y = y), response = "y")
+  circular_mean <- atan2(mean(sin(y)), mean(cos(y)))
+
+  expect_equal(fit$homogeneous_fit$reference_sign, -1)
+  expect_equal(
+    as.numeric(fit$natural_parameters["mu", "estimate"]),
+    circular_mean,
+    tolerance = 1e-4
+  )
+  expect_gt(fit$homogeneous_fit$MaxCosine, 0.9)
 })
 
 test_that("legacy pick_reference_angle remains available as deprecated wrapper", {
@@ -65,12 +109,14 @@ test_that("special-case wrapper returns two-step components", {
     "consensus_fit",
     "homogeneous_fit",
     "reference",
+    "reference_stability",
     "data_aug",
     "formula",
     "natural_parameters",
     "natural_vcov_model",
     "natural_vcov_robust",
-    "natural_jacobian"
+    "natural_jacobian",
+    "natural_stability"
   ) %in% names(out)))
   expect_s3_class(out$consensus_fit, "consensus")
   expect_s3_class(out$homogeneous_fit, "angular")
@@ -124,7 +170,7 @@ test_that("wrapper natural parameters are returned and match homogeneous coeffic
     tolerance = 1e-8
   )
 
-  # JamSen linear map
+  # Jammalamadaka-Sarma first-harmonic map
   w_js <- runif(n, -pi, pi)
   mu_js <- atan2(
     0.2 + 0.45 * sin(w_js) + 0.15 * cos(w_js),
@@ -139,15 +185,127 @@ test_that("wrapper natural parameters are returned and match homogeneous coeffic
   b5 <- b_js[5] / b_js[1]
   b6 <- b_js[6] / b_js[1]
   js_manual <- c(
-    gamma2 = b2,
-    gamma3 = b3 - b5,
-    gamma4 = b4 + b6,
-    gamma5 = b3 + b5,
-    gamma6 = -b4 + b6
+    sin_intercept = b2,
+    cos_cos = b3 + b4,
+    cos_sin = -b5 + b6,
+    sin_cos = b5 + b6,
+    sin_sin = b3 - b4
   )
   expect_equal(
     as.numeric(fit_js$natural_parameters[, "estimate"]),
     as.numeric(js_manual),
     tolerance = 1e-8
   )
+})
+
+test_that("wrapper mappings use analytic Jacobians", {
+  cases <- list(
+    list(
+      type = "mean_direction",
+      ref_idx = 2L,
+      n_terms = 2L,
+      theta = c(0.7)
+    ),
+    list(
+      type = "decentred",
+      ref_idx = 3L,
+      n_terms = 4L,
+      theta = c(1.1, 0.2, 0.7)
+    ),
+    list(
+      type = "presnell",
+      ref_idx = 2L,
+      n_terms = 4L,
+      theta = c(1.3, 0.5, -0.2)
+    ),
+    list(
+      type = "jammalamadaka_sarma",
+      ref_idx = 4L,
+      n_terms = 6L,
+      theta = c(1.2, 0.3, 0.8, -0.4, 0.5)
+    )
+  )
+
+  for (case in cases) {
+    mapping <- CircularRegression:::.natural_parameter_mapping(
+      model_type = case$type,
+      ref_idx = case$ref_idx,
+      n_terms = case$n_terms
+    )
+    numeric_jacobian <- CircularRegression:::.numeric_jacobian(
+      g = mapping$g,
+      theta = case$theta,
+      eps = 1e-6
+    )
+    expect_equal(
+      mapping$jacobian(case$theta),
+      numeric_jacobian,
+      tolerance = 1e-5
+    )
+  }
+})
+
+test_that("numerically singular natural-parameter charts warn explicitly", {
+  regular <- CircularRegression:::.natural_parameter_stability(
+    theta_hat = c(0.5, 0.2, -0.1),
+    model_type = "presnell",
+    ref_idx = 1L,
+    n_terms = 4L
+  )
+  expect_true(regular$stable)
+
+  near_singular_fit <- structure(
+    list(
+      parameters = matrix(
+        c(1e10, 0.2, -0.1),
+        ncol = 1L,
+        dimnames = list(c("b2", "b3", "b4"), "estimate")
+      ),
+      term_labels = c("const0", "constPi2", "const0:z", "constPi2:z"),
+      ref_idx = 1L,
+      varcov0 = diag(3L),
+      varcov1 = diag(3L)
+    ),
+    class = "angular"
+  )
+
+  expect_warning(
+    transformed <- CircularRegression:::.compute_natural_parameters(
+      near_singular_fit,
+      model_type = "presnell"
+    ),
+    "numerically singular"
+  )
+  expect_false(transformed$stability$stable)
+  expect_lt(
+    transformed$stability$metrics[["ratio_denominator"]],
+    transformed$stability$threshold
+  )
+})
+
+test_that("Jammalamadaka-Sarma coefficients reproduce the fitted vector curve", {
+  mapping <- CircularRegression:::.natural_parameter_mapping(
+    model_type = "jammalamadaka_sarma",
+    ref_idx = 1L,
+    n_terms = 6L
+  )
+  theta <- c(0.25, 0.8, -0.35, 0.4, -0.15)
+  natural <- mapping$g(theta)
+  b <- c(1, theta)
+  w <- c(-2.1, -0.4, 0.7, 2.3)
+
+  resultant <- b[1] + 1i * b[2] +
+    b[3] * exp(1i * w) +
+    b[4] * exp(-1i * w) +
+    b[5] * exp(1i * (w + pi / 2)) +
+    b[6] * exp(1i * (-w + pi / 2))
+  component_curve <-
+    1 + natural["cos_cos"] * cos(w) + natural["cos_sin"] * sin(w) +
+    1i * (
+      natural["sin_intercept"] +
+        natural["sin_cos"] * cos(w) +
+        natural["sin_sin"] * sin(w)
+    )
+
+  expect_equal(resultant / b[1], component_curve, tolerance = 1e-12)
 })

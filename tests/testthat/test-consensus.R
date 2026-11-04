@@ -78,4 +78,23 @@ test_that("coef.consensus supports both kappa and beta outputs", {
   expect_length(kappa, 2)
   expect_length(beta, 1)
   expect_equal(attr(beta, "reference"), "x1")
+  expect_true(attr(beta, "reference_sign") %in% c(-1, 1))
+})
+
+test_that("consensus beta coefficients preserve a negative reference orientation", {
+  set.seed(231)
+  n <- 100
+  x1 <- runif(n, -pi, pi)
+  x2 <- runif(n, -pi, pi)
+  y <- wrap_angle(x1 + pi + rnorm(n, sd = 0.1))
+  fit <- consensus(y ~ x1 + x2, data = data.frame(y, x1, x2))
+  beta <- coef(fit, type = "beta", reference = c("name", "x1"))
+  ref_idx <- match("x1", fit$paramname)
+  normalized <- fit$kappa / abs(fit$kappa[ref_idx])
+  reconstructed <- numeric(length(fit$kappa))
+  reconstructed[ref_idx] <- attr(beta, "reference_sign")
+  reconstructed[-ref_idx] <- as.numeric(beta)
+
+  expect_equal(attr(beta, "reference_sign"), -1)
+  expect_equal(reconstructed, as.numeric(normalized), tolerance = 1e-10)
 })

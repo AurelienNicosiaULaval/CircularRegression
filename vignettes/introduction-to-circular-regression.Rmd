@@ -39,6 +39,10 @@ covariate `x2` weighted by a finite non-negative modifier `z2`.
 
 ## Simulated example
 
+This single seeded illustration is not a simulation study. Its wrapped-normal
+perturbations are not exactly von Mises errors, so model-based uncertainty is
+a working approximation. The applied vignettes use the distributed datasets.
+
 ```{r}
 library(CircularRegression)
 
@@ -113,6 +117,23 @@ All angles should be supplied in radians. Missing values are handled through
 the `na.action` argument passed to `model.frame()`. Modifiers in `x:z` terms
 must be finite and non-negative, because they act as vector weights in the
 mean-direction construction.
+
+The homogeneous normalization fixes a reference coefficient to either one or
+minus one. The two-step fit records this sign; dividing by a negative
+coefficient without retaining it would reverse the direction. Check convergence
+and access covariance from the underlying core fit:
+
+```{r}
+fit$fit$homogeneous_fit$convergence
+fit$fit$homogeneous_fit$score_norm
+vcov(fit$fit$homogeneous_fit, robust = TRUE)
+```
+
+Both fixed-effect covariance choices assume independent observations. A
+sandwich covariance does not correct serial dependence, and a stationary point
+is not a certificate of a global maximum. Predictors with missing or nonfinite
+values are rejected for new-data prediction; fitting uses the chosen
+`na.action`. A zero resultant has no defined mean direction.
 
 Reference:
 

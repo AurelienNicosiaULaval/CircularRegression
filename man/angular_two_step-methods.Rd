@@ -52,3 +52,10 @@
 \description{
 Methods for two-step angular regression objects
 }
+\examples{
+data(bison)
+fit <- angular_two_step(y.dir ~ y.prec, bison[1:100, ])
+coef(fit, step = "consensus")
+coef(fit)
+summary(fit)
+}

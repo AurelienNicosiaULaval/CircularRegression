@@ -26,12 +26,20 @@
   if (!is.list(control)) {
     stop(sprintf("'%s' must be a list.", prefix), call. = FALSE)
   }
+  if (length(control) && (is.null(names(control)) ||
+      any(!names(control) %in% names(defaults)))) {
+    stop(sprintf("Unknown or unnamed component in '%s'.", prefix), call. = FALSE)
+  }
   out <- utils::modifyList(defaults, control)
   if (!is.null(out$pginit)) {
     out$pginit <- .check_control_scalar(out$pginit, paste0(prefix, "$pginit"), lower = 0, strict_lower = TRUE)
   }
   if (!is.null(out$maxiter)) {
-    out$maxiter <- as.integer(.check_control_scalar(out$maxiter, paste0(prefix, "$maxiter"), lower = 0))
+    value <- .check_control_scalar(out$maxiter, paste0(prefix, "$maxiter"), lower = 0)
+    if (value != floor(value) || value >= .Machine$integer.max) {
+      stop(sprintf("'%s$maxiter' must be an integer below .Machine$integer.max.", prefix), call. = FALSE)
+    }
+    out$maxiter <- as.integer(value)
   }
   if (!is.null(out$mindiff)) {
     out$mindiff <- .check_control_scalar(out$mindiff, paste0(prefix, "$mindiff"), lower = 0, strict_lower = TRUE)
@@ -97,6 +105,69 @@
   out
 }
 
+# Stable A(k)/k and A'(k), including the isotropic limit at k = 0.
+.A1_derivatives <- function(k) {
+  a <- .A1_ratio(k)
+  small <- k < 1e-4
+  over <- a / k
+  over[small] <- 1 / 2 - k[small]^2 / 16 + k[small]^4 / 96
+  derivative <- 1 - over - a^2
+  derivative[small] <- 1 / 2 - 3 * k[small]^2 / 16 + 5 * k[small]^4 / 96
+  large <- is.finite(k) & k > 1e4
+  derivative[large] <- 1 / (2 * k[large]^2) + 1 / (4 * k[large]^3) +
+    3 / (8 * k[large]^4)
+  list(A = a, over = over, derivative = derivative)
+}
+
+# Solve the likelihood equation rather than using the unrefined approximation
+# in circular::A1inv(). A unit resultant has no finite concentration MLE.
+.A1_inverse <- function(r) {
+  vapply(r, function(value) {
+    if (!is.finite(value) || value < 0 || value > 1) return(NA_real_)
+    if (value == 0) return(0)
+    if (value == 1) return(Inf)
+    stats::uniroot(function(k) .A1_ratio(k) - value,
+                   c(0, max(2, 1 / (1 - value))), tol = 1e-10)$root
+  }, numeric(1))
+}
+
+# Derivatives of sum cos(y - mu(beta)); H is the negative Hessian.
+.angular_derivatives <- function(y, mu, long, matx, matz) {
+  D <- matz * sin(matx - mu) / long
+  C <- matz * cos(matx - mu) / long
+  residual <- sin(y - mu)
+  scores <- D * residual
+  cross <- crossprod(C, D * residual)
+  H <- crossprod(D, D * cos(y - mu)) + cross + t(cross)
+  list(D = D, scores = scores, score = colSums(scores),
+       information = (H + t(H)) / 2, residual = residual)
+}
+
+.consensus_derivatives <- function(y, mu, long, matx, matz, weights) {
+  bessel <- .A1_derivatives(long)
+  S <- matz * sin(matx - mu)
+  C <- matz * cos(matx - mu)
+  # C already includes the modifier: it must not be multiplied by matz again.
+  scores <- weights * (matz * cos(y - matx) - C * bessel$A)
+  I <- crossprod(S * sqrt(weights * bessel$over)) +
+    crossprod(C * sqrt(weights * bessel$derivative))
+  list(scores = scores, score = colSums(scores), information = (I + t(I)) / 2)
+}
+
+.score_norm <- function(score, information, n) {
+  if (!length(score)) return(0)
+  max(abs(score) / pmax(sqrt(pmax(diag(information), 0) * n), 1))
+}
+
+.information_inverse <- function(information) {
+  ch <- tryCatch(chol((information + t(information)) / 2), error = function(e) NULL)
+  if (is.null(ch)) {
+    warning("Observed information is not positive definite; returning NA variances.", call. = FALSE)
+    return(matrix(NA_real_, nrow(information), ncol(information)))
+  }
+  chol2inv(ch)
+}
+
 .make_model_frame <- function(formula, data, na.action = stats::na.omit) {
   mf <- stats::model.frame(formula = formula, data = data, na.action = na.action)
   if (nrow(mf) == 0) {
@@ -105,7 +176,7 @@
   mf
 }
 
-.parse_term_labels <- function(term_labels) {
+.parse_term_labels <- function(term_labels, formula = NULL) {
   if (length(term_labels) == 0) {
     stop(
       "The model must include at least one term specifying explanatory direction(s).",
@@ -114,6 +185,27 @@
   }
 
   parts <- strsplit(term_labels, ":", fixed = TRUE)
+  # terms() may reverse x:z into z:x when z appeared in an earlier term.
+  # Unlike an ordinary product, direction:modifier is ordered in this API.
+  written_pairs <- list()
+  collect_pairs <- function(expr) {
+    if (!is.call(expr)) return(invisible(NULL))
+    if (identical(expr[[1L]], as.name(":")) && length(expr) == 3L &&
+        is.symbol(expr[[2L]]) && is.symbol(expr[[3L]])) {
+      written_pairs[[length(written_pairs) + 1L]] <<-
+        c(as.character(expr[[2L]]), as.character(expr[[3L]]))
+    } else {
+      for (part in as.list(expr)[-1L]) collect_pairs(part)
+    }
+    invisible(NULL)
+  }
+  if (!is.null(formula)) collect_pairs(formula[[3L]])
+  parts <- lapply(parts, function(part) {
+    part <- gsub("^`|`$", "", trimws(part))
+    matching <- Filter(function(pair) setequal(pair, part), written_pairs)
+    if (length(matching)) return(matching[[1L]])
+    part
+  })
   term_info <- lapply(seq_along(parts), function(i) {
     pi <- trimws(parts[[i]])
     if (length(pi) == 1) {
@@ -158,10 +250,9 @@
 
 .circular_design <- function(formula, data, na.action = stats::na.omit) {
   mf <- .make_model_frame(formula = formula, data = data, na.action = na.action)
-  y <- as.numeric(mf[[1]])
-  .validate_numeric_vector(y, names(mf)[1])
+  y <- as.numeric(.validate_numeric_vector(mf[[1]], names(mf)[1]))
   term_labels <- attr(attr(mf, "terms"), "term.labels")
-  term_info <- .parse_term_labels(term_labels)
+  term_info <- .parse_term_labels(term_labels, formula)
 
   if (any(!term_info$angle %in% names(mf))) {
     miss <- unique(term_info$angle[!term_info$angle %in% names(mf)])
@@ -180,8 +271,7 @@
 
   for (j in seq_len(p)) {
     ang_name <- term_info$angle[j]
-    matx[, j] <- as.numeric(mf[[ang_name]])
-    .validate_numeric_vector(matx[, j], ang_name)
+    matx[, j] <- as.numeric(.validate_numeric_vector(mf[[ang_name]], ang_name))
 
     if (isTRUE(term_info$has_modifier[j])) {
       mod_name <- term_info$modifier[j]
@@ -191,7 +281,7 @@
           call. = FALSE
         )
       }
-      z <- as.numeric(mf[[mod_name]])
+      z <- as.numeric(.validate_numeric_vector(mf[[mod_name]], mod_name))
       if (any(!is.finite(z)) || any(z < 0)) {
         stop(
           sprintf("Modifier '%s' must be finite and non-negative.", mod_name),
@@ -369,6 +459,9 @@
 #' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
 #'   missing values. The default is \code{\link[stats]{na.omit}}.
 #' @return An object of class \code{"select_reference_angle"}.
+#' @examples
+#' data(bison)
+#' select_reference_angle(y.dir ~ y.prec + x.meadow, bison[1:100, ])
 #' @export
 select_reference_angle <- function(
   formula,
@@ -444,15 +537,14 @@ print.select_reference_angle <- function(x, digits = 4, ...) {
     if (!angle_name %in% names(mf)) {
       stop(sprintf("Angle variable '%s' not found in 'newdata'.", angle_name), call. = FALSE)
     }
-    matx[, j] <- as.numeric(mf[[angle_name]])
-    .validate_numeric_vector(matx[, j], angle_name)
+    matx[, j] <- as.numeric(.validate_numeric_vector(mf[[angle_name]], angle_name))
 
     if (isTRUE(term_info$has_modifier[j])) {
       modifier_name <- term_info$modifier[j]
       if (!modifier_name %in% names(mf)) {
         stop(sprintf("Modifier '%s' not found in 'newdata'.", modifier_name), call. = FALSE)
       }
-      z <- as.numeric(mf[[modifier_name]])
+      z <- as.numeric(.validate_numeric_vector(mf[[modifier_name]], modifier_name))
       if (any(!is.finite(z)) || any(z < 0)) {
         stop(sprintf("Modifier '%s' must be finite and non-negative.", modifier_name), call. = FALSE)
       }
@@ -465,5 +557,12 @@ print.select_reference_angle <- function(x, digits = 4, ...) {
 .mean_direction_from_terms <- function(coef, matx, matz) {
   sinmu <- as.vector((matz * sin(matx)) %*% coef)
   cosmu <- as.vector((matz * cos(matx)) %*% coef)
-  atan2(sinmu, cosmu)
+  mu <- atan2(sinmu, cosmu)
+  scale <- as.vector(abs(matz) %*% abs(coef))
+  undefined <- sqrt(sinmu^2 + cosmu^2) <= sqrt(.Machine$double.eps) * scale
+  if (any(undefined)) {
+    warning("Zero or numerically singular resultant: mean direction returned as NA.", call. = FALSE)
+    mu[undefined] <- NA_real_
+  }
+  mu
 }

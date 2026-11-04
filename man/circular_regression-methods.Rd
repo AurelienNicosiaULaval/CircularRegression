@@ -50,3 +50,10 @@
 \description{
 Methods for Circular Regression Objects
 }
+\examples{
+data(bison)
+fit <- circular_regression(y.dir ~ y.prec, bison[1:100, ])
+summary(fit)
+coef(fit)
+head(predict(fit, type = "components"))
+}

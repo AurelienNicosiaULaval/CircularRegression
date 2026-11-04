@@ -14,6 +14,29 @@ test_that("angular handles reference-only model", {
   expect_equal(fit$reference, "ref")
 })
 
+test_that("angular supports a negative signed reference chart", {
+  set.seed(124)
+  x <- runif(50, -pi, pi)
+  y <- wrap_angle(x + pi + rnorm(50, sd = 0.05))
+  df <- data.frame(y = y, ref = x)
+
+  fit <- angular(
+    y ~ ref,
+    data = df,
+    reference = "first",
+    reference_sign = -1
+  )
+
+  expect_equal(fit$reference_sign, -1)
+  expect_equal(fit$full_coefficients, -1)
+  expect_gt(fit$MaxCosine, 0.99)
+})
+
+test_that("angular validates reference_sign", {
+  df <- data.frame(y = c(0, 0.1), ref = c(0, 0.1))
+  expect_error(angular(y ~ ref, data = df, reference_sign = 0), "reference_sign")
+})
+
 test_that("angular supports maxiter=0 without crashing", {
   set.seed(11)
   n <- 40

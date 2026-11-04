@@ -113,7 +113,36 @@ abline(h = 0, lty = 2)
 ```
 
 The package also supplies `plot()` methods for fitted model objects when
-`ggplot2` and `gridExtra` are installed.
+`ggplot2`, `ggcircular` and `gridExtra` are installed. The probability-integral
+transform (PIT) is computed under the fitted von Mises distribution, not a
+normal reference for angular residuals.
+
+```{r, fig.width=8, fig.height=5}
+if (all(vapply(c("ggplot2", "ggcircular", "gridExtra"),
+               requireNamespace, logical(1), quietly = TRUE))) {
+  plot(fit, type = "all", bins = 12)
+}
+```
+
+The PIT diagonal is descriptive because the same observations estimate the
+parameters. This illustrative dataset uses wrapped-normal perturbations;
+neither the plot nor the covariance calculation proves a von Mises model.
+
+## Inspect convergence and uncertainty
+
+```{r}
+core <- fit$fit$homogeneous_fit
+core$convergence
+core$score_norm
+sqrt(diag(vcov(core)))
+sqrt(diag(vcov(core, robust = TRUE)))
+```
+
+The independent-observation sandwich uses the full derivative of the score.
+The consensus fit also supports a score-based sandwich through
+`vcov(fit_cons$fit, robust = TRUE)`. These choices do not account for temporal
+dependence. T2 comparisons additionally require identical observations, nested
+terms, compatible reference charts, and converged regular homogeneous fits.
 
 ## Use the article in pkgdown
 
@@ -124,5 +153,5 @@ and the applied bison vignette. The site can be rebuilt locally with:
 pkgdown::build_site()
 ```
 
-The package examples and vignettes are deterministic, so the rendered site
-should be reproducible across clean R sessions.
+The artificial examples set their seeds, and the applied examples have no
+random sampling. Record package versions when reproducing numerical output.

@@ -22,3 +22,14 @@ The input \code{data} with \code{p} additional columns named \code{response_tmk}
 This function augments a data frame with lagged versions of an angular response
 variable so that autoregressive circular regression models can be fitted.
 }
+\details{
+Lags follow the existing row order within each group. Sort the data
+  by time first if necessary. Groups shorter than a requested lag receive
+  missing values, and missing group identifiers are rejected. This utility
+  does not model dependence or provide serially robust inference.
+}
+\examples{
+data(bison)
+head(autoregressivedata(bison[1:6, ], "y.dir", p = 2))
+
+}

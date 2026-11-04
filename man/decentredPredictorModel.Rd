@@ -17,15 +17,18 @@ decentredPredictorModel(data, response, w, ...)
 }
 \value{
 A list with \code{consensus_fit}, \code{homogeneous_fit},
-  \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
+  \code{reference}, \code{reference_stability}, \code{data_aug},
+  \code{formula}, and natural-parameter
   outputs \code{natural_parameters}, \code{natural_vcov_model},
-  \code{natural_vcov_robust}, \code{natural_jacobian}.
+  \code{natural_vcov_robust}, \code{natural_jacobian}, and
+  \code{natural_stability}.
 }
 \description{
 Fits the decentered-predictor special case by augmenting the data with
 synthetic orthogonal directions and applying \code{\link{angular_two_step}()}.
 Natural parameters are returned with model-based and robust delta-method
-standard errors.
+standard errors. The two angular natural parameters are undefined when the
+fitted decentring component has zero length.
 }
 \examples{
 data(bison)

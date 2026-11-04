@@ -1,8 +1,9 @@
 #' Sandhopper Escape Orientation Data
 #'
-#' This dataset contains repeated measurements on the escape orientation
-#' of 59 sandhoppers (Talitrus saltator) in a circular arena experiment
-#' with a diameter of 120 cm. Each individual was released five times, and
+#' This dataset contains escape-orientation measurements on 72 sandhopper
+#' records (Talitrus saltator). The published analysis of Rivest and Kato (2019)
+#' describes a subset of 59 individuals in a circular arena experiment
+#' with an arena diameter of 120 cm. Each individual was released five times, and
 #' its escape angle with respect to the north was recorded. Several
 #' explanatory variables were also measured during the experiment.
 #'
@@ -19,6 +20,9 @@
 #' @name Sandhopper
 #' @docType data
 #' @usage data(Sandhopper)
+#' @examples
+#' data(Sandhopper)
+#' head(Sandhopper[c("Anim", "LN1", "LN2", "LN3", "LN4", "LN5")])
 #' @keywords datasets
 #'
 #' @format A data frame with 72 rows and 22 variables:
@@ -48,7 +52,9 @@
 #' }
 #'
 #' @references
-#' D'Elia, G. (2001). Orientation in sandhoppers. *Behavioural Ecology*.
+#' D'Elia, A. (2001). A statistical model for orientation mechanism.
+#' *Statistical Methods and Applications*, 10, 157-174.
+#' DOI: \doi{10.1007/BF02511646}.
 #' Rivest, L.-P., & Kato, S. (2019). A random-effects model for clustered circular data. *Canadian Journal of Statistics*, 47(4), 712-728.
 #'
 #' @source Package data file corresponding to the sandhopper example discussed

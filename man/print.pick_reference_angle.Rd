@@ -14,3 +14,8 @@
 \description{
 Print method for \code{pick_reference_angle}
 }
+\examples{
+data(bison)
+old <- suppressWarnings(pick_reference_angle(y.dir ~ y.prec, bison[1:20, ]))
+print(old)
+}

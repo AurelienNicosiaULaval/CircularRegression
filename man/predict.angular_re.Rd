@@ -40,3 +40,19 @@ numeric vector (angles in radians).
 \description{
 Predict method for angular_re objects
 }
+\details{
+New-data rows with missing predictors are rejected rather than
+  silently dropped. New cluster identifiers use a zero random intercept with
+  a warning; this is a population-mean fallback, not an estimated individual
+  effect. At zero marginal concentration the fixed component is an orientation
+  parameter only, not an identified marginal mean direction.
+}
+\examples{
+data(Sandhopper)
+sh <- Sandhopper[1:24, ]
+d <- sh[rep(1:24, each = 5), ]
+d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
+d$ref <- d$Azimuth * pi / 180
+fit <- angular_re(y ~ ref, d, d$Anim)
+head(predict(fit, type = "conditional"))
+}

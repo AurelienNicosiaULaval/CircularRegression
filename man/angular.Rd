@@ -8,6 +8,7 @@ angular(
   formula,
   data,
   reference = c("auto", "first", "name"),
+  reference_sign = 1,
   initbeta = NULL,
   control = list(),
   na.action = stats::na.omit
@@ -21,6 +22,10 @@ angular(
 \item{reference}{Reference-angle rule. Use \code{"auto"} (default, article
 criterion), \code{"first"}, or \code{c("name", "x_ref")}. A plain
 angle term \code{x_ref} must exist in the formula.}
+
+\item{reference_sign}{Sign of the fixed reference coefficient. The default is
+\code{1}; \code{-1} selects the opposite signed coordinate chart without
+changing the scale normalization.}
 
 \item{initbeta}{Optional numeric vector of initial values for non-reference
 coefficients.}
@@ -37,7 +42,23 @@ An object of class \code{"angular"}.
 \description{
 Fits the homogeneous angular regression model of Rivest et al. (2016), where
 the mean direction is the orientation of a weighted resultant vector and one
-reference angle has coefficient fixed to 1.
+reference angle has coefficient fixed to either 1 or -1.
+}
+\details{
+Convergence requires a scaled score norm no larger than
+  \code{control$mindiff}; a small objective increment alone is insufficient.
+  The object stores \code{convergence}, \code{score_norm}, and the observed
+  derivative matrix. A positive-definite derivative matrix is required for
+  sandwich inference. Both covariance choices assume independent observations;
+  neither is a serial-dependence correction. Zero resultant vectors are
+  excluded because they have no mean direction.
+}
+\examples{
+data(bison)
+d <- na.omit(bison[1:100, c("y.dir", "y.prec", "x.meadow", "z.meadow")])
+fit <- angular(y.dir ~ y.prec + x.meadow:z.meadow, d, reference = "first")
+coef(fit)
+fit$convergence
 }
 \references{
 Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).

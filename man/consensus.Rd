@@ -20,7 +20,9 @@ consensus(
 
 \item{data}{Data frame, list or environment containing model variables.}
 
-\item{weights}{Optional non-negative weights.}
+\item{weights}{Optional non-negative numeric case weights. The model
+covariance is inverse weighted information; the independent-observation
+sandwich uses the squared weights. These are not cluster weights.}
 
 \item{initkappa}{Optional numeric vector of initial \eqn{\kappa_j} values.}
 
@@ -40,6 +42,22 @@ An object of class \code{"consensus"}.
 Fits the consensus model of Rivest et al. (2016), where each formula term of
 the form \code{x} or \code{x:z} receives a \eqn{\kappa_j} coefficient in the
 log-likelihood parameterization.
+}
+\details{
+The object stores \code{convergence}, \code{score_norm}, model
+  covariance \code{varcov_kappa}, and \code{varcov_robust}. The legacy
+  \code{varcov1} remains the model covariance. Convergence requires a scaled
+  score norm at most \code{control$mindiff}. At zero concentration, the
+  likelihood and its derivatives remain defined but the fitted mean direction
+  is \code{NA}. The weighted BIC uses the number of retained rows, not the sum
+  of weights; information criteria under arbitrary case weighting should not
+  be interpreted as ordinary unweighted likelihood comparisons.
+}
+\examples{
+data(bison)
+fit <- consensus(y.dir ~ y.prec, bison[1:100, ])
+coef(fit)
+vcov(fit, robust = TRUE)
 }
 \references{
 Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).

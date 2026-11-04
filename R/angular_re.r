@@ -28,6 +28,14 @@
 #'   estimates, model-based and cluster-robust covariance matrices, concentration
 #'   estimates, fitted marginal mean directions, fixed and conditional
 #'   residuals, and estimated random intercepts.
+#' @details The reported log-likelihood includes all normalizing constants.
+#'   The object records the projected \code{score_norm}, \code{convergence},
+#'   \code{boundary}, observed \code{information}, and \code{cluster_scores}.
+#'   Regular Wald covariances are unavailable at a zero-concentration boundary.
+#'   Cluster-robust inference assumes independent clusters and sufficiently many
+#'   clusters; it has no small-sample correction. Singleton-only groups cannot
+#'   distinguish the two concentrations and are rejected. At very large
+#'   random-intercept concentration, the fit approaches an independent model.
 #' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
 #'   A general angular regression model for the analysis of data on animal
 #'   movement in ecology. \emph{Journal of the Royal Statistical Society:
@@ -38,8 +46,11 @@
 #' @importFrom stats model.frame optim pnorm
 #' @examples
 #' data(Sandhopper)
-#' sh <- Sandhopper[seq_len(24), ]
-#' sh$y <- sh$LN1 * pi / 180
+#' columns <- c(paste0("LN", 1:5), "Azimuth", "DirW", "SpeedW")
+#' wide <- Sandhopper[stats::complete.cases(Sandhopper[columns]), ]
+#' wide <- wide[seq_len(min(24L, nrow(wide))), ]
+#' sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
+#' sh$y <- as.vector(t(as.matrix(wide[paste0("LN", 1:5)]))) * pi / 180
 #' sh$ref <- sh$Azimuth * pi / 180
 #' sh$wind <- sh$DirW * pi / 180
 #' sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
@@ -48,7 +59,7 @@
 #'   y ~ ref + wind:wind_speed,
 #'   data = sh,
 #'   cluster = sh$Anim,
-#'   control = list(maxit = 25, reltol = 1e-6)
+#'   control = list(maxit = 200, reltol = 1e-8)
 #' )
 #' coef(fit)
 #' head(predict(fit))
@@ -66,16 +77,11 @@ angular_re <- function(
   }
   call <- match.call()
 
-  ## ---- Parse model frame exactly like angular() ----
-  mfargs <- match(c("formula", "data"), names(call), 0L)
-  call_subset <- call[c(1L, mfargs)]
-  call_subset[[1L]] <- as.name("model.frame")
-  call_subset$na.action <- na.action
-  mf <- eval(call_subset, parent.frame())
-  y <- as.numeric(mf[[1]])
-  .validate_numeric_vector(y, names(mf)[1])
-  n <- length(y)
-
+  ## ---- Shared direction/modifier parsing and complete-case alignment ----
+  des <- .angular_design(formula, data, reference = "first", na.action = na.action)
+  mf <- des$mf
+  y <- des$y
+  n <- des$nobs
   keep_idx <- .model_frame_rows(mf, data)
   cluster_vec <- as.vector(cluster)
   if (length(cluster_vec) == n) {
@@ -96,69 +102,27 @@ angular_re <- function(
   lev <- levels(id)
   m <- length(lev)
   cluster_index <- split(seq_len(n), id)
-
-  term_labels <- attr(attr(mf, "terms"), "term.labels")
-  if (length(term_labels) == 0) {
-    stop("The model must include at least one term specifying the reference direction.")
+  if (m < 2L || all(lengths(cluster_index) == 1L)) {
+    stop("Random-intercept estimation requires at least two clusters and repeated observations within clusters.", call. = FALSE)
   }
-  split_terms <- strsplit(term_labels, ":", fixed = TRUE)
-  term_matrix <- t(vapply(split_terms, function(x) {
-    if (length(x) == 1) {
-      c(x, x)
-    } else if (length(x) == 2) {
-      x
-    } else {
-      stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
-    }
-  }, character(2)))
 
-  ref_name <- term_matrix[1, 1]
-  if (!ref_name %in% names(mf)) {
-    stop(
-      sprintf("Reference direction '%s' not found in the supplied data.", ref_name),
-      call. = FALSE
-    )
+  if (des$ref_idx != 1L) {
+    stop("The first term must be a plain reference direction without a modifier.", call. = FALSE)
   }
-  x0 <- mf[[ref_name]]
-  .validate_numeric_vector(as.numeric(x0), ref_name)
-
-  betaname <- if (length(term_labels) > 1) term_labels[-1] else character(0)
+  x0 <- des$x0
+  matx <- des$matx
+  matz <- des$matz
+  betaname <- des$betaname
+  ref_name <- des$reference$ref_name
+  term_labels <- des$term_labels
   p <- length(betaname)
-  if (p > 0) {
-    x_names <- term_matrix[-1, 1]
-    z_names <- term_matrix[-1, 2]
-    matx <- as.matrix(mf[, x_names, drop = FALSE])
-    for (j in seq_len(ncol(matx))) {
-      .validate_numeric_vector(as.numeric(matx[, j]), x_names[j])
-    }
-    matz <- matrix(1, nrow = n, ncol = p)
-    for (j in seq_len(p)) {
-      if (!identical(z_names[j], x_names[j])) {
-        if (!z_names[j] %in% names(mf)) {
-          stop(
-            sprintf("Modifier '%s' not found in the supplied data.", z_names[j]),
-            call. = FALSE
-          )
-        }
-        z <- as.numeric(mf[[z_names[j]]])
-        if (any(!is.finite(z)) || any(z < 0)) {
-          stop(
-            sprintf("Modifier '%s' must be finite and non-negative.", z_names[j]),
-            call. = FALSE
-          )
-        }
-        matz[, j] <- z
-      }
-    }
-  } else {
-    matx <- matrix(0, nrow = n, ncol = 0)
-    matz <- matrix(0, nrow = n, ncol = 0)
-  }
   nparam <- p
 
   ## ---- helpers ----
   wrap <- function(a) atan2(sin(a), cos(a))
-  A1 <- function(k) .A1_ratio(k)
+  # Smooth signed extension is needed for numerical Hessians near the lower
+  # bound. The statistical fit itself restricts both concentrations to >= 0.
+  A1 <- function(k) sign(k) * .A1_ratio(abs(k))
   A1inv <- function(r) {
     # use circular::A1inv if available, else Newton
     if (requireNamespace("circular", quietly = TRUE)) {
@@ -183,7 +147,7 @@ angular_re <- function(
       return(k)
     }
   }
-  logI0 <- function(k) .logI0(k)
+  logI0 <- function(k) .logI0(abs(k))
 
   compute_mu <- function(beta) {
     sinmu <- sin(x0)
@@ -193,6 +157,10 @@ angular_re <- function(
       cosmu <- cosmu + as.vector((matz * cos(matx)) %*% beta)
     }
     long <- sqrt(sinmu^2 + cosmu^2)
+    scale <- 1 + if (p > 0L) as.vector(abs(matz) %*% abs(beta)) else 0
+    if (any(long <= sqrt(.Machine$double.eps) * scale)) {
+      stop("Zero or numerically singular resultant in the grouped mean model.", call. = FALSE)
+    }
     mu <- atan2(sinmu, cosmu)
     list(mu = mu, long = long)
   }
@@ -216,9 +184,14 @@ angular_re <- function(
     ),
     control
   )
+  if (!is.list(control) || !is.list(init)) stop("'control' and 'init' must be lists.", call. = FALSE)
+  if (any(!names(control) %in% c("maxit", "reltol", "trace", "hessian", "start_from_angular"))) {
+    stop("Unknown component in 'control'.", call. = FALSE)
+  }
   if (!is.numeric(ctrl$maxit) || length(ctrl$maxit) != 1L || !is.finite(ctrl$maxit) || ctrl$maxit < 0) {
     stop("'control$maxit' must be a finite non-negative scalar.", call. = FALSE)
   }
+  if (ctrl$maxit != floor(ctrl$maxit)) stop("'control$maxit' must be an integer.", call. = FALSE)
   if (!is.numeric(ctrl$reltol) || length(ctrl$reltol) != 1L || !is.finite(ctrl$reltol) || ctrl$reltol <= 0) {
     stop("'control$reltol' must be a finite positive scalar.", call. = FALSE)
   }
@@ -314,7 +287,7 @@ angular_re <- function(
     r <- wrap(y - mu)
 
     # cluster loop
-    val <- 0
+    val <- -n * log(2 * pi)
     for (idx in cluster_index) {
       ni <- length(idx)
       if (ni == 0) next
@@ -384,7 +357,15 @@ angular_re <- function(
 
   par_hat <- opt$par
   val <- -opt$value
-  conv <- (opt$convergence == 0)
+  score_hat <- gradient(par_hat)
+  projected_score <- as.numeric(score_hat)
+  lower_active <- seq_along(par_hat) > nparam & par_hat <= 10 * kappa_floor
+  projected_score[lower_active] <- pmax(projected_score[lower_active], 0)
+  score_norm <- max(abs(projected_score)) / n
+  conv <- (opt$convergence == 0 && score_norm <= sqrt(ctrl$reltol))
+  boundary <- any(lower_active)
+  if (!conv && ctrl$maxit > 0L) warning("Grouped model convergence was not established; inspect score_norm and optim_message.", call. = FALSE)
+  if (boundary) warning("A concentration is on the zero boundary; regular Wald inference is unavailable.", call. = FALSE)
 
   # observed Fisher (negative Hessian)
   if (isTRUE(ctrl$hessian)) {
@@ -395,10 +376,12 @@ angular_re <- function(
     V_model <- H
   }
 
+  if (boundary) V_model[,] <- NA_real_
+
   # robust sandwich (cluster scores)
   sc <- attr(gradient(par_hat), "cluster_scores")
   if (isTRUE(ctrl$hessian)) {
-    bread <- invert_hessian(H)
+    bread <- V_model
     if (all(is.finite(bread))) {
       meat <- crossprod(sc)
       V_robust <- bread %*% meat %*% bread
@@ -463,6 +446,13 @@ angular_re <- function(
     model_data = mf,
     logLik = val,
     convergence = conv,
+    score = as.numeric(score_hat),
+    score_norm = score_norm,
+    cluster_scores = sc,
+    information = H,
+    boundary = boundary,
+    optim_message = opt$message,
+    na.action = attr(mf, "na.action"),
     coefficients = tab,
     vcov_model = V_model,
     vcov_robust = V_robust,
@@ -501,6 +491,15 @@ angular_re <- function(
 #'   sample sizes, concentration estimates, residual summaries and coefficient
 #'   table. \code{print()} invisibly returns the input object.
 #' @rdname angular_re-methods
+#' @examples
+#' data(Sandhopper)
+#' sh <- Sandhopper[1:24, ]
+#' d <- sh[rep(1:24, each = 5), ]
+#' d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
+#' d$ref <- d$Azimuth * pi / 180
+#' fit <- angular_re(y ~ ref, d, d$Anim)
+#' summary(fit)
+#' vcov(fit, robust = TRUE)
 #' @export
 print.angular_re <- function(x, ...) {
   cat("Call:\n")
@@ -648,6 +647,14 @@ residuals.angular_re <- function(
 #' @param object A fitted \code{angular_re} model.
 #' @param ... Unused; included for compatibility with the generic.
 #' @return A named numeric vector of random intercept estimates, one per cluster.
+#' @examples
+#' data(Sandhopper)
+#' sh <- Sandhopper[1:24, ]
+#' d <- sh[rep(1:24, each = 5), ]
+#' d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
+#' d$ref <- d$Azimuth * pi / 180
+#' fit <- angular_re(y ~ ref, d, d$Anim)
+#' head(ranef.angular_re(fit))
 #' @export
 ranef.angular_re <- function(object, ...) object$ranef
 
@@ -655,100 +662,119 @@ ranef.angular_re <- function(object, ...) object$ranef
 #' @export
 fitted.angular_re <- function(object, ...) object$mu
 
+.angular_re_residual_plots <- function(
+  x,
+  breaks,
+  bandwidth,
+  points,
+  main
+) {
+  if (!is.numeric(breaks) || length(breaks) != 1L || !is.finite(breaks) ||
+      breaks < 2 || breaks != as.integer(breaks)) {
+    stop("'breaks' must be a single integer greater than one.", call. = FALSE)
+  }
+  breaks <- as.integer(breaks)
+  bandwidth <- .shared_circular_bandwidth(
+    c(x$resid_fixed, x$resid_conditional),
+    bandwidth = bandwidth
+  )
+
+  fixed_plot <- .residual_rose_plot(
+    residuals = x$resid_fixed,
+    bins = breaks,
+    bandwidth = bandwidth,
+    rug = points,
+    title = sprintf("%s: fixed residuals", main),
+    subtitle = "Includes between-cluster variation"
+  )
+  conditional_plot <- .residual_rose_plot(
+    residuals = x$resid_conditional,
+    kappa = x$kappa_e,
+    bins = breaks,
+    bandwidth = bandwidth,
+    rug = points,
+    title = sprintf("%s: conditional residuals", main),
+    subtitle = "Fitted von Mises bin expectation"
+  )
+  radial_limit <- .shared_rose_radial_limit(list(fixed_plot, conditional_plot))
+
+  list(
+    fixed = .apply_rose_radial_limit(fixed_plot, radial_limit),
+    conditional = .apply_rose_radial_limit(conditional_plot, radial_limit),
+    settings = list(
+      bins = breaks,
+      bandwidth = bandwidth,
+      radial_limit = radial_limit
+    )
+  )
+}
+
 
 #' Plot method for angular_re objects
 #'
-#' Draws rose/circular plots of residuals: fixed (y - mu) and conditional
-#' (y - mu - a_hat[cluster]) as in Rivest & Kato (2019), Fig. 1-2.
-#' If the 'circular' package is available, uses it; otherwise falls back
-#' to a simple polar scatter with density ticks.
+#' Draws circular residual diagnostics for a random-intercept angular model.
+#'
+#' The fixed residuals, \eqn{y - \hat\mu}, retain between-cluster variation.
+#' The conditional residuals, \eqn{y - \hat\mu - \hat a_{g}}, are compared
+#' with the fitted von Mises bin expectation. The paired rose plots follow the
+#' diagnostic distinction illustrated by Rivest and Kato (2019, Figures 1--2).
+#' When \code{bandwidth = NULL}, one kernel-density bandwidth is selected from
+#' the pooled fixed and conditional residuals. Both panels use that bandwidth,
+#' identical angular bins, and identical radial limits, including when they are
+#' requested in separate calls.
 #'
 #' @param x an object of class \code{angular_re}
 #' @param which one of "both", "fixed", "conditional"
-#' @param breaks number of bins for rose histogram when using \pkg{circular}
-#' @param points logical; add individual points on the circle
+#' @param breaks number of bins for the rose histogram.
+#' @param bandwidth optional finite positive kernel-density bandwidth. If
+#'   \code{NULL}, a common bandwidth is selected from the pooled residuals.
+#' @param points logical; add individual observations as circular rug marks.
 #' @param main base title (panel-specific suffixes are added)
 #' @param ... unused
+#' @examples
+#' data(Sandhopper)
+#' sh <- Sandhopper[1:24, ]
+#' d <- sh[rep(1:24, each = 5), ]
+#' d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
+#' d$ref <- d$Azimuth * pi / 180
+#' fit <- angular_re(y ~ ref, d, d$Anim)
+#' if (all(vapply(c("ggplot2", "ggcircular", "gridExtra"),
+#'                requireNamespace, logical(1), quietly = TRUE))) plot(fit)
 #' @export
 plot.angular_re <- function(
   x,
   which = c("both", "fixed", "conditional"),
   breaks = 24,
+  bandwidth = NULL,
   points = TRUE,
   main = "Residuals",
   ...
 ) {
   which <- match.arg(which)
-  r_fix <- x$resid_fixed
-  r_con <- x$resid_conditional
-
-  has_circ <- requireNamespace("circular", quietly = TRUE)
-
-  draw_panel_circular <- function(angles, ttl) {
-    th <- circular::circular(
-      angles,
-      type = "angles",
-      units = "radians",
-      modulo = "2pi",
-      template = "none"
-    )
-    op <- par(mar = c(1.8, 1.8, 2.2, 1.8))
-    on.exit(par(op))
-    circular::rose.diag(
-      th,
-      bins = breaks,
-      main = ttl,
-      col = "grey85",
-      border = NA
-    )
-    if (points) circular::points.circular(th, pch = 16, cex = 0.5)
-    # resultant vector
-    R <- abs(mean(exp(1i * angles)))
-    phi <- Arg(mean(exp(1i * angles)))
-    circular::arrows.circular(
-      circular::circular(phi),
-      y = 0,
-      lwd = 2,
-      length = 0.1
-    )
-    mtext(sprintf("R = %.3f", R), line = -1.2, cex = 0.9)
-  }
-
-  draw_panel_base <- function(angles, ttl) {
-    th <- angles
-    op <- par(mar = c(1.8, 1.8, 2.2, 1.8))
-    on.exit(par(op))
-    plot.new()
-    plot.window(xlim = c(-1.1, 1.1), ylim = c(-1.1, 1.1), asp = 1)
-    # circle
-    t <- seq(0, 2 * pi, length.out = 360)
-    lines(cos(t), sin(t), col = "grey60")
-    # axes
-    segments(-1, 0, 1, 0, col = "grey80")
-    segments(0, -1, 0, 1, col = "grey80")
-    title(ttl)
-    if (points) points(cos(th), sin(th), pch = 16, cex = 0.5)
-    # resultant vector
-    v <- mean(exp(1i * th))
-    arrows(0, 0, Re(v), Im(v), lwd = 2, length = 0.08)
-    mtext(sprintf("R = %.3f", Mod(v)), line = -1.2, cex = 0.9)
-  }
+  .require_circular_diagnostic_packages(arrange = identical(which, "both"))
+  panels <- .angular_re_residual_plots(
+    x = x,
+    breaks = breaks,
+    bandwidth = bandwidth,
+    points = points,
+    main = main
+  )
 
   if (which == "both") {
-    op <- par(mfrow = c(1, 2))
-    on.exit(par(op), add = TRUE)
-    if (has_circ) {
-      draw_panel_circular(r_fix, sprintf("%s - fixed", main))
-      draw_panel_circular(r_con, sprintf("%s - conditional", main))
-    } else {
-      draw_panel_base(r_fix, sprintf("%s - fixed", main))
-      draw_panel_base(r_con, sprintf("%s - conditional", main))
-    }
+    comparison_note <- sprintf(
+      "Common comparison settings: %d bins; bandwidth %.3f; radial limit %.3f",
+      panels$settings$bins,
+      panels$settings$bandwidth,
+      panels$settings$radial_limit
+    )
+    gridExtra::grid.arrange(
+      panels$fixed,
+      panels$conditional,
+      ncol = 2,
+      top = grid::textGrob(comparison_note, gp = grid::gpar(fontsize = 9))
+    )
   } else {
-    ttl <- sprintf("%s - %s", main, if (which == "fixed") "fixed" else "conditional")
-    if (has_circ)
-      draw_panel_circular(if (which == "fixed") r_fix else r_con, ttl) else
-      draw_panel_base(if (which == "fixed") r_fix else r_con, ttl)
+    print(panels[[which]])
   }
 
   invisible(x)
@@ -770,6 +796,19 @@ plot.angular_re <- function(
 #' @param se.fit not implemented (reserved).
 #' @param ... unused
 #' @return numeric vector (angles in radians).
+#' @details New-data rows with missing predictors are rejected rather than
+#'   silently dropped. New cluster identifiers use a zero random intercept with
+#'   a warning; this is a population-mean fallback, not an estimated individual
+#'   effect. At zero marginal concentration the fixed component is an orientation
+#'   parameter only, not an identified marginal mean direction.
+#' @examples
+#' data(Sandhopper)
+#' sh <- Sandhopper[1:24, ]
+#' d <- sh[rep(1:24, each = 5), ]
+#' d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
+#' d$ref <- d$Azimuth * pi / 180
+#' fit <- angular_re(y ~ ref, d, d$Anim)
+#' head(predict(fit, type = "conditional"))
 #' @export
 predict.angular_re <- function(
   object,
@@ -786,58 +825,12 @@ predict.angular_re <- function(
   form <- object$formula
 
   parse_design <- function(formula, data) {
-    trm <- stats::delete.response(stats::terms(formula))
-    mf <- stats::model.frame(trm, data = data)
-    term_labels <- attr(attr(mf, "terms"), "term.labels")
-    if (length(term_labels) == 0) {
-      stop("The formula must include at least one term for the reference direction.")
-    }
-    split_terms <- strsplit(term_labels, ":", fixed = TRUE)
-    term_matrix <- t(vapply(split_terms, function(x) {
-      if (length(x) == 1) {
-        c(x, x)
-      } else if (length(x) == 2) {
-        x
-      } else {
-        stop("Each term must be of the form 'x' or 'x:z'.", call. = FALSE)
-      }
-    }, character(2)))
-    ref_name <- term_matrix[1, 1]
-    x0 <- mf[[ref_name]]
-    .validate_numeric_vector(as.numeric(x0), ref_name)
-    betaname <- if (length(term_labels) > 1) term_labels[-1] else character(0)
-    p <- length(betaname)
-    if (p > 0) {
-      x_names <- term_matrix[-1, 1]
-      z_names <- term_matrix[-1, 2]
-      matx <- as.matrix(mf[, x_names, drop = FALSE])
-      for (j in seq_len(ncol(matx))) {
-        .validate_numeric_vector(as.numeric(matx[, j]), x_names[j])
-      }
-      matz <- matrix(1, nrow = nrow(mf), ncol = p)
-      for (j in seq_len(p)) {
-        if (!identical(z_names[j], x_names[j])) {
-          if (!z_names[j] %in% names(mf)) {
-            stop(
-              sprintf("Modifier '%s' not found in the supplied data.", z_names[j]),
-              call. = FALSE
-            )
-          }
-          z <- as.numeric(mf[[z_names[j]]])
-          if (any(!is.finite(z)) || any(z < 0)) {
-            stop(
-              sprintf("Modifier '%s' must be finite and non-negative.", z_names[j]),
-              call. = FALSE
-            )
-          }
-          matz[, j] <- z
-        }
-      }
-    } else {
-      matx <- matrix(0, nrow = nrow(mf), ncol = 0)
-      matz <- matrix(0, nrow = nrow(mf), ncol = 0)
-    }
-    list(x0 = x0, matx = matx, matz = matz, betaname = betaname, nobs = nrow(mf))
+    info <- .parse_term_labels(object$term_labels, formula)
+    design <- .new_term_design(info, formula, data)
+    list(x0 = design$matx[, 1L],
+         matx = design$matx[, -1L, drop = FALSE],
+         matz = design$matz[, -1L, drop = FALSE],
+         betaname = object$betaname, nobs = nrow(design$matx))
   }
 
   data_source <- if (is.null(newdata)) {
@@ -862,7 +855,7 @@ predict.angular_re <- function(
       sinmu <- sinmu + as.vector((matz * sin(matx)) %*% beta)
       cosmu <- cosmu + as.vector((matz * cos(matx)) %*% beta)
     }
-    atan2(sinmu, cosmu)
+    .mean_direction_from_terms(c(1, beta), cbind(x0, matx), cbind(1, matz))
   }
 
   mu <- compute_mu_new(beta, design$x0, design$matx, design$matz)
@@ -887,6 +880,7 @@ predict.angular_re <- function(
   n_pred <- length(mu)
   a_used <- rep(0, n_pred)
   if (!is.null(a_hat)) {
+    if (!is.numeric(a_hat) || any(!is.finite(a_hat))) stop("'a_hat' must be numeric and finite.", call. = FALSE)
     if (length(a_hat) == 1) {
       a_used[] <- a_hat
     } else if (length(a_hat) == n_pred) {
@@ -896,6 +890,7 @@ predict.angular_re <- function(
     }
   } else {
     cl <- cluster
+    if (anyNA(cl)) stop("Prediction cluster identifiers must not be missing.", call. = FALSE)
     if (length(cl) != n_pred) {
       stop("Length of 'cluster' does not match the number of rows in the data.")
     }
@@ -904,13 +899,16 @@ predict.angular_re <- function(
     if (length(known) == 0) {
       warning("No matching clusters found; using random intercept equal to zero.")
     } else {
+      if (any(!as.character(cl_fac) %in% known)) {
+        warning("Some clusters are new; using random intercept equal to zero for them.", call. = FALSE)
+      }
       a_map <- object$ranef[known]
       a_used <- a_map[as.character(cl_fac)]
       a_used[is.na(a_used)] <- 0
     }
   }
 
-  wrap(mu + a_used)
+  as.numeric(wrap(mu + a_used))
 }
 #' Plot random-intercept directions for an angular_re fit
 #'
@@ -926,6 +924,14 @@ predict.angular_re <- function(
 #' @param cex.labels numeric expansion for labels.
 #' @param main plot title.
 #' @param ... unused
+#' @examples
+#' data(Sandhopper)
+#' sh <- Sandhopper[1:24, ]
+#' d <- sh[rep(1:24, each = 5), ]
+#' d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
+#' d$ref <- d$Azimuth * pi / 180
+#' fit <- angular_re(y ~ ref, d, d$Anim)
+#' plot_ranef.angular_re(fit)
 #' @export
 plot_ranef.angular_re <- function(
   x,
@@ -959,7 +965,7 @@ plot_ranef.angular_re <- function(
       modulo = "2pi",
       template = "none"
     )
-    op <- par(mar = c(1.8, 1.8, 2.2, 1.8))
+    op <- par(mar = c(1.8, 1.8, 4.2, 1.8))
     on.exit(par(op))
     circular::plot.circular(
       th,
@@ -969,8 +975,9 @@ plot_ranef.angular_re <- function(
       rotation = "counter",
       cex = 0,
       axes = TRUE,
-      main = main
+      main = ""
     )
+    mtext(main, line = 3, font = 2, cex = 1.1)
     # draw unit circle
     t <- seq(0, 2 * pi, length.out = 360)
     lines(cos(t), sin(t), col = "grey75")
@@ -985,7 +992,7 @@ plot_ranef.angular_re <- function(
         if (scale == "unit") "1" else "A1(kappa_a)",
         L
       ),
-      line = -1.2,
+      line = 1,
       cex = 0.9
     )
     if (labels) {
@@ -993,11 +1000,11 @@ plot_ranef.angular_re <- function(
     }
   } else {
     # base plotting fallback
-    op <- par(mar = c(1.8, 1.8, 2.2, 1.8))
+    op <- par(mar = c(1.8, 1.8, 4.2, 1.8))
     on.exit(par(op))
     plot.new()
     plot.window(xlim = c(-1.1, 1.1), ylim = c(-1.1, 1.1), asp = 1)
-    title(main)
+    title(main, line = 3)
     t <- seq(0, 2 * pi, length.out = 360)
     lines(cos(t), sin(t), col = "grey75")
     segments(-1, 0, 1, 0, col = "grey85")
@@ -1011,7 +1018,7 @@ plot_ranef.angular_re <- function(
         if (scale == "unit") "1" else "A1(kappa_a)",
         L
       ),
-      line = -1.2,
+      line = 1,
       cex = 0.9
     )
     if (labels) {

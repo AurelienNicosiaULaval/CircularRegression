@@ -31,14 +31,16 @@ reference angle. \code{"homogeneous"} calls \code{\link{angular}()}.
 \code{"consensus"} calls \code{\link{consensus}()}.}
 
 \item{weights}{Optional non-negative observation weights. Used by
-\code{"two_step"} and \code{"consensus"}.}
+\code{"consensus"}, or by the initialization step only in \code{"two_step"}.
+Rejected for \code{"homogeneous"}.}
 
 \item{reference}{Reference-angle rule for homogeneous fits. Use
 \code{"auto"}, \code{"first"}, or \code{c("name", "x_ref")}.}
 
 \item{control}{Optional control list passed to the selected model. For
 \code{method = "two_step"}, use \code{control_consensus} and
-\code{control_angular} for separate control.}
+\code{control_angular} for separate control; a nonempty \code{control} is
+rejected rather than silently ignored.}
 
 \item{control_consensus}{Control list for the consensus step.}
 

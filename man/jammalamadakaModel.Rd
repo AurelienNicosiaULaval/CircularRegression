@@ -2,7 +2,7 @@
 % Please edit documentation in R/wrapper.R
 \name{jammalamadakaModel}
 \alias{jammalamadakaModel}
-\title{Jammalamadaka-Sengupta Model Wrapper (two-step workflow)}
+\title{Jammalamadaka-Sarma First-Harmonic Wrapper (two-step workflow)}
 \usage{
 jammalamadakaModel(data, response, w, ...)
 }
@@ -17,14 +17,19 @@ jammalamadakaModel(data, response, w, ...)
 }
 \value{
 A list with \code{consensus_fit}, \code{homogeneous_fit},
-  \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
+  \code{reference}, \code{reference_stability}, \code{data_aug},
+  \code{formula}, and natural-parameter
   outputs \code{natural_parameters}, \code{natural_vcov_model},
-  \code{natural_vcov_robust}, \code{natural_jacobian}.
+  \code{natural_vcov_robust}, \code{natural_jacobian}, and
+  \code{natural_stability}.
 }
 \description{
-Fits the Jammalamadaka-Sengupta special case by creating the required
-sine/cosine-equivalent angular terms and returning the corresponding natural
-parameters through a delta-method transformation.
+Fits the first-harmonic circular-circular mean-direction curve associated
+with Sarma and Jammalamadaka (1993) by creating the required sine/cosine
+angular terms. The returned natural parameters are the coefficients of the
+cosine and sine components of that curve, with delta-method uncertainty.
+Multiply both components by \code{natural_orientation} before applying
+\code{atan2()} to preserve the orientation when the ratio denominator is negative.
 }
 \examples{
 data(bison)
@@ -33,7 +38,10 @@ fit <- jammalamadakaModel(d, response = "y.dir", w = "y.prec")
 fit$natural_parameters
 }
 \references{
-Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+Sarma, Y. R., and Jammalamadaka, S. R. (1993). Circular
+  regression. In \emph{Statistical Sciences and Data Analysis}, 109-128.
+
+  Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
   A general angular regression model for the analysis of data on animal
   movement in ecology. \emph{Journal of the Royal Statistical Society:
   Series C (Applied Statistics)}, 65(3), 445-463.

@@ -43,8 +43,11 @@ fit <- circular_regression(
 fit
 ```
 
-The default fit uses the consensus model to select a reference direction and
-initialize the homogeneous angular fit.
+The default fit selects a reference by empirical mean cosine and uses the
+consensus coefficients to initialize the homogeneous angular fit. The
+direction/modifier term asks whether the meadow direction contributes beyond
+the previous heading. These first 200 records illustrate the software, not a
+new ecological analysis of the entire trajectory.
 
 ```{r}
 summary(fit)
@@ -98,3 +101,21 @@ This applied example is intentionally small so that it can be built quickly
 as part of package checks. Larger analyses should keep the same structure:
 inspect the angular variables, fit the model, examine circular residuals, and
 verify that conclusions are stable under reasonable changes to the formula.
+
+## Scope of uncertainty
+
+```{r}
+core <- fit$fit$homogeneous_fit
+core$convergence
+core$score_norm
+sqrt(diag(vcov(core, robust = TRUE)))
+sqrt(diag(vcov(fit_cons, robust = TRUE)))
+```
+
+The two rows above concern different probability models and coefficient scales.
+The homogeneous model has a common concentration; the consensus concentration
+is the fitted resultant length. Both sandwiches assume independent
+observations. Movement records are ordered in time, so these standard errors
+are not a substitute for modeling residual temporal dependence.
+The distributed file contains processed data; raw GPS reconstruction is not
+provided. All variables in this example use the documented radian convention.

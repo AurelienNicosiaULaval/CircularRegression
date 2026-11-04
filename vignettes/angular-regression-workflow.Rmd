@@ -173,10 +173,12 @@ rule is used for transparency; the fitter also accepts unequal cluster sizes.
 ```{r}
 data(Sandhopper)
 
-wide <- Sandhopper[stats::complete.cases(Sandhopper[c("LN1", "LN2", "LN3", "LN4", "LN5", "Azimuth", "DirW", "SpeedW")]), ]
+trial_columns <- paste0("LN", 1:5)
+required_columns <- c(trial_columns, "Azimuth", "DirW", "SpeedW")
+wide <- Sandhopper[stats::complete.cases(Sandhopper[required_columns]), ]
 wide <- wide[seq_len(min(24L, nrow(wide))), ]
 sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
-sh$y <- as.vector(t(as.matrix(wide[paste0("LN", 1:5)]))) * pi / 180
+sh$y <- as.vector(t(as.matrix(wide[trial_columns]))) * pi / 180
 sh$ref <- sh$Azimuth * pi / 180
 sh$wind <- sh$DirW * pi / 180
 sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)

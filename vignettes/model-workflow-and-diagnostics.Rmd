@@ -1,157 +1,175 @@
 ---
-title: "Model Workflow and Diagnostics"
-output: rmarkdown::html_vignette
+title: "Model Checking and Comparisons"
+output:
+  rmarkdown::html_vignette:
+    math_method: katex
 vignette: >
-  %\VignetteIndexEntry{Model Workflow and Diagnostics}
+  %\VignetteIndexEntry{Model Checking and Comparisons}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.width = 6,
-  fig.height = 4
-)
+```{r, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6, fig.height = 4)
 ```
 
-This article gives a compact workflow for fitting, comparing and diagnosing
-fixed-effect circular regression models with CircularRegression. It is designed
-as a pkgdown article for users who want to move quickly from a formula to
-predictions and residual checks.
+A fitted direction answers only part of a regression question. Before using
+standard errors or comparing models, check which probability model was fitted,
+whether a finite optimum was reached, and which observations the comparison
+uses. This guide follows those decisions on a reproducible example.
 
-## Prepare a reproducible example
+## Prepare observations with a known model
+
+The response below follows a homogeneous von Mises model. The target direction
+`x2` contributes with coefficient 0.35 and modifier `z2`; `x1` is the reference.
 
 ```{r}
 library(CircularRegression)
 
-wrap_angle <- function(x) atan2(sin(x), cos(x))
-
 set.seed(20260530)
-n <- 120
+n <- 200
 x1 <- runif(n, -pi, pi)
 x2 <- runif(n, -pi, pi)
 z2 <- runif(n, 0.2, 1.8)
-
 mu <- atan2(
   sin(x1) + 0.35 * z2 * sin(x2),
   cos(x1) + 0.35 * z2 * cos(x2)
 )
-y <- wrap_angle(mu + rnorm(n, sd = 0.12))
+error <- as.numeric(circular::rvonmises(n, circular::circular(0), kappa = 3))
+dat <- data.frame(y = atan2(sin(mu + error), cos(mu + error)), x1, x2, z2)
 
-dat <- data.frame(y = y, x1 = x1, x2 = x2, z2 = z2)
+fit <- circular_regression(y ~ x1 + x2:z2, dat, reference = "x1")
+fit$convergence
+fit$fit_status
+fit$inference_available
+fit$score_norm
 ```
 
-## Fit the main workflow
+A small score is a numerical stopping condition. It does not prove that an
+angular objective has only one maximum. The homogeneous objective can have
+several stationary points, especially with diffuse errors; compare suitable
+initial values when the scientific conclusion depends on the fitted optimum.
 
-The default `circular_regression()` method is `"two_step"`. It first fits the
-consensus model, then fits the homogeneous angular model using the selected
-reference direction.
+## Extract uncertainty on the fitted scale
+
+The common interface delegates covariance to its final fitted model. In the
+two-step workflow, this is the homogeneous fit. The consensus step is an
+initialization, not an additional source of variability added to its covariance.
 
 ```{r}
-fit <- circular_regression(y ~ x1 + x2:z2, data = dat)
-fit
+coef(fit)
+sqrt(diag(vcov(fit)))
+sqrt(diag(vcov(fit, robust = TRUE)))
 ```
 
-For direct control, the homogeneous and consensus models can be fitted
-separately.
+The first covariance uses the homogeneous von Mises model. The sandwich uses
+independent observation scores. Neither corrects serial dependence or
+within-animal clustering. Use `angular_re()` for the documented random-intercept
+model when there are repeated observations within independent groups.
+
+## Compare nested homogeneous models
+
+The reduced model removes the target direction. Both fits use exactly the same
+observations and the same reference coefficient and sign.
 
 ```{r}
-fit_hom <- circular_regression(
-  y ~ x1 + x2:z2,
-  data = dat,
-  method = "homogeneous",
-  reference = c("name", "x1")
-)
-
-fit_cons <- circular_regression(
-  y ~ x1 + x2:z2,
-  data = dat,
-  method = "consensus"
-)
-
-coef(fit_hom)
-coef(fit_cons)
+full <- angular(y ~ x1 + x2:z2, dat, reference = "x1")
+reduced <- angular(y ~ x1, dat, reference = "x1")
+angular_lrtest(full, reduced)
 ```
 
-## Predict on new angular covariates
+The T2 statistic tests the additional homogeneous coefficient under regular,
+identifiable models with independent errors. It does not compare a homogeneous
+model with a consensus model. A term `x:z` is ordered in this interface: `x`
+is a direction and `z` is its modifier. Reversing those roles changes the mean
+construction even if R prints the same interaction label after reordering.
 
-Predictions are returned as angles in radians. The component form is useful
-when users want to plot or average fitted directions through their sine and
-cosine coordinates.
+## Distinguish error constructions with information criteria
+
+The consensus model estimates one coefficient per directional term and lets
+the concentration vary with resultant length. Its coefficients are not on the
+same scale as the normalized homogeneous coefficient.
 
 ```{r}
-new_dat <- dat[1:6, c("x1", "x2", "z2")]
-
-predict(fit, newdata = new_dat)
-predict(fit, newdata = new_dat, type = "components")
+fit_consensus <- circular_regression(y ~ x1 + x2:z2, dat, method = "consensus")
+coef(fit_consensus)
+AIC(fit, fit_consensus)
+BIC(fit, fit_consensus)
 ```
 
-## Check residuals
+These information criteria use the same responses, likelihood constants and
+angular measure. They compare probability models, not two estimates of an
+identical coefficient. They require finite converged fits. With arbitrary case
+weights, ordinary unweighted likelihood interpretations do not carry over; the
+weighted BIC convention uses the number of retained rows.
 
-Residuals are circular differences between observed and fitted directions,
-wrapped to the interval implied by `atan2(sin(x), cos(x))`.
+## Read circular residual diagnostics
 
-```{r}
-res <- residuals(fit)
-summary(res)
-```
-
-A simple diagnostic plot can be produced with base R.
-
-```{r}
-plot(
-  fitted(fit),
-  res,
-  xlab = "Fitted direction",
-  ylab = "Circular residual",
-  pch = 19,
-  col = "gray30"
-)
-abline(h = 0, lty = 2)
-```
-
-The package also supplies `plot()` methods for fitted model objects when
-`ggplot2`, `ggcircular` and `gridExtra` are installed. The probability-integral
-transform (PIT) is computed under the fitted von Mises distribution, not a
-normal reference for angular residuals.
-
-```{r, fig.width=8, fig.height=5}
+```{r, fig.width=8, fig.height=5, fig.alt="Four diagnostics for the simulated homogeneous fit: residual rose, von Mises PIT quantiles, residuals against fitted direction, and residuals in observation order."}
 if (all(vapply(c("ggplot2", "ggcircular", "gridExtra"),
                requireNamespace, logical(1), quietly = TRUE))) {
   plot(fit, type = "all", bins = 12)
 }
 ```
 
-The PIT diagonal is descriptive because the same observations estimate the
-parameters. This illustrative dataset uses wrapped-normal perturbations;
-neither the plot nor the covariance calculation proves a von Mises model.
+The rose compares residual shape with the fitted von Mises bin expectation.
+The PIT plot compares fitted-distribution probabilities with uniform quantiles.
+Curvature can suggest a distributional mismatch, but the diagonal is descriptive
+because the same observations estimated the parameters. The other panels help
+locate systematic mean patterns, unusual records or changes over observation
+order. A concentrated rose alone is not evidence of independence.
 
-## Inspect convergence and uncertainty
+A useful response to a pattern is to inspect the implicated records and
+covariates, then assess a scientifically motivated change to the model.
+Increasing the number of optimizer iterations cannot resolve a mismatched
+error distribution or an omitted dependence structure.
+
+## Recognize a fit without a finite maximum
+
+If all responses coincide with a single explanatory direction, concentration
+can increase without reaching a finite maximum. Some consensus terms can have
+the same issue when their modifiers are zero for the remaining observations.
 
 ```{r}
-core <- fit$fit$homogeneous_fit
-core$convergence
-core$score_norm
-sqrt(diag(vcov(core)))
-sqrt(diag(vcov(core, robust = TRUE)))
+aligned <- data.frame(y = rep(0, 10), reference = 0)
+boundary_fit <- consensus(y ~ reference, aligned)
+boundary_fit$fit_status
+boundary_fit$convergence
+boundary_fit$inference_available
+vcov(boundary_fit)
 ```
 
-The independent-observation sandwich uses the full derivative of the score.
-The consensus fit also supports a score-based sandwich through
-`vcov(fit_cons$fit, robust = TRUE)`. These choices do not account for temporal
-dependence. T2 comparisons additionally require identical observations, nested
-terms, compatible reference charts, and converged regular homogeneous fits.
+The returned starting coefficients are diagnostic values, not maximum likelihood
+estimates. Wald covariance is unavailable, and `logLik()`, `AIC()` and `BIC()`
+refuse this comparison. In a grouped model, perfect within-group alignment can
+also produce an unbounded likelihood. A zero-concentration boundary and singular
+information are separate conditions; inspect the reported `fit_status` rather
+than treating every large or small concentration as the same failure.
 
-## Use the article in pkgdown
+## Keep rows aligned when values are missing
 
-The pkgdown site groups this article with the introductory simulation vignette
-and the applied bison vignette. The site can be rebuilt locally with:
-
-```{r, eval = FALSE}
-pkgdown::build_site()
+```{r}
+with_missing <- dat
+with_missing$y[3] <- NA
+fit_exclude <- circular_regression(
+  y ~ x1 + x2:z2, with_missing, reference = "x1", na.action = na.exclude
+)
+length(fitted(fit_exclude))
+is.na(fitted(fit_exclude)[3])
 ```
 
-The artificial examples set their seeds, and the applied examples have no
-random sampling. Record package versions when reproducing numerical output.
+`na.exclude` restores omitted rows in in-sample fitted values, residuals and
+predictions. New-data prediction rejects missing or nonfinite covariates.
+For grouped fits, provide original or retained group identifiers; the fitter
+uses the same row alignment as the response and covariates.
+
+## References
+
+Rivest, L.-P., Duchesne, T., Nicosia, A. and Fortin, D. (2016). A general
+angular regression model for the analysis of data on animal movement in
+ecology. Journal of the Royal Statistical Society: Series C, 65(3), 445-463.
+<https://doi.org/10.1111/rssc.12124>.
+
+Rivest, L.-P. and Kato, S. (2019). A random-effects model for clustered circular
+data. Canadian Journal of Statistics, 47(4), 712-728.
+<https://doi.org/10.1002/cjs.11520>.

@@ -18,6 +18,12 @@
   unsupported offsets and formulas without a response.
 * Parse quoted variable names containing colons and reject ambiguous reversed
   direction/modifier terms.
+* Expose final-fit status through the common interface. Refuse likelihood
+  comparisons for unconverged fits and stop two-step initialization when its
+  consensus likelihood is unbounded.
+* Revise the four vignettes around distinct tasks: first fitting, diagnostics
+  and comparisons, bison movement, and special curves with repeated outcomes.
+  Simulated homogeneous examples now use exact von Mises errors.
 
 # CircularRegression 0.7.1
 

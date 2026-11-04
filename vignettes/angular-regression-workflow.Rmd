@@ -1,8 +1,10 @@
 ---
-title: "Angular Regression Workflow"
-output: rmarkdown::html_vignette
+title: "Special Mean Curves and Repeated Observations"
+output:
+  rmarkdown::html_vignette:
+    math_method: katex
 vignette: >
-  %\VignetteIndexEntry{Angular Regression Workflow}
+  %\VignetteIndexEntry{Special Mean Curves and Repeated Observations}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -16,9 +18,10 @@ knitr::opts_chunk$set(
 )
 ```
 
-This vignette gives a compact package workflow using only datasets distributed
-with CircularRegression. It focuses on the package interface rather than on a
-full ecological analysis.
+This guide uses the package datasets to express special mean-direction curves
+and then fit repeated orientations from the same animal. The introductory
+guide covers the common interface; this guide concentrates on parameter
+interpretation and the change of sampling unit in a grouped model.
 
 ```{r}
 library(CircularRegression)
@@ -105,7 +108,7 @@ head(residuals(fit_hom))
 A lightweight base-R residual plot is often sufficient for a first diagnostic
 check.
 
-```{r}
+```{r, fig.alt="Wrapped residuals from a homogeneous bison model against fitted direction, with zero marked."}
 plot(
   fitted(fit_hom),
   residuals(fit_hom),
@@ -190,6 +193,8 @@ head(ranef.angular_re(fit_re))
 head(predict(fit_re, type = "marginal"))
 head(predict(fit_re, type = "conditional"))
 fit_re$convergence
+fit_re$fit_status
+fit_re$inference_available
 ```
 
 This example is intentionally small so that it remains suitable for package

@@ -1,7 +1,7 @@
 Package: CircularRegression
 Type: Package
 Title: Circular Regression Models
-Version: 0.7.1
+Version: 0.7.2
 Authors@R: c(
     person( "Aurelien", "Nicosia",
            email = "aurelien.nicosia@mat.ulaval.ca",
@@ -9,7 +9,9 @@ Authors@R: c(
 Description: Implements regression models for circular response data, including
     homogeneous angular regression, consensus angular regression, a two-step
     workflow, selected special-case model wrappers, and a random-intercept
-    extension for clustered circular outcomes.
+    extension for clustered circular outcomes. The models follow Rivest et al.
+    (2016) <doi:10.1111/rssc.12124> and Rivest and Kato (2019)
+    <doi:10.1002/cjs.11520>.
 License: GPL-3
 Encoding: UTF-8
 Language: en-US

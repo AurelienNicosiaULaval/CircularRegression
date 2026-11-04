@@ -52,6 +52,17 @@ The object stores \code{convergence}, \code{score_norm}, model
   is \code{NA}. The weighted BIC uses the number of retained rows, not the sum
   of weights; information criteria under arbitrary case weighting should not
   be interpreted as ordinary unweighted likelihood comparisons.
+
+  A recession direction aligns every nonzero directional contribution with
+  its response and has no oppositely aligned contribution. The likelihood
+  then has no finite maximum, including when some modifiers are zero.
+  The object records \code{fit_status = "unbounded_likelihood"}, sets
+  \code{convergence = FALSE}, and returns unavailable Wald covariances.
+  In this case the coefficients are starting values, not maximum likelihood
+  estimates. The numerical check ignores zero-weight rows and verifies the
+  returned direction within floating-point tolerance. It is a boundary
+  diagnostic, not a global convergence certificate for arbitrary data.
+  \code{inference_available} indicates whether the fitted covariance is usable.
 }
 \examples{
 data(bison)

@@ -30,6 +30,9 @@
 #'   sandwich inference. Both covariance choices assume independent observations;
 #'   neither is a serial-dependence correction. Zero resultant vectors are
 #'   excluded because they have no mean direction.
+#'   The returned \code{fit_status} distinguishes convergence from zero or
+#'   infinite concentration and singular information. Wald covariances are
+#'   unavailable when convergence is not established.
 #' @examples
 #' data(bison)
 #' d <- na.omit(bison[1:100, c("y.dir", "y.prec", "x.meadow", "z.meadow")])
@@ -252,6 +255,7 @@ angular <- function(
   if (!is.finite(kappahat)) {
     warning("A unit mean cosine has no finite concentration MLE; Wald inference is unavailable.", call. = FALSE)
   }
+  if (!is.finite(kappahat) || kappahat == 0) conv <- FALSE
 
   if (p > 0) {
     XtX <- crossprod(matd)
@@ -298,6 +302,20 @@ angular <- function(
     )
   }
 
+  inference_available <- conv && all(is.finite(v0)) && all(is.finite(v2))
+  if (!conv) {
+    v0[,] <- NA_real_
+    v2[,] <- NA_real_
+    if (p > 0L) parameters[, -1L] <- NA_real_
+  }
+  v0 <- .named_covariance(v0, betaname)
+  v2 <- .named_covariance(v2, betaname)
+  fit_status <- if (!is.finite(kappahat)) "infinite_concentration" else if (kappahat == 0) {
+    "zero_concentration"
+  } else if (!conv) "not_converged" else if (!inference_available) {
+    "singular_information"
+  } else "converged"
+
   out <- list(
     MaxCosine = maxcosk,
     parameters = parameters,
@@ -309,6 +327,8 @@ angular <- function(
     y = y,
     iter.detail = iter.detail,
     convergence = conv,
+    fit_status = fit_status,
+    inference_available = inference_available,
     convergence_tolerance = mindiff,
     score = if (p > 0L) last_step$score else numeric(0),
     score_norm = if (p > 0L) last_step$score_norm else 0,
@@ -375,6 +395,7 @@ angular <- function(
 print.angular <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
+  .print_fit_status(x)
   cat("\nReference angle:", x$reference, "\n")
   cat("Reference coefficient:", x$reference_sign %||% 1, "\n")
   cat("Maximum cosine:", format(x$MaxCosine, digits = 4), "\n")
@@ -466,6 +487,9 @@ summary.angular <- function(object, ...) {
     reference = object$reference,
     reference_sign = object$reference_sign %||% 1
   )
+  s$convergence <- object$convergence
+  s$fit_status <- object$fit_status
+  s$inference_available <- object$inference_available
   class(s) <- "summary.angular"
   s
 }
@@ -475,6 +499,7 @@ summary.angular <- function(object, ...) {
 print.summary.angular <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
+  .print_fit_status(x)
   cat("\nReference angle:", x$reference, "\n")
   cat("Reference coefficient:", x$reference_sign %||% 1, "\n")
   cat("Maximum cosine:", format(x$MaxCosine, digits = 4), "\n")

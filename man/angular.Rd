@@ -52,6 +52,9 @@ Convergence requires a scaled score norm no larger than
   sandwich inference. Both covariance choices assume independent observations;
   neither is a serial-dependence correction. Zero resultant vectors are
   excluded because they have no mean direction.
+  The returned \code{fit_status} distinguishes convergence from zero or
+  infinite concentration and singular information. Wald covariances are
+  unavailable when convergence is not established.
 }
 \examples{
 data(bison)

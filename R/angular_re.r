@@ -36,6 +36,15 @@
 #'   clusters; it has no small-sample correction. Singleton-only groups cannot
 #'   distinguish the two concentrations and are rejected. At very large
 #'   random-intercept concentration, the fit approaches an independent model.
+#'   Perfect within-group alignment gives an unbounded likelihood as the error
+#'   concentration increases. Such fits have
+#'   \code{fit_status = "unbounded_likelihood"}, \code{convergence = FALSE}, and
+#'   unavailable covariance matrices. If alignment is detected at the initial
+#'   coefficients, optimization is not run and those coefficients are returned
+#'   for diagnosis only. \code{inference_available} records availability of
+#'   regular Wald inference. After an objective-based optimizer stop, the fit
+#'   is refined when necessary to meet its reported score tolerance; this is
+#'   recorded in \code{optimization_polished}.
 #' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
 #'   A general angular regression model for the analysis of data on animal
 #'   movement in ecology. \emph{Journal of the Royal Statistical Society:
@@ -228,6 +237,13 @@ angular_re <- function(
 
   mu0 <- compute_mu(beta0)$mu
   r0 <- wrap(y - mu0)
+  perfect_within <- function(residual) {
+    all(vapply(cluster_index, function(idx) {
+      max(abs(wrap(residual[idx] - residual[idx[1L]]))) <=
+        100 * .Machine$double.eps
+    }, logical(1)))
+  }
+  initial_alignment_boundary <- perfect_within(r0)
 
   # moment estimators for kappas (Sec 3.1 RK2019)
   pair_sum <- 0
@@ -341,34 +357,70 @@ angular_re <- function(
   }
 
   ## ---- maximize ----
-  opt <- optim(
-    par0,
+  optimize_group <- function(start, factr, pgtol = 0) optim(
+    start,
     fn = function(p) -objective(p),
     gr = function(p) -gradient(p),
     method = "L-BFGS-B",
     lower = c(rep(-Inf, nparam), kappa_floor, kappa_floor),
     control = list(
       maxit = ctrl$maxit,
-      factr = ctrl$reltol / .Machine$double.eps,
+      factr = factr,
+      pgtol = pgtol,
       trace = ctrl$trace
     ),
     hessian = isTRUE(ctrl$hessian)
   )
 
+  if (initial_alignment_boundary) {
+    opt <- list(
+      par = par0, value = -objective(par0), convergence = 1L,
+      message = "Optimization not run: within-group alignment gives an unbounded likelihood.",
+      hessian = matrix(NA_real_, length(par0), length(par0))
+    )
+  } else {
+    opt <- optimize_group(par0, ctrl$reltol / .Machine$double.eps)
+  }
+
+  projected_gradient <- function(par) {
+    score <- as.numeric(gradient(par))
+    active <- seq_along(par) > nparam & par <= 10 * kappa_floor
+    score[active] <- pmax(score[active], 0)
+    score
+  }
+  polished <- FALSE
+  if (!initial_alignment_boundary && ctrl$maxit > 0L &&
+      opt$convergence == 0L &&
+      max(abs(projected_gradient(opt$par))) / n > sqrt(ctrl$reltol)) {
+    # An objective-based stop can precede the advertised score tolerance.
+    refined <- optimize_group(opt$par, factr = 10, pgtol = n * sqrt(ctrl$reltol))
+    if (is.finite(refined$value) && refined$value <= opt$value) {
+      opt <- refined
+      polished <- TRUE
+    }
+  }
+
   par_hat <- opt$par
   val <- -opt$value
   score_hat <- gradient(par_hat)
-  projected_score <- as.numeric(score_hat)
+  projected_score <- projected_gradient(par_hat)
   lower_active <- seq_along(par_hat) > nparam & par_hat <= 10 * kappa_floor
   projected_score[lower_active] <- pmax(projected_score[lower_active], 0)
   score_norm <- max(abs(projected_score)) / n
   conv <- (opt$convergence == 0 && score_norm <= sqrt(ctrl$reltol))
-  boundary <- any(lower_active)
-  if (!conv && ctrl$maxit > 0L) warning("Grouped model convergence was not established; inspect score_norm and optim_message.", call. = FALSE)
-  if (boundary) warning("A concentration is on the zero boundary; regular Wald inference is unavailable.", call. = FALSE)
+  alignment_boundary <- initial_alignment_boundary ||
+    perfect_within(wrap(y - compute_mu(par_hat[seq_len(nparam)])$mu))
+  boundary <- any(lower_active) || alignment_boundary
+  if (alignment_boundary) {
+    conv <- FALSE
+    warning("Perfect within-group alignment gives an unbounded likelihood; no finite maximum exists and Wald inference is unavailable.", call. = FALSE)
+  } else if (!conv && ctrl$maxit > 0L) {
+    warning("Grouped model convergence was not established; inspect score_norm and optim_message.", call. = FALSE)
+  }
+  if (any(lower_active)) warning("A concentration is on the zero boundary; regular Wald inference is unavailable.", call. = FALSE)
 
   # observed Fisher (negative Hessian)
-  if (isTRUE(ctrl$hessian)) {
+  if (isTRUE(ctrl$hessian) && !alignment_boundary) {
     H <- opt$hessian
     V_model <- invert_hessian(H)
   } else {
@@ -376,7 +428,8 @@ angular_re <- function(
     V_model <- H
   }
 
-  if (boundary) V_model[,] <- NA_real_
+  inference_available <- conv && !boundary && all(is.finite(V_model))
+  if (!inference_available) V_model[,] <- NA_real_
 
   # robust sandwich (cluster scores)
   sc <- attr(gradient(par_hat), "cluster_scores")
@@ -391,6 +444,14 @@ angular_re <- function(
   } else {
     V_robust <- matrix(NA_real_, nrow(H), ncol(H))
   }
+  parameter_names <- c(betaname, "kappa_e", "kappa_a")
+  V_model <- .named_covariance(V_model, parameter_names)
+  V_robust <- .named_covariance(V_robust, parameter_names)
+  fit_status <- if (alignment_boundary) "unbounded_likelihood" else if (any(lower_active)) {
+    "zero_concentration"
+  } else if (!conv) "not_converged" else if (isTRUE(ctrl$hessian) && !inference_available) {
+    "singular_information"
+  } else "converged"
 
   # extract components and diagnostics
   pa_hat <- pack_par(par_hat)
@@ -439,6 +500,7 @@ angular_re <- function(
   }
   rho_SS <- (A1(pa_hat$kappa_e)^2 * (1 - A2(pa_hat$kappa_a))) /
     (1 - A2(pa_hat$kappa_a) * A2(pa_hat$kappa_e))
+  if (alignment_boundary) rho_SS <- NA_real_
 
   out <- list(
     call = call,
@@ -446,6 +508,10 @@ angular_re <- function(
     model_data = mf,
     logLik = val,
     convergence = conv,
+    fit_status = fit_status,
+    inference_available = inference_available,
+    alignment_boundary = alignment_boundary,
+    optimization_polished = polished,
     score = as.numeric(score_hat),
     score_norm = score_norm,
     cluster_scores = sc,
@@ -504,6 +570,7 @@ angular_re <- function(
 print.angular_re <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
+  .print_fit_status(x)
   cat(
     "\nLog-likelihood:",
     format(x$logLik, digits = 5),
@@ -552,6 +619,8 @@ summary.angular_re <- function(object, ...) {
     call = object$call,
     logLik = object$logLik,
     convergence = object$convergence,
+    fit_status = object$fit_status,
+    inference_available = object$inference_available,
     nobs = length(object$mu),
     n_clusters = length(object$ranef),
     coefficients = coef_tab,
@@ -573,6 +642,7 @@ summary.angular_re <- function(object, ...) {
 print.summary.angular_re <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
+  .print_fit_status(x)
   cat(
     "\nLog-likelihood:",
     format(x$logLik, digits = 5),

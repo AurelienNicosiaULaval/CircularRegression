@@ -60,6 +60,15 @@ The reported log-likelihood includes all normalizing constants.
   clusters; it has no small-sample correction. Singleton-only groups cannot
   distinguish the two concentrations and are rejected. At very large
   random-intercept concentration, the fit approaches an independent model.
+  Perfect within-group alignment gives an unbounded likelihood as the error
+  concentration increases. Such fits have
+  \code{fit_status = "unbounded_likelihood"}, \code{convergence = FALSE}, and
+  unavailable covariance matrices. If alignment is detected at the initial
+  coefficients, optimization is not run and those coefficients are returned
+  for diagnosis only. \code{inference_available} records availability of
+  regular Wald inference. After an objective-based optimizer stop, the fit
+  is refined when necessary to meet its reported score tolerance; this is
+  recorded in \code{optimization_polished}.
 }
 \examples{
 data(Sandhopper)

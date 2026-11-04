@@ -1,3 +1,14 @@
+# CircularRegression 0.7.2
+
+* Check ordered direction/modifier roles when comparing nested models with T2.
+* Detect consensus recession directions, including zero-modifier and zero-weight
+  rows, and flag perfect within-group alignment in random-intercept fits.
+  Unbounded likelihoods no longer appear as regular converged fits.
+* Report fit status and covariance availability. Do not report Wald standard
+  errors when convergence has not been established.
+* Refine grouped fits that stop on objective change before meeting the stated
+  score tolerance.
+
 # CircularRegression 0.7.1
 
 * Correct the consensus score for modified directions and its information limit

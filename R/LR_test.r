@@ -51,6 +51,18 @@ angular_lrtest <- function(full, reduced, check = TRUE) {
     if (!all(reduced$term_labels %in% full$term_labels)) {
       stop("The reduced model must be nested in the full model (a subset of terms).", call. = FALSE)
     }
+    if (is.null(full$term_info) || is.null(reduced$term_info)) {
+      stop("Refit older objects before checking directional term nesting.", call. = FALSE)
+    }
+    term_index <- match(reduced$term_labels, full$term_labels)
+    roles <- c("angle", "modifier", "has_modifier")
+    if (!isTRUE(all.equal(
+      unname(as.list(full$term_info[term_index, roles])),
+      unname(as.list(reduced$term_info[, roles])),
+      check.attributes = FALSE
+    ))) {
+      stop("Models are not nested: shared terms have different direction/modifier roles.", call. = FALSE)
+    }
     shared <- names(reduced$model_data)
     if (!all(shared %in% names(full$model_data)) ||
         !isTRUE(all.equal(as.list(full$model_data[shared]), as.list(reduced$model_data),
@@ -63,6 +75,10 @@ angular_lrtest <- function(full, reduced, check = TRUE) {
     }
     if (!isTRUE(full$convergence) || !isTRUE(reduced$convergence)) {
       stop("Both models must have converged before a T2 comparison.", call. = FALSE)
+    }
+    if (identical(full$fit_status, "singular_information") ||
+        identical(reduced$fit_status, "singular_information")) {
+      stop("T2 requires regular fitted models with nonsingular information.", call. = FALSE)
     }
   }
 

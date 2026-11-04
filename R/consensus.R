@@ -30,6 +30,17 @@
 #'   is \code{NA}. The weighted BIC uses the number of retained rows, not the sum
 #'   of weights; information criteria under arbitrary case weighting should not
 #'   be interpreted as ordinary unweighted likelihood comparisons.
+#'
+#'   A recession direction aligns every nonzero directional contribution with
+#'   its response and has no oppositely aligned contribution. The likelihood
+#'   then has no finite maximum, including when some modifiers are zero.
+#'   The object records \code{fit_status = "unbounded_likelihood"}, sets
+#'   \code{convergence = FALSE}, and returns unavailable Wald covariances.
+#'   In this case the coefficients are starting values, not maximum likelihood
+#'   estimates. The numerical check ignores zero-weight rows and verifies the
+#'   returned direction within floating-point tolerance. It is a boundary
+#'   diagnostic, not a global convergence certificate for arbitrary data.
+#'   \code{inference_available} indicates whether the fitted covariance is usable.
 #' @examples
 #' data(bison)
 #' fit <- consensus(y.dir ~ y.prec, bison[1:100, ])
@@ -87,6 +98,8 @@ consensus <- function(
   }
   weight_total <- sum(weight)
   if (!is.finite(weight_total)) stop("The sum of weights must be finite.", call. = FALSE)
+  recession_direction <- .consensus_recession(y, matx, matz, weight)
+  alignment_boundary <- !is.null(recession_direction)
 
   if (!is.null(initkappa) && !is.null(initbeta)) {
     stop("Use only one of 'initkappa' or 'initbeta'.", call. = FALSE)
@@ -187,7 +200,7 @@ consensus <- function(
   colnames(iter.detail) <- c(paramname, "LL", "iter", "nitersh")
   iter.detail[1L, ] <- c(kappak, maxLLk, iter, 0)
 
-  if (maxiter > 0) {
+  if (maxiter > 0 && !alignment_boundary) {
     while (!conv && iter < maxiter) {
       step <- fisher_step(kappak, long = long, mui = mui)
       if (step$score_norm <= mindiff) {
@@ -242,14 +255,11 @@ consensus <- function(
   iter.detail <- iter.detail[seq_len(iter + 1L), , drop = FALSE]
 
   final_step <- fisher_step(kappak, long = long, mui = mui)
-  conv <- conv || (maxiter > 0L && final_step$score_norm <= mindiff)
+  conv <- !alignment_boundary &&
+    (conv || (maxiter > 0L && final_step$score_norm <= mindiff))
   matI <- final_step$I
-  active <- weight > 0
-  alignment_boundary <- all(long[active] > 0) &&
-    all(cos(y[active] - mui[active]) >= 1 - 1e-12)
   if (alignment_boundary) {
-    conv <- FALSE
-    warning("Effectively perfect alignment: a finite consensus maximum is not established; Wald inference is unavailable.", call. = FALSE)
+    warning("A direction of perfect alignment makes the consensus likelihood unbounded; no finite maximum exists and Wald inference is unavailable.", call. = FALSE)
   }
 
   invert_information <- function(M) {
@@ -267,8 +277,14 @@ consensus <- function(
   }
 
   v_kappa <- invert_information(matI)
-  if (alignment_boundary) v_kappa[,] <- NA_real_
+  inference_available <- conv && all(is.finite(v_kappa))
+  if (!inference_available) v_kappa[,] <- NA_real_
   v_robust <- v_kappa %*% crossprod(final_step$scores) %*% v_kappa
+  v_kappa <- .named_covariance(v_kappa, paramname)
+  v_robust <- .named_covariance(v_robust, paramname)
+  fit_status <- if (alignment_boundary) "unbounded_likelihood" else if (!conv) {
+    "not_converged"
+  } else if (!inference_available) "singular_information" else "converged"
   se_kappa <- sqrt(diag(v_kappa))
   zvalue <- kappak / se_kappa
   pvals <- 2 * stats::pnorm(abs(zvalue), lower.tail = FALSE)
@@ -285,6 +301,7 @@ consensus <- function(
   logLik <- as.numeric(maxLLk)
   AIC <- -2 * logLik + 2 * k
   BIC <- -2 * logLik + log(nobs) * k
+  if (!conv) AIC <- BIC <- NA_real_
 
   plain_angles <- des$plain_angles
   reference_scores <- if (length(plain_angles) > 0) {
@@ -306,7 +323,10 @@ consensus <- function(
     score = final_step$score,
     score_norm = final_step$score_norm,
     convergence = conv,
+    fit_status = fit_status,
+    inference_available = inference_available,
     alignment_boundary = alignment_boundary,
+    recession_direction = if (alignment_boundary) stats::setNames(recession_direction, paramname) else NULL,
     convergence_tolerance = mindiff,
     parambeta = NULL,
     varcovbeta1 = NULL,
@@ -382,7 +402,9 @@ consensus <- function(
 print.consensus <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
-  cat("\nMaximum log-likelihood:", format(x$MaxLL, digits = 5), "\n")
+  .print_fit_status(x)
+  label <- if (isTRUE(x$convergence)) "Maximum log-likelihood:" else "Log-likelihood at returned coefficients:"
+  cat("\n", label, format(x$MaxLL, digits = 5), "\n", sep = " ")
   cat("AIC:", format(x$AIC, digits = 5), "\n")
   cat("BIC:", format(x$BIC, digits = 5), "\n\n")
   cat("Kappa coefficients:\n")
@@ -504,6 +526,9 @@ summary.consensus <- function(object, ...) {
     AIC = object$AIC,
     BIC = object$BIC,
     coefficients = object$parameters,
+    convergence = object$convergence,
+    fit_status = object$fit_status,
+    inference_available = object$inference_available,
     residuals = summary(residuals.consensus(object)),
     nobs = object$nobs
   )
@@ -516,7 +541,9 @@ summary.consensus <- function(object, ...) {
 print.summary.consensus <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
-  cat("\nMaximum log-likelihood:", format(x$MaxLL, digits = 5), "\n")
+  .print_fit_status(x)
+  label <- if (isTRUE(x$convergence)) "Maximum log-likelihood:" else "Log-likelihood at returned coefficients:"
+  cat("\n", label, format(x$MaxLL, digits = 5), "\n", sep = " ")
   cat("AIC:", format(x$AIC, digits = 5), "\n")
   cat("BIC:", format(x$BIC, digits = 5), "\n\n")
   cat("Residuals:\n")
@@ -579,6 +606,9 @@ BIC.consensus <- function(object, ...) {
 #' @rdname consensus-methods
 #' @export
 logLik.consensus <- function(object, ...) {
+  if (isTRUE(object$alignment_boundary)) {
+    stop("The consensus likelihood has no finite maximum.", call. = FALSE)
+  }
   val <- object$logLik
   attr(val, "df") <- object$k
   attr(val, "nobs") <- object$nobs

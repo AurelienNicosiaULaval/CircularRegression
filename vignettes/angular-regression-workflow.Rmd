@@ -164,48 +164,40 @@ mean curve does not imply equality with a projected-normal probability model.
 
 ## Random-Intercept Fit
 
-The random-intercept model is separate from `circular_regression()` in this
-version. It can be used when clustered circular observations are available. The
-following small example uses five repeated trials per animal in `Sandhopper`
-and converts degree variables to radians before modeling. A complete-individual
-rule is used for transparency; the fitter also accepts unequal cluster sizes.
+The `sandhopper_trials` data contain five escape orientations per animal.
+Each row is one observed trial, with angles in radians. The model uses the
+sun azimuth as the reference and weights the wind direction by wind speed.
 The term `(1 | Anim)` gives each animal its own random shift in mean direction.
 
 ```{r}
-data(Sandhopper)
-
-trial_columns <- paste0("LN", 1:5)
-required_columns <- c(trial_columns, "Azimuth", "DirW", "SpeedW")
-wide <- Sandhopper[stats::complete.cases(Sandhopper[required_columns]), ]
-wide <- wide[seq_len(min(24L, nrow(wide))), ]
-sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
-sh$y <- as.vector(t(as.matrix(wide[trial_columns]))) * pi / 180
-sh$ref <- sh$Azimuth * pi / 180
-sh$wind <- sh$DirW * pi / 180
-sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
+data(sandhopper_trials)
 
 fit_re <- angular_re(
-  y ~ ref + wind:wind_speed + (1 | Anim),
-  data = sh,
-  control = list(maxit = 50, reltol = 1e-8)
+  escape ~ sun + wind:wind_speed + (1 | Anim),
+  data = sandhopper_trials
 )
 
-coef(fit_re)
-head(ranef.angular_re(fit_re))
-trials <- head(sh)
-predict(fit_re, newdata = trials, type = "marginal")
-predict(fit_re, newdata = trials, type = "conditional")
-fit_re$convergence
 fit_re$fit_status
-fit_re$inference_available
+coef(fit_re)
 ```
 
-This example is intentionally small so that it remains suitable for package
-checks and pkgdown builds.
+By default, `angular_re()` omits trials with missing model variables. This fit
+uses `r length(fit_re$cluster)` trials from `r length(fit_re$ranef)` animals.
+See `?sandhopper_trials` for the source and the preparation script.
+
 The marginal prediction uses the fixed effects. The conditional prediction
 reads `Anim` in `newdata` and adds the estimated shift for that animal.
-Within-animal and random-intercept concentrations are
-not linear variances. The cluster sandwich assumes independent animals and is
-asymptotic in their number. Fixed-effect sandwiches are neither cluster-robust
-nor serially robust. The residual roses are descriptive, with a common scale
-and bandwidth; conditional residuals are affected by intercept estimation.
+
+```{r}
+first_trial <- sandhopper_trials[1, ]
+c(
+  marginal = predict(fit_re, newdata = first_trial, type = "marginal"),
+  conditional = predict(fit_re, newdata = first_trial, type = "conditional")
+)
+head(ranef.angular_re(fit_re))
+```
+
+The two concentration parameters describe dispersion on the circle. The
+cluster-robust standard errors assume independent animals and are asymptotic
+in their number. Conditional residuals reflect the estimation of the random
+intercepts.

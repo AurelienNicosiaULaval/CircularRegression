@@ -81,6 +81,15 @@ stored in this repository.
   package dataset on 2026-05-31. Original permission records are not stored in
   this repository.
 
+### sandhopper_trials
+
+- Package file: `data/sandhopper_trials.rda`
+- Source: `data/Sandhopper.rda`
+- Run `Rscript data-raw/sandhopper_trials.R` from the package root to regenerate.
+- The script puts the five trials per animal in separate rows and converts
+  escape direction, sun azimuth and wind direction from degrees to radians.
+  It retains all 360 trials, the original wind speeds and missing values.
+
 ## noshiro
 
 - Package file: `data/noshiro.rda`

@@ -73,23 +73,14 @@ The reported log-likelihood includes all normalizing constants.
   recorded in \code{optimization_polished}.
 }
 \examples{
-data(Sandhopper)
-columns <- c(paste0("LN", 1:5), "Azimuth", "DirW", "SpeedW")
-wide <- Sandhopper[stats::complete.cases(Sandhopper[columns]), ]
-wide <- wide[seq_len(min(24L, nrow(wide))), ]
-sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
-sh$y <- as.vector(t(as.matrix(wide[paste0("LN", 1:5)]))) * pi / 180
-sh$ref <- sh$Azimuth * pi / 180
-sh$wind <- sh$DirW * pi / 180
-sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
+data(sandhopper_trials)
 
 fit <- angular_re(
-  y ~ ref + wind:wind_speed + (1 | Anim),
-  data = sh,
-  control = list(maxit = 200, reltol = 1e-8)
+  escape ~ sun + wind:wind_speed + (1 | Anim),
+  data = sandhopper_trials
 )
 coef(fit)
-head(predict(fit))
+predict(fit, newdata = head(sandhopper_trials), type = "conditional")
 }
 \references{
 Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).

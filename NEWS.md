@@ -1,5 +1,8 @@
 # CircularRegression (development version)
 
+* Add `sandhopper_trials`, a trial-level version of `Sandhopper` with angles
+  in radians, and use it in the random-intercept guides.
+
 * Accept a single `(1 | group)` term in `angular_re()` formulas. Conditional
   predictions can read that grouping column from `newdata`. The `cluster`
   argument is still supported.

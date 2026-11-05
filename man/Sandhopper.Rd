@@ -68,4 +68,7 @@ D'Elia, A. (2001). A statistical model for orientation mechanism.
 DOI: \doi{10.1007/BF02511646}.
 Rivest, L.-P., & Kato, S. (2019). A random-effects model for clustered circular data. *Canadian Journal of Statistics*, 47(4), 712-728.
 }
+\seealso{
+\code{\link{sandhopper_trials}} for the trial-level data in radians.
+}
 \keyword{datasets}

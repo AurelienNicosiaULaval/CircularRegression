@@ -3,25 +3,18 @@ title: "Fit repeated directions"
 description: "Fit an animal-level random intercept and compare marginal and conditional predictions."
 ---
 
-In `Sandhopper`, each animal has five trials. Put one trial on each row
-and convert the directions from degrees to radians. The term `(1 | Anim)`
-adds a random intercept for each animal.
+Each row of `sandhopper_trials` is an observed escape trial. The angles are
+in radians. Use the sun azimuth as the reference direction and add a random
+intercept for each animal with `(1 | Anim)`.
 
 ```{r}
 library(CircularRegression)
-data(Sandhopper)
+data(sandhopper_trials)
 
-trials <- paste0("LN", 1:5)
-vars <- c(trials, "Azimuth", "DirW", "SpeedW")
-wide <- Sandhopper[complete.cases(Sandhopper[vars]), ]
-wide <- head(wide, 24)
-d <- wide[rep(seq_len(nrow(wide)), each = length(trials)), ]
-d$y <- as.vector(t(as.matrix(wide[trials]))) * pi / 180
-d$ref <- d$Azimuth * pi / 180
-d$wind <- d$DirW * pi / 180
-d$speed <- d$SpeedW / max(d$SpeedW)
-
-fit <- angular_re(y ~ ref + wind:speed + (1 | Anim), data = d)
+fit <- angular_re(
+  escape ~ sun + wind:wind_speed + (1 | Anim),
+  data = sandhopper_trials
+)
 fit$fit_status
 coef(fit)
 ```
@@ -31,7 +24,7 @@ adds the estimated shift for that animal. Compare the two predictions for
 the first trial.
 
 ```{r}
-trial <- d[1, ]
+trial <- sandhopper_trials[1, ]
 c(
   marginal = predict(fit, newdata = trial, type = "marginal"),
   conditional = predict(fit, newdata = trial, type = "conditional")

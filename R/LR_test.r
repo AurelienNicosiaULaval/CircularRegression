@@ -11,9 +11,10 @@
 #' @param full Object of class \code{"angular"} (full model).
 #' @param reduced Object of class \code{"angular"} (nested reduced model).
 #' @param check Logical; check that samples, shared variables, term nesting,
-#'   reference directions and signs agree, and both fits have converged.
+#'   reference directions and signs agree.
 #'   Setting this to \code{FALSE} bypasses these structural checks only and
 #'   places responsibility for the test assumptions on the caller.
+#'   Both fits must have converged with finite positive concentrations.
 #' @return An object of class \code{"htest"}.
 #' @details The chi-squared calibration assumes regular, identifiable nested
 #'   homogeneous models with independent errors and finite positive concentration.
@@ -73,21 +74,22 @@ angular_lrtest <- function(full, reduced, check = TRUE) {
         !identical(full$reference_sign, reduced$reference_sign)) {
       stop("Models must use compatible reference directions and signs.", call. = FALSE)
     }
-    if (!isTRUE(full$convergence) || !isTRUE(reduced$convergence)) {
-      stop("Both models must have converged before a T2 comparison.", call. = FALSE)
-    }
-    if (identical(full$fit_status, "singular_information") ||
-        identical(reduced$fit_status, "singular_information")) {
-      stop("T2 requires regular fitted models with nonsingular information.", call. = FALSE)
-    }
+  }
+  if (!isTRUE(full$convergence) || !isTRUE(reduced$convergence)) {
+    stop("Both models must have converged before a T2 comparison.", call. = FALSE)
+  }
+  if (identical(full$fit_status, "singular_information") ||
+      identical(reduced$fit_status, "singular_information")) {
+    stop("T2 requires regular fitted models with nonsingular information.", call. = FALSE)
   }
 
   n <- n_f
   Cbar_full <- as.numeric(full$MaxCosine)
   Cbar_red <- as.numeric(reduced$MaxCosine)
   kappa_full <- as.numeric(full$kappahat)
+  kappa_red <- as.numeric(reduced$kappahat)
   if (!is.finite(kappa_full) || kappa_full <= 0 || !is.finite(Cbar_full) ||
-      !is.finite(Cbar_red)) {
+      !is.finite(kappa_red) || kappa_red <= 0 || !is.finite(Cbar_red)) {
     stop("T2 requires a finite positive concentration and regular fitted models.", call. = FALSE)
   }
   if (Cbar_full < Cbar_red - 1e-10) {

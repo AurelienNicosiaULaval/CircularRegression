@@ -386,7 +386,8 @@ consensus <- function(
 #'   \code{"fitted"}, or \code{"index"}.
 #' @param bins Number of bins in a circular residual rose plot.
 #' @param reference Reference selection rule for \code{type = "beta"}.
-#' @param newdata Optional data frame for prediction.
+#' @param newdata Optional data frame, list or environment for prediction.
+#'   It must contain every predictor used in the fitted model.
 #' @param robust Logical; return the independent-observation sandwich based on
 #'   weighted scores when \code{TRUE}. Weights are case weights, not cluster
 #'   identifiers; the sandwich uses squared weights in its middle matrix.
@@ -503,7 +504,6 @@ predict.consensus <- function(
   } else {
     design <- .new_term_design(
       term_info = object$term_info,
-      formula = object$formula,
       newdata = newdata
     )
     mu <- .mean_direction_from_terms(

@@ -277,7 +277,7 @@ utils::globalVariables(".data")
 .residual_vs_fitted_plot <- function(residual_data, title) {
   ggplot2::ggplot(residual_data, ggplot2::aes(x = .data$.fitted, y = .data$.resid)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey45", linetype = "dashed") +
-    ggplot2::geom_point(colour = "#2C7FB8", alpha = 0.7) +
+    ggcircular::geom_circular_point(colour = "#2C7FB8", alpha = 0.7) +
     ggcircular::scale_x_circular_radians(
       limits = c(-pi, pi),
       breaks = .radian_breaks(),
@@ -295,18 +295,19 @@ utils::globalVariables(".data")
 
 .residual_by_index_plot <- function(residual_data, title) {
   line <- if (sum(is.finite(residual_data$.resid)) > 1L) {
-    ggplot2::geom_line(colour = "grey70", linewidth = 0.35, na.rm = TRUE)
+    ggplot2::geom_path(colour = "grey70", linewidth = 0.35, na.rm = TRUE)
   } else NULL
-  ggplot2::ggplot(residual_data, ggplot2::aes(x = .data$.index, y = .data$.resid)) +
-    ggplot2::geom_hline(yintercept = 0, colour = "grey45", linetype = "dashed") +
+  ggplot2::ggplot(residual_data, ggplot2::aes(x = .data$.resid, y = .data$.index)) +
+    ggplot2::geom_vline(xintercept = 0, colour = "grey45", linetype = "dashed") +
     line +
-    ggplot2::geom_point(colour = "#2C7FB8", alpha = 0.7, size = 1.3, na.rm = TRUE) +
-    ggplot2::scale_y_continuous(
+    ggcircular::geom_circular_point(colour = "#2C7FB8", alpha = 0.7, size = 1.3, na.rm = TRUE) +
+    ggcircular::scale_x_circular_radians(
       limits = c(-pi, pi),
       breaks = .radian_breaks(),
       labels = .radian_labels()
     ) +
-    ggplot2::labs(title = title, x = "Observation order", y = "Wrapped residual") +
+    ggplot2::coord_flip() +
+    ggplot2::labs(title = title, x = "Wrapped residual", y = "Observation order") +
     ggplot2::theme_minimal() +
     .diagnostic_theme()
 }

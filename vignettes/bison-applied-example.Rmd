@@ -69,19 +69,11 @@ head(data.frame(observed = d$y.dir, fitted = pred, residual = res))
 summary(res)
 ```
 
-A simple base-R diagnostic plot can be useful before calling the package plot
-method.
+The fitted-direction diagnostic uses the point layer and angular scale from
+`ggcircular`. Look for patterns in the residuals across the fitted directions.
 
-```{r, fig.alt="Wrapped bison residuals against fitted movement direction, with a horizontal reference at zero."}
-plot(
-  pred,
-  res,
-  xlab = "Fitted direction",
-  ylab = "Circular residual",
-  pch = 19,
-  col = "gray30"
-)
-abline(h = 0, lty = 2)
+```{r fitted-residuals, eval=requireNamespace("ggcircular", quietly=TRUE), fig.alt="Wrapped bison residuals against fitted movement direction, with a horizontal reference at zero and angles in radians."}
+plot(fit, type = "fitted")
 ```
 
 ## Direct consensus fit

@@ -17,18 +17,21 @@
 \arguments{
 \item{object}{an \code{angular_re} fit.}
 
-\item{newdata}{data.frame; if NULL, uses model frame from the original call.}
+\item{newdata}{Data frame, list or environment containing all fixed-effect
+predictors. If \code{NULL}, use the original model frame.}
 
-\item{cluster}{optional vector/factor of cluster IDs for newdata.}
+\item{cluster}{Optional vector or factor of cluster identifiers. For
+conditional prediction, the grouping variable in \code{newdata} is used
+by default if it was specified in the fitted formula.}
 
 \item{type}{One of \code{"auto"} (default), \code{"marginal"} (mean
 direction) or \code{"conditional"} (mean direction plus the predicted
 random intercept). With \code{"auto"} the conditional mean is returned
-whenever cluster information is provided; otherwise the marginal mean
-is used.}
+when \code{cluster} or \code{a_hat} is supplied. Otherwise the
+marginal mean is used.}
 
-\item{a_hat}{optional numeric vector of random-intercept predictions to use
-for \code{cluster} (same length as newdata). Ignored unless \code{type="conditional"}.}
+\item{a_hat}{Optional numeric vector of random intercepts for conditional
+prediction, of length one or one value per prediction.}
 
 \item{se.fit}{not implemented (reserved).}
 
@@ -53,6 +56,6 @@ sh <- Sandhopper[1:24, ]
 d <- sh[rep(1:24, each = 5), ]
 d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
 d$ref <- d$Azimuth * pi / 180
-fit <- angular_re(y ~ ref, d, d$Anim)
-head(predict(fit, type = "conditional"))
+fit <- angular_re(y ~ ref + (1 | Anim), data = d)
+predict(fit, newdata = head(d), type = "conditional")
 }

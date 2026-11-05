@@ -1,0 +1,36 @@
+---
+title: "Fit repeated directions"
+description: "Fit an animal-level random intercept and compare marginal and conditional predictions."
+---
+
+Each row of `sandhopper_trials` is an observed escape trial. The angles are
+in radians. Use the sun azimuth as the reference direction and add a random
+intercept for each animal with `(1 | Anim)`.
+
+```{r}
+library(CircularRegression)
+data(sandhopper_trials)
+
+fit <- angular_re(
+  escape ~ sun + wind:wind_speed + (1 | Anim),
+  data = sandhopper_trials
+)
+fit$fit_status
+coef(fit)
+```
+
+For a conditional prediction, `predict()` reads `Anim` in `newdata` and
+adds the estimated shift for that animal. Compare the two predictions for
+the first trial.
+
+```{r}
+trial <- sandhopper_trials[1, ]
+c(
+  marginal = predict(fit, newdata = trial, type = "marginal"),
+  conditional = predict(fit, newdata = trial, type = "conditional")
+)
+head(ranef.angular_re(fit), 3)
+```
+
+Use `plot_ranef.angular_re()` to display the estimated shifts.
+[Full grouped example](angular-regression-workflow.html#random-intercept-fit).

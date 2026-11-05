@@ -20,6 +20,7 @@
 #' @name Sandhopper
 #' @docType data
 #' @usage data(Sandhopper)
+#' @seealso \code{\link{sandhopper_trials}} for the trial-level data in radians.
 #' @examples
 #' data(Sandhopper)
 #' head(Sandhopper[c("Anim", "LN1", "LN2", "LN3", "LN4", "LN5")])

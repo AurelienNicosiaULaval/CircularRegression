@@ -56,8 +56,10 @@ Convergence requires a scaled score norm no larger than
   neither is a serial-dependence correction. Zero resultant vectors are
   excluded because they have no mean direction.
   The returned \code{fit_status} distinguishes convergence from zero or
-  infinite concentration and singular information. Wald covariances are
-  unavailable when convergence is not established.
+  infinite concentration, singular information, and a better limit along
+  the fitted coefficient ray as the reference coefficient tends to zero.
+  For \code{"reference_boundary"}, the finite coefficients are diagnostic
+  and Wald covariances are unavailable. Try another reference direction.
 }
 \examples{
 data(bison)

@@ -1,3 +1,6 @@
+url: https://aureliennicosiaulaval.github.io/CircularRegression/
+llm-docs: false
+
 template:
   bootstrap: 5
   bootswatch: flatly
@@ -7,23 +10,15 @@ development:
 
 navbar:
   structure:
-    left: [intro, reference, articles, news]
+    left: [intro, guides, reference, news]
     right: [search, github]
   components:
     intro:
       text: Get started
       href: articles/introduction-to-circular-regression.html
-    articles:
-      text: Articles
-      menu:
-      - text: Introduction to circular regression
-        href: articles/introduction-to-circular-regression.html
-      - text: Applied bison example
-        href: articles/bison-applied-example.html
-      - text: Model checking and comparisons
-        href: articles/model-workflow-and-diagnostics.html
-      - text: Special curves and repeated observations
-        href: articles/angular-regression-workflow.html
+    guides:
+      text: Guides
+      href: articles/index.html
 
 home:
   title: CircularRegression
@@ -74,10 +69,19 @@ reference:
   - multiplebison
   - noshiro
   - Sandhopper
+  - sandhopper_trials
 
 articles:
-- title: Core workflows
-  navbar: ~
+- title: Quick guides
+  desc: Short examples organized by task.
+  contents:
+  - articles/fit-and-predict
+  - articles/check-a-fit
+  - articles/compare-models
+  - articles/read-mean-curves
+  - articles/fit-repeated-directions
+  - articles/build-lagged-angles
+- title: Full vignettes
   contents:
   - introduction-to-circular-regression
   - bison-applied-example
@@ -86,5 +90,7 @@ articles:
 
 news:
   releases:
+  - text: "Version 0.7.3"
+    href: news/index.html#circularregression-073
   - text: "Version 0.7.2"
     href: news/index.html#circularregression-072

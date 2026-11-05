@@ -30,8 +30,7 @@ Controls the common arrow length.}
 \description{
 Draws one arrow per cluster pointing in the direction of the estimated
 random intercept \eqn{\hat a_i}. Arrow length is either A1(kappa_a) or 1.
-If the 'circular' package is available, uses it for nicer axes; otherwise
-falls back to base polar plotting.
+Uses \pkg{ggcircular} when available, with a \pkg{circular} fallback.
 }
 \examples{
 data(Sandhopper)
@@ -39,6 +38,6 @@ sh <- Sandhopper[1:24, ]
 d <- sh[rep(1:24, each = 5), ]
 d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
 d$ref <- d$Azimuth * pi / 180
-fit <- angular_re(y ~ ref, d, d$Anim)
+fit <- angular_re(y ~ ref + (1 | Anim), data = d)
 plot_ranef.angular_re(fit)
 }

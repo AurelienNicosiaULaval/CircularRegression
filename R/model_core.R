@@ -169,8 +169,18 @@
   chol2inv(ch)
 }
 
-.make_model_frame <- function(formula, data, na.action = stats::na.omit) {
-  mf <- stats::model.frame(formula = formula, data = data, na.action = stats::na.pass)
+.make_model_frame <- function(formula, data, na.action = stats::na.omit, group = NULL) {
+  if (is.null(group)) {
+    mf <- stats::model.frame(formula = formula, data = data, na.action = stats::na.pass)
+  } else {
+    # Add the grouping column before applying the missing-value action.
+    frame_call <- substitute(
+      stats::model.frame(formula = formula, data = data, na.action = stats::na.pass,
+                         cluster = group_column),
+      list(group_column = as.name(group))
+    )
+    mf <- eval(frame_call)
+  }
   model_terms <- attr(mf, "terms")
   if (attr(model_terms, "response") != 1L) {
     stop("'formula' must include a circular response.", call. = FALSE)
@@ -298,8 +308,8 @@
   stop(sprintf("'%s' must have length equal to the original data or to the model-frame size.", name), call. = FALSE)
 }
 
-.circular_design <- function(formula, data, na.action = stats::na.omit) {
-  mf <- .make_model_frame(formula = formula, data = data, na.action = na.action)
+.circular_design <- function(formula, data, na.action = stats::na.omit, group = NULL) {
+  mf <- .make_model_frame(formula = formula, data = data, na.action = na.action, group = group)
   y <- as.numeric(.validate_angle_vector(mf[[1]], names(mf)[1]))
   term_labels <- attr(attr(mf, "terms"), "term.labels")
   term_info <- .parse_term_labels(term_labels, formula)
@@ -443,8 +453,9 @@
   idx[1]
 }
 
-.angular_design <- function(formula, data, reference = "auto", tie_method = "first", na.action = stats::na.omit) {
-  des <- .circular_design(formula = formula, data = data, na.action = na.action)
+.angular_design <- function(formula, data, reference = "auto", tie_method = "first",
+                            na.action = stats::na.omit, group = NULL) {
+  des <- .circular_design(formula = formula, data = data, na.action = na.action, group = group)
 
   ref <- .resolve_reference(
     reference = reference,
@@ -574,14 +585,23 @@ print.select_reference_angle <- function(x, digits = 4, ...) {
   idx
 }
 
-.rhs_model_frame <- function(formula, data, na.action = stats::na.pass) {
-  rhs_terms <- stats::delete.response(stats::terms(formula))
-  stats::model.frame(rhs_terms, data = data, na.action = na.action)
-}
-
-.new_term_design <- function(term_info, formula, newdata) {
-  mf <- .rhs_model_frame(formula = formula, data = newdata)
-  n <- nrow(mf)
+.new_term_design <- function(term_info, newdata) {
+  if (!is.list(newdata) && !is.environment(newdata)) {
+    stop("'newdata' must be a data frame, list or environment.", call. = FALSE)
+  }
+  # Fitted term roles also resolve '.' and prevent lookup in the formula environment.
+  predictors <- unique(c(term_info$angle, term_info$modifier[term_info$has_modifier]))
+  available <- if (is.environment(newdata)) ls(newdata, all.names = TRUE) else names(newdata)
+  missing <- setdiff(predictors, available)
+  if (length(missing)) {
+    stop(sprintf("Predictor(s) not found in 'newdata': %s.", paste(missing, collapse = ", ")),
+         call. = FALSE)
+  }
+  columns <- stats::setNames(lapply(predictors, function(name) newdata[[name]]), predictors)
+  n <- length(columns[[1L]])
+  if (any(lengths(columns) != n)) {
+    stop("Predictors in 'newdata' must have the same length.", call. = FALSE)
+  }
   p <- nrow(term_info)
   matx <- matrix(0, nrow = n, ncol = p)
   matz <- matrix(1, nrow = n, ncol = p)
@@ -590,17 +610,11 @@ print.select_reference_angle <- function(x, digits = 4, ...) {
 
   for (j in seq_len(p)) {
     angle_name <- term_info$angle[j]
-    if (!angle_name %in% names(mf)) {
-      stop(sprintf("Angle variable '%s' not found in 'newdata'.", angle_name), call. = FALSE)
-    }
-    matx[, j] <- as.numeric(.validate_angle_vector(mf[[angle_name]], angle_name))
+    matx[, j] <- as.numeric(.validate_angle_vector(columns[[angle_name]], angle_name))
 
     if (isTRUE(term_info$has_modifier[j])) {
       modifier_name <- term_info$modifier[j]
-      if (!modifier_name %in% names(mf)) {
-        stop(sprintf("Modifier '%s' not found in 'newdata'.", modifier_name), call. = FALSE)
-      }
-      z <- as.numeric(.validate_numeric_vector(mf[[modifier_name]], modifier_name))
+      z <- as.numeric(.validate_numeric_vector(columns[[modifier_name]], modifier_name))
       if (any(!is.finite(z)) || any(z < 0)) {
         stop(sprintf("Modifier '%s' must be finite and non-negative.", modifier_name), call. = FALSE)
       }

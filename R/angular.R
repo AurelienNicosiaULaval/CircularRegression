@@ -34,8 +34,10 @@
 #'   neither is a serial-dependence correction. Zero resultant vectors are
 #'   excluded because they have no mean direction.
 #'   The returned \code{fit_status} distinguishes convergence from zero or
-#'   infinite concentration and singular information. Wald covariances are
-#'   unavailable when convergence is not established.
+#'   infinite concentration, singular information, and a better limit along
+#'   the fitted coefficient ray as the reference coefficient tends to zero.
+#'   For \code{"reference_boundary"}, the finite coefficients are diagnostic
+#'   and Wald covariances are unavailable. Try another reference direction.
 #' @examples
 #' data(bison)
 #' d <- na.omit(bison[1:100, c("y.dir", "y.prec", "x.meadow", "z.meadow")])
@@ -90,9 +92,9 @@ angular <- function(
   maxiter <- ctrl$maxiter
   mindiff <- ctrl$mindiff
 
-  compute_components <- function(beta) {
-    sinmu <- reference_sign * sin(x0)
-    cosmu <- reference_sign * cos(x0)
+  compute_components <- function(beta, ref_coefficient = reference_sign) {
+    sinmu <- ref_coefficient * sin(x0)
+    cosmu <- ref_coefficient * cos(x0)
     if (p > 0) {
       sinmu <- sinmu + as.vector((matz * sin(matx)) %*% beta)
       cosmu <- cosmu + as.vector((matz * cos(matx)) %*% beta)
@@ -260,6 +262,25 @@ angular <- function(
   }
   if (!is.finite(kappahat) || kappahat == 0) conv <- FALSE
 
+  reference_limit_cosine <- NA_real_
+  reference_boundary <- FALSE
+  if (conv && p > 0L && any(betak != 0)) {
+    # Compare with the ray obtained by scaling all nonreference terms together.
+    ray <- betak / max(abs(betak))
+    limit <- compute_components(ray, ref_coefficient = 0)
+    scale <- as.vector(abs(matz) %*% abs(ray))
+    if (all(scale == 0 | limit$long > sqrt(.Machine$double.eps) * scale)) {
+      limit$mui[scale == 0] <- mui[scale == 0]
+      reference_limit_cosine <- mean(cos(y - limit$mui))
+      reference_boundary <- reference_limit_cosine > maxcosk + 64 * .Machine$double.eps
+      if (reference_boundary) {
+        conv <- FALSE
+        warning("The criterion improves toward a zero reference coefficient. Try another reference direction. Wald inference is unavailable.",
+                call. = FALSE)
+      }
+    }
+  }
+
   if (p > 0) {
     XtX <- crossprod(matd)
     XtX_sym <- (XtX + t(XtX)) / 2
@@ -315,7 +336,9 @@ angular <- function(
   v2 <- .named_covariance(v2, betaname)
   fit_status <- if (!is.finite(kappahat)) "infinite_concentration" else if (kappahat == 0) {
     "zero_concentration"
-  } else if (!conv) "not_converged" else if (!inference_available) {
+  } else if (reference_boundary) "reference_boundary" else if (!conv) {
+    "not_converged"
+  } else if (!inference_available) {
     "singular_information"
   } else "converged"
 
@@ -331,6 +354,7 @@ angular <- function(
     iter.detail = iter.detail,
     convergence = conv,
     fit_status = fit_status,
+    reference_limit_cosine = reference_limit_cosine,
     inference_available = inference_available,
     convergence_tolerance = mindiff,
     score = if (p > 0L) last_step$score else numeric(0),
@@ -377,7 +401,8 @@ angular <- function(
 #'
 #' @param object An object of class \code{"angular"}.
 #' @param x An object of class \code{"angular"}.
-#' @param newdata Optional data frame for prediction.
+#' @param newdata Optional data frame, list or environment for prediction.
+#'   It must contain every predictor used in the fitted model.
 #' @param type For \code{predict()}, use \code{"response"} for fitted angles in
 #'   radians or \code{"components"} for cosine and sine components. For
 #'   \code{plot()}, select \code{"all"}, \code{"rose"}, \code{"pit"},
@@ -461,7 +486,6 @@ predict.angular <- function(
   } else {
     design <- .new_term_design(
       term_info = object$term_info,
-      formula = object$formula,
       newdata = newdata
     )
     mu <- .mean_direction_from_terms(

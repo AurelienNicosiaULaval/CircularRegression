@@ -105,19 +105,12 @@ head(fitted(fit_hom))
 head(residuals(fit_hom))
 ```
 
-A lightweight base-R residual plot is often sufficient for a first diagnostic
-check.
+Plot the wrapped residuals against the fitted directions to look for structure
+in the mean fit. The diagnostic uses the point layer and fitted-direction
+scale from `ggcircular`.
 
-```{r, fig.alt="Wrapped residuals from a homogeneous bison model against fitted direction, with zero marked."}
-plot(
-  fitted(fit_hom),
-  residuals(fit_hom),
-  xlab = "Fitted direction",
-  ylab = "Circular residual",
-  pch = 19,
-  col = "gray30"
-)
-abline(h = 0, lty = 2)
+```{r fitted-residuals, eval=requireNamespace("ggcircular", quietly=TRUE), fig.alt="Wrapped residuals from a homogeneous bison model against fitted direction, with both axes marked in radians."}
+plot(fit_hom, type = "fitted")
 ```
 
 ## Special-Case Wrappers
@@ -153,57 +146,55 @@ jam_fit <- jammalamadakaModel(
 mean_fit$natural_parameters
 dec_fit$natural_parameters
 pres_fit$natural_parameters
+pres_fit$natural_orientation
 jam_fit$natural_parameters
+jam_fit$natural_orientation
 ```
 
-For affine and first-harmonic curves, the ratios alone are not enough:
-`natural_orientation` gives the sign by which both vector components must be
-multiplied before calling `atan2()`. Natural covariances use analytic
-Jacobians and require stable, identifiable parameterizations. Equality of a
-mean curve does not imply equality with a projected-normal probability model.
+Each table gives estimates and model-based and sandwich standard errors on
+the natural scale. The delta method uses the analytic Jacobian of the
+transformation. For the affine curve, the direction is the argument of
+\(s\{1+\beta_3z+i(\beta_2+\beta_4z)\}\), where `natural_orientation` supplies
+\(s\). The first-harmonic curve also multiplies both vector components by
+that sign before calling `atan2()`. These standard errors require a regular
+fit and a stable parameterization. The fitted error law is von Mises.
 
 ## Random-Intercept Fit
 
-The random-intercept model is separate from `circular_regression()` in this
-version. It can be used when clustered circular observations are available. The
-following small example uses five repeated trials per animal in `Sandhopper`
-and converts degree variables to radians before modeling. A complete-individual
-rule is used for transparency; the fitter also accepts unequal cluster sizes.
+The `sandhopper_trials` data contain five escape orientations per animal.
+Each row is one observed trial, with angles in radians. The model uses the
+sun azimuth as the reference and weights the wind direction by wind speed.
+The term `(1 | Anim)` gives each animal its own random shift in mean direction.
 
 ```{r}
-data(Sandhopper)
-
-trial_columns <- paste0("LN", 1:5)
-required_columns <- c(trial_columns, "Azimuth", "DirW", "SpeedW")
-wide <- Sandhopper[stats::complete.cases(Sandhopper[required_columns]), ]
-wide <- wide[seq_len(min(24L, nrow(wide))), ]
-sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
-sh$y <- as.vector(t(as.matrix(wide[trial_columns]))) * pi / 180
-sh$ref <- sh$Azimuth * pi / 180
-sh$wind <- sh$DirW * pi / 180
-sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
+data(sandhopper_trials)
 
 fit_re <- angular_re(
-  y ~ ref + wind:wind_speed,
-  data = sh,
-  cluster = sh$Anim,
-  control = list(maxit = 50, reltol = 1e-8)
+  escape ~ sun + wind:wind_speed + (1 | Anim),
+  data = sandhopper_trials
 )
 
-coef(fit_re)
-head(ranef.angular_re(fit_re))
-head(predict(fit_re, type = "marginal"))
-head(predict(fit_re, type = "conditional"))
-fit_re$convergence
 fit_re$fit_status
-fit_re$inference_available
+coef(fit_re)
 ```
 
-This example is intentionally small so that it remains suitable for package
-checks and pkgdown builds.
-The two predictions distinguish environmental effects from the estimated
-animal-specific shift. Within-animal and random-intercept concentrations are
-not linear variances. The cluster sandwich assumes independent animals and is
-asymptotic in their number. Fixed-effect sandwiches are neither cluster-robust
-nor serially robust. The residual roses are descriptive, with a common scale
-and bandwidth; conditional residuals are affected by intercept estimation.
+By default, `angular_re()` omits trials with missing model variables. This fit
+uses `r length(fit_re$cluster)` trials from `r length(fit_re$ranef)` animals.
+See `?sandhopper_trials` for the source and the preparation script.
+
+The marginal prediction uses the fixed effects. The conditional prediction
+reads `Anim` in `newdata` and adds the estimated shift for that animal.
+
+```{r}
+first_trial <- sandhopper_trials[1, ]
+c(
+  marginal = predict(fit_re, newdata = first_trial, type = "marginal"),
+  conditional = predict(fit_re, newdata = first_trial, type = "conditional")
+)
+head(ranef.angular_re(fit_re))
+```
+
+The two concentration parameters describe dispersion on the circle. The
+cluster-robust standard errors assume independent animals and are asymptotic
+in their number. Conditional residuals reflect the estimation of the random
+intercepts.

@@ -1,3 +1,53 @@
+.angular_re_formula <- function(formula) {
+  group <- NULL
+  if (!inherits(formula, "formula") || length(formula) != 3L) {
+    return(list(fixed = formula, group = group))
+  }
+
+  fixed_terms <- function(term) {
+    if (!is.call(term)) return(term)
+    operator <- term[[1L]]
+    if (identical(operator, as.name("("))) return(fixed_terms(term[[2L]]))
+    if (identical(operator, as.name("+")) && length(term) == 3L) {
+      lhs <- fixed_terms(term[[2L]])
+      rhs <- fixed_terms(term[[3L]])
+      if (is.null(lhs)) return(rhs)
+      if (is.null(rhs)) return(lhs)
+      return(call("+", lhs, rhs))
+    }
+    if (identical(operator, as.name("|")) && length(term) == 3L) {
+      if (!is.null(group)) {
+        stop("Supply only one grouping term in 'formula'.", call. = FALSE)
+      }
+      intercept_only <- identical(term[[2L]], 1) || identical(term[[2L]], 1L)
+      if (!intercept_only || !is.symbol(term[[3L]])) {
+        stop("The grouping term must have the form '(1 | group)'.", call. = FALSE)
+      }
+      group <<- as.character(term[[3L]])
+      return(NULL)
+    }
+    if (contains_grouping_call(term)) {
+      stop("Add the grouping term as '+ (1 | group)'.", call. = FALSE)
+    }
+    term
+  }
+
+  contains_grouping_call <- function(term) {
+    is.call(term) && (
+      identical(term[[1L]], as.name("|")) || identical(term[[1L]], as.name("||")) ||
+        any(vapply(as.list(term)[-1L], contains_grouping_call, logical(1)))
+    )
+  }
+
+  rhs <- fixed_terms(formula[[3L]])
+  if (is.null(group)) return(list(fixed = formula, group = group))
+  if (is.null(rhs) || "." %in% all.vars(rhs)) {
+    stop("Write the fixed direction terms explicitly with '(1 | group)'.", call. = FALSE)
+  }
+  fixed <- stats::as.formula(call("~", formula[[2L]], rhs), env = environment(formula))
+  list(fixed = fixed, group = group)
+}
+
 #' Angular mixed-effects regression with von Mises random intercepts
 #'
 #' Fits the homogeneous angular regression of Rivest et al. (2016) augmented
@@ -9,11 +59,12 @@
 #'
 #' @param formula Model formula with a circular response and terms of the form
 #'   \code{x} or \code{x:z}. The first angular covariate supplies the reference
-#'   direction whose coefficient is fixed to one.
+#'   direction whose coefficient is fixed to one. Add a single \code{(1 | group)}
+#'   term for one random intercept per level of the grouping variable.
 #' @param data A data frame containing the variables used in \code{formula}.
-#' @param cluster Factor or vector of cluster identifiers. It must have length
-#'   equal to \code{nrow(data)} or to the model-frame size after missing-value
-#'   handling.
+#' @param cluster Optional factor or vector of cluster identifiers, supplied
+#'   in place of a grouping term in \code{formula}. It must have length equal
+#'   to \code{nrow(data)} or to the model-frame size after missing-value handling.
 #' @param init Optional list with components \code{beta}, \code{kappa_e}, and
 #'   \code{kappa_a} providing starting values. Missing entries are filled with
 #'   moment-based estimates.
@@ -23,7 +74,8 @@
 #'   indicating whether \code{angular()} should be used to initialise the fixed
 #'   effects.
 #' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
-#'   missing values. The default is \code{\link[stats]{na.omit}}.
+#'   missing values, including missing group identifiers in the formula.
+#'   The default is \code{\link[stats]{na.omit}}.
 #' @return An object of class \code{"angular_re"} containing fixed-effect
 #'   estimates, model-based and cluster-robust covariance matrices, concentration
 #'   estimates, fitted marginal mean directions, fixed and conditional
@@ -34,8 +86,11 @@
 #'   Regular Wald covariances are unavailable at a zero-concentration boundary.
 #'   Cluster-robust inference assumes independent clusters and sufficiently many
 #'   clusters; it has no small-sample correction. Singleton-only groups cannot
-#'   distinguish the two concentrations and are rejected. At very large
-#'   random-intercept concentration, the fit approaches an independent model.
+#'   distinguish the two concentrations and are rejected. The independent
+#'   limit as the random-intercept concentration tends to infinity is
+#'   evaluated at the fitted fixed effects and error concentration.
+#'   If it improves the likelihood, \code{fit_status = "independence_limit"}
+#'   and the finite fit is retained for diagnosis with Wald inference unavailable.
 #'   Perfect within-group alignment gives an unbounded likelihood as the error
 #'   concentration increases. Such fits have
 #'   \code{fit_status = "unbounded_likelihood"}, \code{convergence = FALSE}, and
@@ -54,51 +109,58 @@
 #'   circular data. \emph{Canadian Journal of Statistics}, 47(4), 712-728.
 #' @importFrom stats model.frame optim pnorm
 #' @examples
-#' data(Sandhopper)
-#' columns <- c(paste0("LN", 1:5), "Azimuth", "DirW", "SpeedW")
-#' wide <- Sandhopper[stats::complete.cases(Sandhopper[columns]), ]
-#' wide <- wide[seq_len(min(24L, nrow(wide))), ]
-#' sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
-#' sh$y <- as.vector(t(as.matrix(wide[paste0("LN", 1:5)]))) * pi / 180
-#' sh$ref <- sh$Azimuth * pi / 180
-#' sh$wind <- sh$DirW * pi / 180
-#' sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
+#' data(sandhopper_trials)
 #'
 #' fit <- angular_re(
-#'   y ~ ref + wind:wind_speed,
-#'   data = sh,
-#'   cluster = sh$Anim,
-#'   control = list(maxit = 200, reltol = 1e-8)
+#'   escape ~ sun + wind:wind_speed + (1 | Anim),
+#'   data = sandhopper_trials
 #' )
 #' coef(fit)
-#' head(predict(fit))
+#' predict(fit, newdata = head(sandhopper_trials), type = "conditional")
 #' @export
 angular_re <- function(
   formula,
   data,
-  cluster,
+  cluster = NULL,
   init = list(),
   control = list(),
   na.action = stats::na.omit
 ) {
-  if (missing(cluster)) {
-    stop("'cluster' must be provided.", call. = FALSE)
-  }
   call <- match.call()
+  model_formula <- .angular_re_formula(formula)
+  fixed_formula <- model_formula$fixed
+  group <- model_formula$group
+  if (is.null(group) && is.null(cluster)) {
+    stop("Add '(1 | group)' to 'formula' or supply 'cluster'.", call. = FALSE)
+  }
+  if (!is.null(group)) {
+    if (!is.null(cluster)) {
+      stop("Supply a grouping term in 'formula' or 'cluster', but not both.", call. = FALSE)
+    }
+    if (is.null(data[[group]])) {
+      stop(sprintf("Grouping variable '%s' was not found in 'data'.", group), call. = FALSE)
+    }
+  }
 
   ## ---- Shared direction/modifier parsing and complete-case alignment ----
-  des <- .angular_design(formula, data, reference = "first", na.action = na.action)
+  des <- .angular_design(fixed_formula, data, reference = "first",
+                         na.action = na.action, group = group)
   mf <- des$mf
   y <- des$y
   n <- des$nobs
-  keep_idx <- .model_frame_rows(mf, data)
-  cluster_vec <- as.vector(cluster)
-  cluster_mf <- .align_model_vector(cluster_vec, mf, "cluster")
+  cluster_mf <- if (is.null(group)) {
+    .align_model_vector(as.vector(cluster), mf, "cluster")
+  } else {
+    mf[[ncol(mf)]]
+  }
+  if (!is.null(dim(cluster_mf))) {
+    stop("Grouping variable must be a vector or factor.", call. = FALSE)
+  }
   if (anyNA(cluster_mf)) {
     stop("cluster contains missing values after applying model-frame NA handling.", call. = FALSE)
   }
 
-  id <- as.factor(cluster_mf)
+  id <- as.factor(as.vector(cluster_mf))
   lev <- levels(id)
   m <- length(lev)
   cluster_index <- split(seq_len(n), id)
@@ -228,7 +290,15 @@ angular_re <- function(
       warning("angular() not found; starting beta at zeros.")
       beta0 <- rep(0, p)
     } else {
-      an0 <- angular(formula, data = data, reference = "first", na.action = na.action)
+      initial_na_action <- na.action
+      if (!is.null(group)) {
+        # Use the same rows, including omissions due to missing groups.
+        initial_na_action <- function(frame) {
+          frame[match(rownames(mf), rownames(frame)), , drop = FALSE]
+        }
+      }
+      an0 <- angular(fixed_formula, data = data, reference = "first",
+                     na.action = initial_na_action)
       beta0 <- as.numeric(an0$parameters[betaname, "estimate"])
       beta0[is.na(beta0)] <- 0
     }
@@ -412,12 +482,21 @@ angular_re <- function(
   projected_score[lower_active] <- pmax(projected_score[lower_active], 0)
   score_norm <- max(abs(projected_score)) / n
   conv <- (opt$convergence == 0 && score_norm <= sqrt(ctrl$reltol))
-  alignment_boundary <- initial_alignment_boundary ||
-    perfect_within(wrap(y - compute_mu(par_hat[seq_len(nparam)])$mu))
-  boundary <- any(lower_active) || alignment_boundary
+  pa_hat <- pack_par(par_hat)
+  mu_hat <- compute_mu(pa_hat$beta)$mu
+  r_fix <- wrap(y - mu_hat)
+  alignment_boundary <- initial_alignment_boundary || perfect_within(r_fix)
+  independence_logLik <- pa_hat$kappa_e * sum(cos(r_fix)) -
+    n * (log(2 * pi) + logI0(pa_hat$kappa_e))
+  independence_boundary <- conv && !alignment_boundary && !any(lower_active) &&
+    independence_logLik > val + ctrl$reltol * (1 + abs(val))
+  boundary <- any(lower_active) || alignment_boundary || independence_boundary
   if (alignment_boundary) {
     conv <- FALSE
     warning("Perfect within-group alignment gives an unbounded likelihood; no finite maximum exists and Wald inference is unavailable.", call. = FALSE)
+  } else if (independence_boundary) {
+    conv <- FALSE
+    warning("The independent limit has higher likelihood than the finite grouped fit. Wald inference is unavailable.", call. = FALSE)
   } else if (!conv && ctrl$maxit > 0L) {
     warning("Grouped model convergence was not established; inspect score_norm and optim_message.", call. = FALSE)
   }
@@ -451,18 +530,16 @@ angular_re <- function(
   parameter_names <- c(betaname, "kappa_e", "kappa_a")
   V_model <- .named_covariance(V_model, parameter_names)
   V_robust <- .named_covariance(V_robust, parameter_names)
-  fit_status <- if (alignment_boundary) "unbounded_likelihood" else if (any(lower_active)) {
+  fit_status <- if (alignment_boundary) "unbounded_likelihood" else if (independence_boundary) {
+    "independence_limit"
+  } else if (any(lower_active)) {
     "zero_concentration"
   } else if (!conv) "not_converged" else if (isTRUE(ctrl$hessian) && !inference_available) {
     "singular_information"
   } else "converged"
 
   # extract components and diagnostics
-  pa_hat <- pack_par(par_hat)
   names(pa_hat$beta) <- betaname
-  cmh <- compute_mu(pa_hat$beta)
-  mu_hat <- cmh$mu
-  r_fix <- wrap(y - mu_hat)
 
   # random effects predictors per cluster
   a_hat <- numeric(m)
@@ -509,8 +586,11 @@ angular_re <- function(
   out <- list(
     call = call,
     formula = formula,
+    fixed_formula = fixed_formula,
+    group_name = group,
     model_data = mf,
     logLik = val,
+    independence_logLik = independence_logLik,
     convergence = conv,
     fit_status = fit_status,
     inference_available = inference_available,
@@ -567,7 +647,7 @@ angular_re <- function(
 #' d <- sh[rep(1:24, each = 5), ]
 #' d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
 #' d$ref <- d$Azimuth * pi / 180
-#' fit <- angular_re(y ~ ref, d, d$Anim)
+#' fit <- angular_re(y ~ ref + (1 | Anim), data = d)
 #' summary(fit)
 #' vcov(fit, robust = TRUE)
 #' @export
@@ -729,7 +809,7 @@ residuals.angular_re <- function(
 #' d <- sh[rep(1:24, each = 5), ]
 #' d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
 #' d$ref <- d$Azimuth * pi / 180
-#' fit <- angular_re(y ~ ref, d, d$Anim)
+#' fit <- angular_re(y ~ ref + (1 | Anim), data = d)
 #' head(ranef.angular_re(fit))
 #' @export
 ranef.angular_re <- function(object, ...) object$ranef
@@ -813,7 +893,7 @@ fitted.angular_re <- function(object, ...) .restore_excluded(object, object$mu)
 #' d <- sh[rep(1:24, each = 5), ]
 #' d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
 #' d$ref <- d$Azimuth * pi / 180
-#' fit <- angular_re(y ~ ref, d, d$Anim)
+#' fit <- angular_re(y ~ ref + (1 | Anim), data = d)
 #' if (all(vapply(c("ggplot2", "ggcircular", "gridExtra"),
 #'                requireNamespace, logical(1), quietly = TRUE))) plot(fit)
 #' @export
@@ -860,15 +940,18 @@ plot.angular_re <- function(
 #' Predict method for angular_re objects
 #'
 #' @param object an \code{angular_re} fit.
-#' @param newdata data.frame; if NULL, uses model frame from the original call.
-#' @param cluster optional vector/factor of cluster IDs for newdata.
+#' @param newdata Data frame, list or environment containing all fixed-effect
+#'   predictors. If \code{NULL}, use the original model frame.
+#' @param cluster Optional vector or factor of cluster identifiers. For
+#'   conditional prediction, the grouping variable in \code{newdata} is used
+#'   by default if it was specified in the fitted formula.
 #' @param type One of \code{"auto"} (default), \code{"marginal"} (mean
 #'        direction) or \code{"conditional"} (mean direction plus the predicted
 #'        random intercept). With \code{"auto"} the conditional mean is returned
-#'        whenever cluster information is provided; otherwise the marginal mean
-#'        is used.
-#' @param a_hat optional numeric vector of random-intercept predictions to use
-#'        for \code{cluster} (same length as newdata). Ignored unless \code{type="conditional"}.
+#'        when \code{cluster} or \code{a_hat} is supplied. Otherwise the
+#'        marginal mean is used.
+#' @param a_hat Optional numeric vector of random intercepts for conditional
+#'        prediction, of length one or one value per prediction.
 #' @param se.fit not implemented (reserved).
 #' @param ... unused
 #' @return numeric vector (angles in radians).
@@ -883,8 +966,8 @@ plot.angular_re <- function(
 #' d <- sh[rep(1:24, each = 5), ]
 #' d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
 #' d$ref <- d$Azimuth * pi / 180
-#' fit <- angular_re(y ~ ref, d, d$Anim)
-#' head(predict(fit, type = "conditional"))
+#' fit <- angular_re(y ~ ref + (1 | Anim), data = d)
+#' predict(fit, newdata = head(d), type = "conditional")
 #' @export
 predict.angular_re <- function(
   object,
@@ -898,11 +981,11 @@ predict.angular_re <- function(
   type <- match.arg(type)
   if (isTRUE(se.fit)) stop("se.fit not implemented for angular_re.")
 
-  form <- object$formula
+  form <- object$fixed_formula %||% object$formula
 
   parse_design <- function(formula, data) {
     info <- .parse_term_labels(object$term_labels, formula)
-    design <- .new_term_design(info, formula, data)
+    design <- .new_term_design(info, data)
     list(x0 = design$matx[, 1L],
          matx = design$matx[, -1L, drop = FALSE],
          matz = design$matz[, -1L, drop = FALSE],
@@ -949,7 +1032,16 @@ predict.angular_re <- function(
     if (is.null(newdata)) {
       cluster <- object$cluster
     } else {
-      stop("For conditional predictions, provide 'cluster' or 'a_hat'.")
+      group <- object$group_name
+      if (!is.null(group)) cluster <- newdata[[group]]
+      if (is.null(cluster)) {
+        message <- if (is.null(group)) {
+          "For conditional predictions, provide 'cluster' or 'a_hat'."
+        } else {
+          sprintf("Include '%s' in 'newdata' or supply 'cluster' or 'a_hat'.", group)
+        }
+        stop(message, call. = FALSE)
+      }
     }
   }
 
@@ -991,8 +1083,7 @@ predict.angular_re <- function(
 #'
 #' Draws one arrow per cluster pointing in the direction of the estimated
 #' random intercept \eqn{\hat a_i}. Arrow length is either A1(kappa_a) or 1.
-#' If the 'circular' package is available, uses it for nicer axes; otherwise
-#' falls back to base polar plotting.
+#' Uses \pkg{ggcircular} when available, with a \pkg{circular} fallback.
 #'
 #' @param x an object of class \code{angular_re}
 #' @param scale character, one of \code{"A1_kappa_a"} (default) or \code{"unit"}.
@@ -1007,7 +1098,7 @@ predict.angular_re <- function(
 #' d <- sh[rep(1:24, each = 5), ]
 #' d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
 #' d$ref <- d$Azimuth * pi / 180
-#' fit <- angular_re(y ~ ref, d, d$Anim)
+#' fit <- angular_re(y ~ ref + (1 | Anim), data = d)
 #' plot_ranef.angular_re(fit)
 #' @export
 plot_ranef.angular_re <- function(
@@ -1022,15 +1113,36 @@ plot_ranef.angular_re <- function(
   a_hat <- as.numeric(x$ranef)
   names(a_hat) <- names(x$ranef)
 
-  A1 <- function(k) {
-    num <- besselI(k, 1, expon.scaled = TRUE)
-    den <- besselI(k, 0, expon.scaled = TRUE)
-    r <- num / den
-    r[k == 0] <- 0
-    r
+  L <- if (scale == "unit") 1 else .A1_ratio(x$kappa_a)
+
+  if (requireNamespace("ggcircular", quietly = TRUE)) {
+    arrows_data <- data.frame(angle = a_hat, group = names(a_hat),
+                              tip_x = 1.04 * L * cos(a_hat), tip_y = 1.04 * L * sin(a_hat))
+    angle <- seq(0, 2 * pi, length.out = 361)
+    circle <- data.frame(x = cos(angle), y = sin(angle))
+    ticks <- data.frame(x = c(1.12, 0, -1.12, 0), y = c(0, 1.12, 0, -1.12),
+                        label = c("0", "pi/2", "pi", "-pi/2"))
+    plot <- ggplot2::ggplot() +
+      ggplot2::geom_path(data = circle, ggplot2::aes(x = .data$x, y = .data$y),
+                         colour = "grey65") +
+      ggcircular::geom_direction_arrow(
+        data = arrows_data, ggplot2::aes(x = 0, y = 0, angle = .data$angle),
+        length = L, alpha = 0.55, colour = "#1F5A7A"
+      ) +
+      ggplot2::geom_text(data = ticks, ggplot2::aes(x = .data$x, y = .data$y, label = .data$label),
+                         size = 3) +
+      ggplot2::coord_equal(xlim = c(-1.22, 1.22), ylim = c(-1.22, 1.22)) +
+      ggplot2::labs(title = main, subtitle = sprintf("Common arrow length = %.3f", L)) +
+      ggplot2::theme_void()
+    if (labels) {
+      plot <- plot + ggplot2::geom_text(
+        data = arrows_data, ggplot2::aes(x = .data$tip_x, y = .data$tip_y, label = .data$group),
+        size = 3.5 * cex.labels
+      )
+    }
+    print(plot)
+    return(invisible(x))
   }
-  L <- if (scale == "unit") 1 else A1(x$kappa_a)
-  L <- as.numeric(L)
 
   has_circ <- requireNamespace("circular", quietly = TRUE)
 

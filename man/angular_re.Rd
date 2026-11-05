@@ -7,7 +7,7 @@
 angular_re(
   formula,
   data,
-  cluster,
+  cluster = NULL,
   init = list(),
   control = list(),
   na.action = stats::na.omit
@@ -16,13 +16,14 @@ angular_re(
 \arguments{
 \item{formula}{Model formula with a circular response and terms of the form
 \code{x} or \code{x:z}. The first angular covariate supplies the reference
-direction whose coefficient is fixed to one.}
+direction whose coefficient is fixed to one. Add a single \code{(1 | group)}
+term for one random intercept per level of the grouping variable.}
 
 \item{data}{A data frame containing the variables used in \code{formula}.}
 
-\item{cluster}{Factor or vector of cluster identifiers. It must have length
-equal to \code{nrow(data)} or to the model-frame size after missing-value
-handling.}
+\item{cluster}{Optional factor or vector of cluster identifiers, supplied
+in place of a grouping term in \code{formula}. It must have length equal
+to \code{nrow(data)} or to the model-frame size after missing-value handling.}
 
 \item{init}{Optional list with components \code{beta}, \code{kappa_e}, and
 \code{kappa_a} providing starting values. Missing entries are filled with
@@ -35,7 +36,8 @@ indicating whether \code{angular()} should be used to initialise the fixed
 effects.}
 
 \item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
-missing values. The default is \code{\link[stats]{na.omit}}.}
+missing values, including missing group identifiers in the formula.
+The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
 An object of class \code{"angular_re"} containing fixed-effect
@@ -58,8 +60,11 @@ The reported log-likelihood includes all normalizing constants.
   Regular Wald covariances are unavailable at a zero-concentration boundary.
   Cluster-robust inference assumes independent clusters and sufficiently many
   clusters; it has no small-sample correction. Singleton-only groups cannot
-  distinguish the two concentrations and are rejected. At very large
-  random-intercept concentration, the fit approaches an independent model.
+  distinguish the two concentrations and are rejected. The independent
+  limit as the random-intercept concentration tends to infinity is
+  evaluated at the fitted fixed effects and error concentration.
+  If it improves the likelihood, \code{fit_status = "independence_limit"}
+  and the finite fit is retained for diagnosis with Wald inference unavailable.
   Perfect within-group alignment gives an unbounded likelihood as the error
   concentration increases. Such fits have
   \code{fit_status = "unbounded_likelihood"}, \code{convergence = FALSE}, and
@@ -71,24 +76,14 @@ The reported log-likelihood includes all normalizing constants.
   recorded in \code{optimization_polished}.
 }
 \examples{
-data(Sandhopper)
-columns <- c(paste0("LN", 1:5), "Azimuth", "DirW", "SpeedW")
-wide <- Sandhopper[stats::complete.cases(Sandhopper[columns]), ]
-wide <- wide[seq_len(min(24L, nrow(wide))), ]
-sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
-sh$y <- as.vector(t(as.matrix(wide[paste0("LN", 1:5)]))) * pi / 180
-sh$ref <- sh$Azimuth * pi / 180
-sh$wind <- sh$DirW * pi / 180
-sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
+data(sandhopper_trials)
 
 fit <- angular_re(
-  y ~ ref + wind:wind_speed,
-  data = sh,
-  cluster = sh$Anim,
-  control = list(maxit = 200, reltol = 1e-8)
+  escape ~ sun + wind:wind_speed + (1 | Anim),
+  data = sandhopper_trials
 )
 coef(fit)
-head(predict(fit))
+predict(fit, newdata = head(sandhopper_trials), type = "conditional")
 }
 \references{
 Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).

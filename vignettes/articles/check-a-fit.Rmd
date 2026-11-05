@@ -1,0 +1,37 @@
+---
+title: "Check a fit"
+description: "Read fit status, standard errors and residual diagnostics."
+---
+
+Read `fit_status` and `inference_available` before interpreting standard
+errors. The following six artificial observations illustrate a consensus
+fit with one zero modifier.
+
+```{r}
+library(CircularRegression)
+
+d <- data.frame(
+  y = c(-0.6, 0.4, 0, -0.2, 0.5, 0.1),
+  x = 0,
+  z = c(1, 0.7, 0, 1, 1.5, 1)
+)
+fit <- consensus(y ~ x:z, d)
+fit$fit_status
+fit$inference_available
+cbind(
+  model = sqrt(diag(vcov(fit))),
+  sandwich = sqrt(diag(vcov(fit, robust = TRUE)))
+)
+```
+
+The sandwich uses independent observation scores. In this example the
+third fitted direction and residual are undefined because the resultant
+length is zero. The index plot uses `ggcircular` points and a radian scale,
+leaving a gap at that observation. The PIT plot (`type = "pit"`) uses the
+residuals with defined directions and their matching fitted concentrations.
+
+```{r, fig.width=6, fig.height=3, fig.alt="Residuals in observation order, with a gap at observation three and a note that one residual is undefined."}
+plot(fit, type = "index")
+```
+
+[Full guide to model checking](model-workflow-and-diagnostics.html).

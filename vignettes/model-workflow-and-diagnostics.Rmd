@@ -105,19 +105,29 @@ weighted BIC convention uses the number of retained rows.
 
 ## Read circular residual diagnostics
 
-```{r, fig.width=8, fig.height=5, fig.alt="Four diagnostics for the simulated homogeneous fit: residual rose, von Mises PIT quantiles, residuals against fitted direction, and residuals in observation order."}
-if (all(vapply(c("ggplot2", "ggcircular", "gridExtra"),
-               requireNamespace, logical(1), quietly = TRUE))) {
-  plot(fit, type = "all", bins = 12)
-}
+The `ggcircular` rose compares the residual distribution with the fitted von
+Mises bin expectation. The fitted-direction plot shows whether residuals
+vary systematically across the fitted angles.
+
+```{r residual-rose, eval=requireNamespace("ggcircular", quietly=TRUE), fig.alt="Circular rose and kernel density of the simulated fit residuals with a fitted von Mises reference."}
+plot(fit, type = "rose", bins = 12)
 ```
 
-The rose compares residual shape with the fitted von Mises bin expectation.
-The PIT plot compares fitted-distribution probabilities with uniform quantiles.
+```{r fitted-residuals, eval=requireNamespace("ggcircular", quietly=TRUE), fig.alt="Wrapped residuals against fitted direction, with axes in radians."}
+plot(fit, type = "fitted")
+```
+
+Use the PIT Q-Q plot to compare fitted-distribution probabilities with uniform
+quantiles and the index plot to check for changes over observation order.
+
+```{r probability-and-index-diagnostics, eval=FALSE}
+plot(fit, type = "pit")
+plot(fit, type = "index")
+```
+
 Curvature can suggest a distributional mismatch, but the diagonal is descriptive
-because the same observations estimated the parameters. The other panels help
-locate systematic mean patterns, unusual records or changes over observation
-order. A concentrated rose alone is not evidence of independence.
+because the same observations estimated the parameters. A concentrated rose
+alone is not evidence of independence.
 
 A useful response to a pattern is to inspect the implicated records and
 covariates, then assess a scientifically motivated change to the model.

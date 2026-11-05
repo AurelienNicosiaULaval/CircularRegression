@@ -1,3 +1,18 @@
+# CircularRegression 0.7.3
+
+* Withhold Wald inference when a zero-reference limit improves the homogeneous
+  criterion or the independent limit improves the grouped likelihood.
+* Require all fitted predictors in new data and support prediction from
+  dot formulas. Keep T2 regularity checks active with `check = FALSE`.
+  Reject lag names that already exist in the data.
+
+* Add `sandhopper_trials`, a trial-level version of `Sandhopper` with angles
+  in radians, and use it in the random-intercept guides.
+
+* Accept a single `(1 | group)` term in `angular_re()` formulas. Conditional
+  predictions can read that grouping column from `newdata`. The `cluster`
+  argument is still supported.
+
 # CircularRegression 0.7.2
 
 * Handle undefined consensus residuals in diagnostic plots. Keep residuals and

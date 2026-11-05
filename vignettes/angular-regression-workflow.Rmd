@@ -105,19 +105,12 @@ head(fitted(fit_hom))
 head(residuals(fit_hom))
 ```
 
-A lightweight base-R residual plot is often sufficient for a first diagnostic
-check.
+Plot the wrapped residuals against the fitted directions to look for structure
+in the mean fit. The diagnostic uses the point layer and fitted-direction
+scale from `ggcircular`.
 
-```{r, fig.alt="Wrapped residuals from a homogeneous bison model against fitted direction, with zero marked."}
-plot(
-  fitted(fit_hom),
-  residuals(fit_hom),
-  xlab = "Fitted direction",
-  ylab = "Circular residual",
-  pch = 19,
-  col = "gray30"
-)
-abline(h = 0, lty = 2)
+```{r fitted-residuals, eval=requireNamespace("ggcircular", quietly=TRUE), fig.alt="Wrapped residuals from a homogeneous bison model against fitted direction, with both axes marked in radians."}
+plot(fit_hom, type = "fitted")
 ```
 
 ## Special-Case Wrappers

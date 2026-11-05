@@ -26,9 +26,9 @@ cbind(
 
 The sandwich uses independent observation scores. In this example the
 third fitted direction and residual are undefined because the resultant
-length is zero. The index plot leaves a gap at that observation. The PIT
-plot (`type = "pit"`) uses the residuals with defined directions and their
-matching fitted concentrations.
+length is zero. The index plot uses `ggcircular` points and a radian scale,
+leaving a gap at that observation. The PIT plot (`type = "pit"`) uses the
+residuals with defined directions and their matching fitted concentrations.
 
 ```{r, fig.width=6, fig.height=3, fig.alt="Residuals in observation order, with a gap at observation three and a note that one residual is undefined."}
 plot(fit, type = "index")

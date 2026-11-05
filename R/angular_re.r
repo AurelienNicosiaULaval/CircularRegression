@@ -86,8 +86,11 @@
 #'   Regular Wald covariances are unavailable at a zero-concentration boundary.
 #'   Cluster-robust inference assumes independent clusters and sufficiently many
 #'   clusters; it has no small-sample correction. Singleton-only groups cannot
-#'   distinguish the two concentrations and are rejected. At very large
-#'   random-intercept concentration, the fit approaches an independent model.
+#'   distinguish the two concentrations and are rejected. The independent
+#'   limit as the random-intercept concentration tends to infinity is
+#'   evaluated at the fitted fixed effects and error concentration.
+#'   If it improves the likelihood, \code{fit_status = "independence_limit"}
+#'   and the finite fit is retained for diagnosis with Wald inference unavailable.
 #'   Perfect within-group alignment gives an unbounded likelihood as the error
 #'   concentration increases. Such fits have
 #'   \code{fit_status = "unbounded_likelihood"}, \code{convergence = FALSE}, and
@@ -479,12 +482,21 @@ angular_re <- function(
   projected_score[lower_active] <- pmax(projected_score[lower_active], 0)
   score_norm <- max(abs(projected_score)) / n
   conv <- (opt$convergence == 0 && score_norm <= sqrt(ctrl$reltol))
-  alignment_boundary <- initial_alignment_boundary ||
-    perfect_within(wrap(y - compute_mu(par_hat[seq_len(nparam)])$mu))
-  boundary <- any(lower_active) || alignment_boundary
+  pa_hat <- pack_par(par_hat)
+  mu_hat <- compute_mu(pa_hat$beta)$mu
+  r_fix <- wrap(y - mu_hat)
+  alignment_boundary <- initial_alignment_boundary || perfect_within(r_fix)
+  independence_logLik <- pa_hat$kappa_e * sum(cos(r_fix)) -
+    n * (log(2 * pi) + logI0(pa_hat$kappa_e))
+  independence_boundary <- conv && !alignment_boundary && !any(lower_active) &&
+    independence_logLik > val + ctrl$reltol * (1 + abs(val))
+  boundary <- any(lower_active) || alignment_boundary || independence_boundary
   if (alignment_boundary) {
     conv <- FALSE
     warning("Perfect within-group alignment gives an unbounded likelihood; no finite maximum exists and Wald inference is unavailable.", call. = FALSE)
+  } else if (independence_boundary) {
+    conv <- FALSE
+    warning("The independent limit has higher likelihood than the finite grouped fit. Wald inference is unavailable.", call. = FALSE)
   } else if (!conv && ctrl$maxit > 0L) {
     warning("Grouped model convergence was not established; inspect score_norm and optim_message.", call. = FALSE)
   }
@@ -518,18 +530,16 @@ angular_re <- function(
   parameter_names <- c(betaname, "kappa_e", "kappa_a")
   V_model <- .named_covariance(V_model, parameter_names)
   V_robust <- .named_covariance(V_robust, parameter_names)
-  fit_status <- if (alignment_boundary) "unbounded_likelihood" else if (any(lower_active)) {
+  fit_status <- if (alignment_boundary) "unbounded_likelihood" else if (independence_boundary) {
+    "independence_limit"
+  } else if (any(lower_active)) {
     "zero_concentration"
   } else if (!conv) "not_converged" else if (isTRUE(ctrl$hessian) && !inference_available) {
     "singular_information"
   } else "converged"
 
   # extract components and diagnostics
-  pa_hat <- pack_par(par_hat)
   names(pa_hat$beta) <- betaname
-  cmh <- compute_mu(pa_hat$beta)
-  mu_hat <- cmh$mu
-  r_fix <- wrap(y - mu_hat)
 
   # random effects predictors per cluster
   a_hat <- numeric(m)
@@ -580,6 +590,7 @@ angular_re <- function(
     group_name = group,
     model_data = mf,
     logLik = val,
+    independence_logLik = independence_logLik,
     convergence = conv,
     fit_status = fit_status,
     inference_available = inference_available,
@@ -929,7 +940,8 @@ plot.angular_re <- function(
 #' Predict method for angular_re objects
 #'
 #' @param object an \code{angular_re} fit.
-#' @param newdata data.frame; if NULL, uses model frame from the original call.
+#' @param newdata Data frame, list or environment containing all fixed-effect
+#'   predictors. If \code{NULL}, use the original model frame.
 #' @param cluster Optional vector or factor of cluster identifiers. For
 #'   conditional prediction, the grouping variable in \code{newdata} is used
 #'   by default if it was specified in the fitted formula.
@@ -973,7 +985,7 @@ predict.angular_re <- function(
 
   parse_design <- function(formula, data) {
     info <- .parse_term_labels(object$term_labels, formula)
-    design <- .new_term_design(info, formula, data)
+    design <- .new_term_design(info, data)
     list(x0 = design$matx[, 1L],
          matx = design$matx[, -1L, drop = FALSE],
          matz = design$matz[, -1L, drop = FALSE],
@@ -1071,8 +1083,7 @@ predict.angular_re <- function(
 #'
 #' Draws one arrow per cluster pointing in the direction of the estimated
 #' random intercept \eqn{\hat a_i}. Arrow length is either A1(kappa_a) or 1.
-#' If the 'circular' package is available, uses it for nicer axes; otherwise
-#' falls back to base polar plotting.
+#' Uses \pkg{ggcircular} when available, with a \pkg{circular} fallback.
 #'
 #' @param x an object of class \code{angular_re}
 #' @param scale character, one of \code{"A1_kappa_a"} (default) or \code{"unit"}.
@@ -1102,15 +1113,36 @@ plot_ranef.angular_re <- function(
   a_hat <- as.numeric(x$ranef)
   names(a_hat) <- names(x$ranef)
 
-  A1 <- function(k) {
-    num <- besselI(k, 1, expon.scaled = TRUE)
-    den <- besselI(k, 0, expon.scaled = TRUE)
-    r <- num / den
-    r[k == 0] <- 0
-    r
+  L <- if (scale == "unit") 1 else .A1_ratio(x$kappa_a)
+
+  if (requireNamespace("ggcircular", quietly = TRUE)) {
+    arrows_data <- data.frame(angle = a_hat, group = names(a_hat),
+                              tip_x = 1.04 * L * cos(a_hat), tip_y = 1.04 * L * sin(a_hat))
+    angle <- seq(0, 2 * pi, length.out = 361)
+    circle <- data.frame(x = cos(angle), y = sin(angle))
+    ticks <- data.frame(x = c(1.12, 0, -1.12, 0), y = c(0, 1.12, 0, -1.12),
+                        label = c("0", "pi/2", "pi", "-pi/2"))
+    plot <- ggplot2::ggplot() +
+      ggplot2::geom_path(data = circle, ggplot2::aes(x = .data$x, y = .data$y),
+                         colour = "grey65") +
+      ggcircular::geom_direction_arrow(
+        data = arrows_data, ggplot2::aes(x = 0, y = 0, angle = .data$angle),
+        length = L, alpha = 0.55, colour = "#1F5A7A"
+      ) +
+      ggplot2::geom_text(data = ticks, ggplot2::aes(x = .data$x, y = .data$y, label = .data$label),
+                         size = 3) +
+      ggplot2::coord_equal(xlim = c(-1.22, 1.22), ylim = c(-1.22, 1.22)) +
+      ggplot2::labs(title = main, subtitle = sprintf("Common arrow length = %.3f", L)) +
+      ggplot2::theme_void()
+    if (labels) {
+      plot <- plot + ggplot2::geom_text(
+        data = arrows_data, ggplot2::aes(x = .data$tip_x, y = .data$tip_y, label = .data$group),
+        size = 3.5 * cex.labels
+      )
+    }
+    print(plot)
+    return(invisible(x))
   }
-  L <- if (scale == "unit") 1 else A1(x$kappa_a)
-  L <- as.numeric(L)
 
   has_circ <- requireNamespace("circular", quietly = TRUE)
 

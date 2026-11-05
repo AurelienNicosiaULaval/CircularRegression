@@ -30,18 +30,12 @@ test_that("angular_re fits and predicts", {
 })
 
 test_that("predict.angular_re no longer depends on calling environment", {
-  set.seed(333)
-  n <- 30
-  cluster <- rep(letters[1:5], each = 6)
-  df <- data.frame(
-    y = runif(n, -pi, pi),
-    ref = runif(n, -pi, pi),
-    cov = runif(n, -pi, pi),
-    scale = runif(n, 0.8, 1.5)
-  )
+  data(sandhopper_trials)
+  df <- stats::na.omit(sandhopper_trials)
+  cluster <- df$Anim
 
-  f <- y ~ ref + cov:scale
-  fit <- angular_re(f, data = df, cluster = cluster, control = list(maxit = 50, reltol = 1e-6))
+  f <- escape ~ sun + wind:wind_speed
+  fit <- angular_re(f, data = df, cluster = cluster)
 
   rm(f)
   rm(df)
@@ -51,25 +45,17 @@ test_that("predict.angular_re no longer depends on calling environment", {
 })
 
 test_that("angular_re aligns cluster with model-frame NA handling", {
-  set.seed(444)
-  n <- 40
-  cluster <- rep(letters[1:5], each = 8)
-  df <- data.frame(
-    y = runif(n, -pi, pi),
-    ref = runif(n, -pi, pi),
-    cov = runif(n, -pi, pi),
-    scale = runif(n, 0.8, 1.5)
-  )
-  df$y[1] <- NA
+  data(sandhopper_trials)
+  df <- stats::na.omit(sandhopper_trials)
+  df$escape[1] <- NA
 
   fit <- angular_re(
-    y ~ ref + cov:scale,
+    escape ~ sun + wind:wind_speed,
     data = df,
-    cluster = cluster,
-    control = list(maxit = 50, reltol = 1e-6)
+    cluster = df$Anim
   )
 
-  expect_equal(length(fit$cluster), n - 1)
+  expect_identical(as.character(fit$cluster), as.character(df$Anim[-1]))
 })
 
 test_that("summary.angular_re is available and coherent", {

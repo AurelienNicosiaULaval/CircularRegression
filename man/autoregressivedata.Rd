@@ -26,6 +26,7 @@ variable so that autoregressive circular regression models can be fitted.
 Lags follow the existing row order within each group. Sort the data
   by time first if necessary. Groups shorter than a requested lag receive
   missing values, and missing group identifiers are rejected. This utility
+  rejects lag names already present in the data. It
   does not model dependence or provide serially robust inference.
 }
 \examples{

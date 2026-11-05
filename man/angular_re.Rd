@@ -60,8 +60,11 @@ The reported log-likelihood includes all normalizing constants.
   Regular Wald covariances are unavailable at a zero-concentration boundary.
   Cluster-robust inference assumes independent clusters and sufficiently many
   clusters; it has no small-sample correction. Singleton-only groups cannot
-  distinguish the two concentrations and are rejected. At very large
-  random-intercept concentration, the fit approaches an independent model.
+  distinguish the two concentrations and are rejected. The independent
+  limit as the random-intercept concentration tends to infinity is
+  evaluated at the fitted fixed effects and error concentration.
+  If it improves the likelihood, \code{fit_status = "independence_limit"}
+  and the finite fit is retained for diagnosis with Wald inference unavailable.
   Perfect within-group alignment gives an unbounded likelihood as the error
   concentration increases. Such fits have
   \code{fit_status = "unbounded_likelihood"}, \code{convergence = FALSE}, and

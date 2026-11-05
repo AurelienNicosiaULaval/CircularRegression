@@ -39,7 +39,7 @@ test_that("noshiro data fit a reference-only homogeneous model", {
 
 test_that("special-case wrappers expose natural-parameter outputs on package data", {
   data(bison)
-  d <- na.omit(bison[seq_len(80), c("y.dir", "y.prec", "z.gap")])
+  d <- na.omit(bison[seq_len(180), c("y.dir", "y.prec", "z.gap")])
 
   mean_fit <- meanDirectionModel(d["y.dir"], response = "y.dir")
   dec_fit <- decentredPredictorModel(d[c("y.dir", "y.prec")], response = "y.dir", w = "y.prec")

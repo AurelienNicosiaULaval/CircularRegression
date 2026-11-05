@@ -64,7 +64,8 @@ For \code{plot()}, select \code{"all"}, \code{"rose"}, \code{"pit"},
 weighted scores when \code{TRUE}. Weights are case weights, not cluster
 identifiers; the sandwich uses squared weights in its middle matrix.}
 
-\item{newdata}{Optional data frame for prediction.}
+\item{newdata}{Optional data frame, list or environment for prediction.
+It must contain every predictor used in the fitted model.}
 
 \item{bins}{Number of bins in a circular residual rose plot.}
 

@@ -30,8 +30,7 @@ Controls the common arrow length.}
 \description{
 Draws one arrow per cluster pointing in the direction of the estimated
 random intercept \eqn{\hat a_i}. Arrow length is either A1(kappa_a) or 1.
-If the 'circular' package is available, uses it for nicer axes; otherwise
-falls back to base polar plotting.
+Uses \pkg{ggcircular} when available, with a \pkg{circular} fallback.
 }
 \examples{
 data(Sandhopper)

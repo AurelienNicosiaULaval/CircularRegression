@@ -49,7 +49,8 @@
 \item{robust}{Logical; for \code{vcov()}, return the sandwich covariance
 matrix when \code{TRUE}.}
 
-\item{newdata}{Optional data frame for prediction.}
+\item{newdata}{Optional data frame, list or environment for prediction.
+It must contain every predictor used in the fitted model.}
 
 \item{type}{For \code{predict()}, use \code{"response"} for fitted angles in
 radians or \code{"components"} for cosine and sine components. For

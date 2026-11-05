@@ -17,7 +17,8 @@
 \arguments{
 \item{object}{an \code{angular_re} fit.}
 
-\item{newdata}{data.frame; if NULL, uses model frame from the original call.}
+\item{newdata}{Data frame, list or environment containing all fixed-effect
+predictors. If \code{NULL}, use the original model frame.}
 
 \item{cluster}{Optional vector or factor of cluster identifiers. For
 conditional prediction, the grouping variable in \code{newdata} is used

@@ -12,9 +12,10 @@ angular_lrtest(full, reduced, check = TRUE)
 \item{reduced}{Object of class \code{"angular"} (nested reduced model).}
 
 \item{check}{Logical; check that samples, shared variables, term nesting,
-reference directions and signs agree, and both fits have converged.
+reference directions and signs agree.
 Setting this to \code{FALSE} bypasses these structural checks only and
-places responsibility for the test assumptions on the caller.}
+places responsibility for the test assumptions on the caller.
+Both fits must have converged with finite positive concentrations.}
 }
 \value{
 An object of class \code{"htest"}.

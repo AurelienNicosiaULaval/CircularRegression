@@ -146,14 +146,18 @@ jam_fit <- jammalamadakaModel(
 mean_fit$natural_parameters
 dec_fit$natural_parameters
 pres_fit$natural_parameters
+pres_fit$natural_orientation
 jam_fit$natural_parameters
+jam_fit$natural_orientation
 ```
 
-For affine and first-harmonic curves, the ratios alone are not enough:
-`natural_orientation` gives the sign by which both vector components must be
-multiplied before calling `atan2()`. Natural covariances use analytic
-Jacobians and require stable, identifiable parameterizations. Equality of a
-mean curve does not imply equality with a projected-normal probability model.
+Each table gives estimates and model-based and sandwich standard errors on
+the natural scale. The delta method uses the analytic Jacobian of the
+transformation. For the affine curve, the direction is the argument of
+\(s\{1+\beta_3z+i(\beta_2+\beta_4z)\}\), where `natural_orientation` supplies
+\(s\). The first-harmonic curve also multiplies both vector components by
+that sign before calling `atan2()`. These standard errors require a regular
+fit and a stable parameterization. The fitted error law is von Mises.
 
 ## Random-Intercept Fit
 

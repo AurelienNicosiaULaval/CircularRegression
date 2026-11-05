@@ -12,6 +12,7 @@
 #' @details Lags follow the existing row order within each group. Sort the data
 #'   by time first if necessary. Groups shorter than a requested lag receive
 #'   missing values, and missing group identifiers are rejected. This utility
+#'   rejects lag names already present in the data. It
 #'   does not model dependence or provide serially robust inference.
 #' @examples
 #' data(bison)
@@ -31,9 +32,15 @@ autoregressivedata <- function(data, response, p, ID = NULL) {
 
   if (!is.null(ID) && anyNA(data[[ID]])) stop("Grouping identifiers must not be missing.")
   p <- as.integer(p)
+  lag_names <- paste0(response, "_tm", seq_len(p))
+  collisions <- intersect(lag_names, names(data))
+  if (length(collisions)) {
+    stop(sprintf("Lag column(s) already present: %s.", paste(collisions, collapse = ", ")),
+         call. = FALSE)
+  }
   groups <- if (is.null(ID)) list(seq_len(nrow(data))) else split(seq_len(nrow(data)), data[[ID]])
   for (k in seq_len(p)) {
-    colname <- paste0(response, "_tm", k)
+    colname <- lag_names[k]
     data[[colname]] <- data[[response]][rep(NA_integer_, nrow(data))]
     for (idx in groups) {
       if (length(idx) > k) {

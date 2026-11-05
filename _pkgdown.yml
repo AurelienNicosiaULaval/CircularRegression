@@ -87,5 +87,7 @@ articles:
 
 news:
   releases:
+  - text: "Version 0.7.3"
+    href: news/index.html#circularregression-073
   - text: "Version 0.7.2"
     href: news/index.html#circularregression-072

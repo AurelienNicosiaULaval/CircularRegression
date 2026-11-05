@@ -585,14 +585,23 @@ print.select_reference_angle <- function(x, digits = 4, ...) {
   idx
 }
 
-.rhs_model_frame <- function(formula, data, na.action = stats::na.pass) {
-  rhs_terms <- stats::delete.response(stats::terms(formula))
-  stats::model.frame(rhs_terms, data = data, na.action = na.action)
-}
-
-.new_term_design <- function(term_info, formula, newdata) {
-  mf <- .rhs_model_frame(formula = formula, data = newdata)
-  n <- nrow(mf)
+.new_term_design <- function(term_info, newdata) {
+  if (!is.list(newdata) && !is.environment(newdata)) {
+    stop("'newdata' must be a data frame, list or environment.", call. = FALSE)
+  }
+  # Fitted term roles also resolve '.' and prevent lookup in the formula environment.
+  predictors <- unique(c(term_info$angle, term_info$modifier[term_info$has_modifier]))
+  available <- if (is.environment(newdata)) ls(newdata, all.names = TRUE) else names(newdata)
+  missing <- setdiff(predictors, available)
+  if (length(missing)) {
+    stop(sprintf("Predictor(s) not found in 'newdata': %s.", paste(missing, collapse = ", ")),
+         call. = FALSE)
+  }
+  columns <- stats::setNames(lapply(predictors, function(name) newdata[[name]]), predictors)
+  n <- length(columns[[1L]])
+  if (any(lengths(columns) != n)) {
+    stop("Predictors in 'newdata' must have the same length.", call. = FALSE)
+  }
   p <- nrow(term_info)
   matx <- matrix(0, nrow = n, ncol = p)
   matz <- matrix(1, nrow = n, ncol = p)
@@ -601,17 +610,11 @@ print.select_reference_angle <- function(x, digits = 4, ...) {
 
   for (j in seq_len(p)) {
     angle_name <- term_info$angle[j]
-    if (!angle_name %in% names(mf)) {
-      stop(sprintf("Angle variable '%s' not found in 'newdata'.", angle_name), call. = FALSE)
-    }
-    matx[, j] <- as.numeric(.validate_angle_vector(mf[[angle_name]], angle_name))
+    matx[, j] <- as.numeric(.validate_angle_vector(columns[[angle_name]], angle_name))
 
     if (isTRUE(term_info$has_modifier[j])) {
       modifier_name <- term_info$modifier[j]
-      if (!modifier_name %in% names(mf)) {
-        stop(sprintf("Modifier '%s' not found in 'newdata'.", modifier_name), call. = FALSE)
-      }
-      z <- as.numeric(.validate_numeric_vector(mf[[modifier_name]], modifier_name))
+      z <- as.numeric(.validate_numeric_vector(columns[[modifier_name]], modifier_name))
       if (any(!is.finite(z)) || any(z < 0)) {
         stop(sprintf("Modifier '%s' must be finite and non-negative.", modifier_name), call. = FALSE)
       }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/wrapper.R
 \name{presnellModel}
 \alias{presnellModel}
-\title{Presnell Model Wrapper (two-step workflow)}
+\title{Affine Vector Mean Curve Wrapper (two-step workflow)}
 \usage{
 presnellModel(data, response, w, ...)
 }
@@ -17,14 +17,31 @@ presnellModel(data, response, w, ...)
 }
 \value{
 A list with \code{consensus_fit}, \code{homogeneous_fit},
-  \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
+  \code{reference}, \code{reference_stability}, \code{data_aug},
+  \code{formula}, and natural-parameter
   outputs \code{natural_parameters}, \code{natural_vcov_model},
-  \code{natural_vcov_robust}, \code{natural_jacobian}.
+  \code{natural_vcov_robust}, \code{natural_jacobian}, and
+  \code{natural_stability}.
 }
 \description{
-Fits the Presnell special case by building the linear and orthogonal
+Fits an affine vector mean curve by building the linear and orthogonal
 synthetic terms required by the homogeneous angular formulation. The returned
 natural parameters are ratios computed from the homogeneous coefficients.
+The curve is related to the mean construction in the projected multivariate
+linear model of Presnell et al. (1998), but this function fits the homogeneous
+von Mises angular model rather than a projected-normal likelihood.
+}
+\details{
+The natural ratios divide by the first synthetic coefficient. The package
+also returns \code{natural_orientation}, its sign. Multiply both reconstructed
+vector components by this sign before applying \code{atan2()}; otherwise a
+negative denominator reverses the fitted direction by pi radians.
+The package
+compares its absolute value with
+\eqn{\sqrt{\epsilon_{\mathrm{mach}}}\lVert b\rVert_2} and emits a warning
+when this ratio chart is numerically singular. In that case, the underlying
+fitted resultant may remain usable, but the returned ratios and their
+delta-method standard errors are unstable or undefined.
 }
 \examples{
 data(bison)
@@ -33,7 +50,11 @@ fit <- presnellModel(d, response = "y.dir", w = "z.gap")
 fit$natural_parameters
 }
 \references{
-Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
+Presnell, B., Morrison, S. P., and Littell, R. C. (1998).
+  Projected multivariate linear models for directional data. \emph{Journal
+  of the American Statistical Association}, 93(443), 1068-1077.
+
+  Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
   A general angular regression model for the analysis of data on animal
   movement in ecology. \emph{Journal of the Royal Statistical Society:
   Series C (Applied Statistics)}, 65(3), 445-463.

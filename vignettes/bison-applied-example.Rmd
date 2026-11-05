@@ -1,6 +1,8 @@
 ---
 title: "Applied Example with Bison Movement Data"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    math_method: mathml
 vignette: >
   %\VignetteIndexEntry{Applied Example with Bison Movement Data}
   %\VignetteEngine{knitr::rmarkdown}
@@ -43,8 +45,11 @@ fit <- circular_regression(
 fit
 ```
 
-The default fit uses the consensus model to select a reference direction and
-initialize the homogeneous angular fit.
+The default fit selects a reference by empirical mean cosine and uses the
+consensus coefficients to initialize the homogeneous angular fit. The
+direction/modifier term asks whether the meadow direction contributes beyond
+the previous heading. These first 200 records illustrate the software, not a
+new ecological analysis of the entire trajectory.
 
 ```{r}
 summary(fit)
@@ -67,7 +72,7 @@ summary(res)
 A simple base-R diagnostic plot can be useful before calling the package plot
 method.
 
-```{r}
+```{r, fig.alt="Wrapped bison residuals against fitted movement direction, with a horizontal reference at zero."}
 plot(
   pred,
   res,
@@ -98,3 +103,26 @@ This applied example is intentionally small so that it can be built quickly
 as part of package checks. Larger analyses should keep the same structure:
 inspect the angular variables, fit the model, examine circular residuals, and
 verify that conclusions are stable under reasonable changes to the formula.
+
+## Scope of uncertainty
+
+```{r}
+fit$convergence
+fit$fit_status
+fit$score_norm
+sqrt(diag(vcov(fit, robust = TRUE)))
+sqrt(diag(vcov(fit_cons, robust = TRUE)))
+```
+
+The two covariance summaries concern different probability models and coefficient scales.
+The homogeneous model has a common concentration; the consensus concentration
+is the fitted resultant length. Both sandwiches assume independent
+observations. Movement records are ordered in time, so these standard errors
+are not a substitute for modeling residual temporal dependence.
+The distributed file contains processed data; raw GPS reconstruction is not
+provided. All variables in this example use the documented radian convention.
+
+This sequence can reveal unusual residuals and persistent temporal structure.
+If either appears, investigate the affected records and the time ordering
+before treating the printed standard errors as uncertainty for the trajectory.
+Neither covariance here corrects residual serial dependence.

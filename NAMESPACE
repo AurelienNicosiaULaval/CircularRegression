@@ -55,6 +55,8 @@ S3method(summary,circular_regression)
 S3method(summary,consensus)
 S3method(vcov,angular)
 S3method(vcov,angular_re)
+S3method(vcov,angular_two_step)
+S3method(vcov,circular_regression)
 S3method(vcov,consensus)
 export(angular)
 export(angular_lrtest)
@@ -71,36 +73,44 @@ export(plot_ranef.angular_re)
 export(presnellModel)
 export(ranef.angular_re)
 export(select_reference_angle)
-importFrom(circular,A1inv)
-importFrom(circular,circular)
-importFrom(graphics,arrows)
-importFrom(graphics,lines)
-importFrom(graphics,mtext)
-importFrom(graphics,par)
-importFrom(graphics,plot.new)
-importFrom(graphics,plot.window)
-importFrom(graphics,segments)
-importFrom(graphics,text)
-importFrom(graphics,title)
-importFrom(stats,AIC)
-importFrom(stats,BIC)
-importFrom(stats,acf)
-importFrom(stats,as.formula)
-importFrom(stats,coef)
-importFrom(stats,cor)
-importFrom(stats,delete.response)
-importFrom(stats,density)
-importFrom(stats,dnorm)
-importFrom(stats,fitted)
-importFrom(stats,logLik)
-importFrom(stats,model.frame)
-importFrom(stats,optim)
-importFrom(stats,pnorm)
-importFrom(stats,predict)
-importFrom(stats,printCoefmat)
-importFrom(stats,residuals)
-importFrom(stats,sd)
-importFrom(stats,terms)
-importFrom(stats,vcov)
-importFrom(utils,head)
-importFrom(utils,modifyList)
+importFrom(circular,
+  A1inv,
+  circular
+)
+importFrom(graphics,
+  arrows,
+  lines,
+  mtext,
+  par,
+  plot.new,
+  plot.window,
+  segments,
+  text,
+  title
+)
+importFrom(stats,
+  AIC,
+  BIC,
+  acf,
+  as.formula,
+  coef,
+  cor,
+  delete.response,
+  density,
+  dnorm,
+  fitted,
+  logLik,
+  model.frame,
+  optim,
+  pnorm,
+  predict,
+  printCoefmat,
+  residuals,
+  sd,
+  terms,
+  vcov
+)
+importFrom(utils,
+  head,
+  modifyList
+)

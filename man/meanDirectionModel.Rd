@@ -18,15 +18,19 @@ meanDirectionModel(data, response, mu0 = NULL, ...)
 }
 \value{
 A list with \code{consensus_fit}, \code{homogeneous_fit},
-  \code{reference}, \code{data_aug}, \code{formula}, and natural-parameter
+  \code{reference}, \code{reference_stability}, \code{data_aug},
+  \code{formula}, and natural-parameter
   outputs \code{natural_parameters}, \code{natural_vcov_model},
-  \code{natural_vcov_robust}, \code{natural_jacobian}.
+  \code{natural_vcov_robust}, \code{natural_jacobian}, and
+  \code{natural_stability}.
 }
 \description{
 Fits the mean-direction special case through the same two-step workflow used
 by \code{\link{angular_two_step}()}. The wrapper creates synthetic reference
 directions internally and returns natural-parameter summaries obtained by a
-delta-method transformation of the homogeneous fit.
+delta-method transformation of the homogeneous fit. With a varying
+\code{mu0}, the returned \code{mu} parameter is a rotation relative to that
+baseline rather than an unconditional constant mean direction.
 }
 \examples{
 data(bison)

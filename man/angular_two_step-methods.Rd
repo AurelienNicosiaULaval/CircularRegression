@@ -5,6 +5,7 @@
 \alias{summary.angular_two_step}
 \alias{print.summary.angular_two_step}
 \alias{coef.angular_two_step}
+\alias{vcov.angular_two_step}
 \alias{fitted.angular_two_step}
 \alias{residuals.angular_two_step}
 \alias{predict.angular_two_step}
@@ -21,6 +22,8 @@
 \method{print}{summary.angular_two_step}(x, ...)
 
 \method{coef}{angular_two_step}(object, step = c("homogeneous", "consensus"), ...)
+
+\method{vcov}{angular_two_step}(object, robust = FALSE, step = c("homogeneous", "consensus"), ...)
 
 \method{fitted}{angular_two_step}(object, ...)
 
@@ -41,7 +44,10 @@
 
 \item{...}{Additional arguments passed to the underlying method.}
 
-\item{step}{Which fitted step to use for \code{coef()}.}
+\item{step}{Which fitted step to use for \code{coef()} or \code{vcov()}.}
+
+\item{robust}{Logical; request the covariance based on independent observation
+scores rather than the model covariance.}
 
 \item{newdata}{Optional data frame for prediction.}
 
@@ -51,4 +57,11 @@
 }
 \description{
 Methods for two-step angular regression objects
+}
+\examples{
+data(bison)
+fit <- angular_two_step(y.dir ~ y.prec, bison[1:100, ])
+coef(fit, step = "consensus")
+coef(fit)
+summary(fit)
 }

@@ -63,8 +63,10 @@ test_that("special-case wrappers expose natural-parameter outputs on package dat
 
 test_that("angular_re methods are coherent on a small Sandhopper example", {
   data(Sandhopper)
-  sh <- Sandhopper[seq_len(24), ]
-  sh$y <- sh$LN1 * pi / 180
+  wide <- Sandhopper[stats::complete.cases(Sandhopper[c("LN1", "LN2", "LN3", "LN4", "LN5", "Azimuth", "DirW", "SpeedW")]), ]
+  wide <- wide[seq_len(min(24L, nrow(wide))), ]
+  sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
+  sh$y <- as.vector(t(as.matrix(wide[paste0("LN", 1:5)]))) * pi / 180
   sh$ref <- sh$Azimuth * pi / 180
   sh$wind <- sh$DirW * pi / 180
   sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)

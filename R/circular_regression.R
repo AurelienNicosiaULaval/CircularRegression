@@ -16,12 +16,14 @@
 #'   reference angle. \code{"homogeneous"} calls \code{\link{angular}()}.
 #'   \code{"consensus"} calls \code{\link{consensus}()}.
 #' @param weights Optional non-negative observation weights. Used by
-#'   \code{"two_step"} and \code{"consensus"}.
+#'   \code{"consensus"}, or by the initialization step only in \code{"two_step"}.
+#'   Rejected for \code{"homogeneous"}.
 #' @param reference Reference-angle rule for homogeneous fits. Use
 #'   \code{"auto"}, \code{"first"}, or \code{c("name", "x_ref")}.
 #' @param control Optional control list passed to the selected model. For
 #'   \code{method = "two_step"}, use \code{control_consensus} and
-#'   \code{control_angular} for separate control.
+#'   \code{control_angular} for separate control; a nonempty \code{control} is
+#'   rejected rather than silently ignored.
 #' @param control_consensus Control list for the consensus step.
 #' @param control_angular Control list for the homogeneous step.
 #' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
@@ -59,6 +61,12 @@ circular_regression <- function(
 ) {
   call <- match.call()
   method <- match.arg(method)
+  if (method == "homogeneous" && !is.null(weights)) {
+    stop("The homogeneous method does not support weights.", call. = FALSE)
+  }
+  if (method == "two_step" && length(control)) {
+    stop("Use 'control_consensus' and 'control_angular' for the two-step method.", call. = FALSE)
+  }
 
   fit <- switch(
     method,
@@ -90,12 +98,17 @@ circular_regression <- function(
     )
   )
 
+  primary <- .primary_circular_fit(fit)
   out <- list(
     call = call,
     formula = formula,
     method = method,
     fit = fit,
-    nobs = .fit_nobs(.primary_circular_fit(fit))
+    nobs = .fit_nobs(primary),
+    convergence = primary$convergence,
+    fit_status = primary$fit_status,
+    inference_available = primary$inference_available,
+    score_norm = primary$score_norm
   )
   class(out) <- c(
     "circular_regression",
@@ -124,8 +137,15 @@ circular_regression <- function(
 #' @param newdata Optional data frame for prediction.
 #' @param type Prediction type passed to the underlying model.
 #' @param k Numeric penalty used by \code{AIC()}.
+#' @param robust Logical; return the independent-observation sandwich covariance.
 #' @param ... Additional arguments passed to the underlying method.
 #' @rdname circular_regression-methods
+#' @examples
+#' data(bison)
+#' fit <- circular_regression(y.dir ~ y.prec, bison[1:100, ])
+#' summary(fit)
+#' coef(fit)
+#' head(predict(fit, type = "components"))
 #' @export
 print.circular_regression <- function(x, ...) {
   cat("Call:\n")
@@ -168,6 +188,12 @@ coef.circular_regression <- function(object, ...) {
 
 #' @rdname circular_regression-methods
 #' @export
+vcov.circular_regression <- function(object, robust = FALSE, ...) {
+  stats::vcov(.primary_circular_fit(object), robust = robust, ...)
+}
+
+#' @rdname circular_regression-methods
+#' @export
 fitted.circular_regression <- function(object, ...) {
   fitted(.primary_circular_fit(object), ...)
 }
@@ -206,11 +232,11 @@ logLik.circular_regression <- function(object, ...) {
 #' @rdname circular_regression-methods
 #' @export
 AIC.circular_regression <- function(object, ..., k = 2) {
-  stats::AIC(.primary_circular_fit(object), ..., k = k)
+  NextMethod("AIC")
 }
 
 #' @rdname circular_regression-methods
 #' @export
 BIC.circular_regression <- function(object, ...) {
-  stats::BIC(.primary_circular_fit(object), ...)
+  NextMethod("BIC")
 }

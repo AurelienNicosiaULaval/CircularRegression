@@ -22,3 +22,8 @@ A \code{select_reference_angle} object, with legacy class
 \description{
 Backward-compatible wrapper for reference-angle selection
 }
+\examples{
+data(bison)
+# Prefer select_reference_angle(); the legacy alias emits a deprecation warning.
+suppressWarnings(pick_reference_angle(y.dir ~ y.prec, bison[1:20, ]))
+}

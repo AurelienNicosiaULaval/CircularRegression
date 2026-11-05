@@ -11,7 +11,9 @@
 #' @param formula Model formula containing terms of the form \code{x} or
 #'   \code{x:z}.
 #' @param data Data frame, list or environment containing model variables.
-#' @param weights Optional non-negative weights.
+#' @param weights Optional non-negative numeric case weights. The model
+#'   covariance is inverse weighted information; the independent-observation
+#'   sandwich uses the squared weights. These are not cluster weights.
 #' @param initkappa Optional numeric vector of initial \eqn{\kappa_j} values.
 #' @param initbeta Deprecated alias for \code{initkappa}, retained for
 #'   backward compatibility.
@@ -19,7 +21,34 @@
 #'   \code{mindiff}.
 #' @param na.action Function used by \code{\link[stats]{model.frame}} to handle
 #'   missing values. The default is \code{\link[stats]{na.omit}}.
+#'   \code{na.exclude} restores omitted rows in in-sample fitted values,
+#'   residuals and predictions. Weights may match the original or retained
+#'   rows, including when \code{data} is a list or environment.
 #' @return An object of class \code{"consensus"}.
+#' @details The object stores \code{convergence}, \code{score_norm}, model
+#'   covariance \code{varcov_kappa}, and \code{varcov_robust}. The legacy
+#'   \code{varcov1} remains the model covariance. Convergence requires a scaled
+#'   score norm at most \code{control$mindiff}. At zero concentration, the
+#'   likelihood and its derivatives remain defined but the fitted mean direction
+#'   is \code{NA}. The weighted BIC uses the number of retained rows, not the sum
+#'   of weights; information criteria under arbitrary case weighting should not
+#'   be interpreted as ordinary unweighted likelihood comparisons.
+#'
+#'   A recession direction aligns every nonzero directional contribution with
+#'   its response and has no oppositely aligned contribution. The likelihood
+#'   then has no finite maximum, including when some modifiers are zero.
+#'   The object records \code{fit_status = "unbounded_likelihood"}, sets
+#'   \code{convergence = FALSE}, and returns unavailable Wald covariances.
+#'   In this case the coefficients are starting values, not maximum likelihood
+#'   estimates. The numerical check ignores zero-weight rows and verifies the
+#'   returned direction within floating-point tolerance. It is a boundary
+#'   diagnostic, not a global convergence certificate for arbitrary data.
+#'   \code{inference_available} indicates whether the fitted covariance is usable.
+#' @examples
+#' data(bison)
+#' fit <- consensus(y.dir ~ y.prec, bison[1:100, ])
+#' coef(fit)
+#' vcov(fit, robust = TRUE)
 #' @references Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).
 #'   A general angular regression model for the analysis of data on animal
 #'   movement in ecology. \emph{Journal of the Royal Statistical Society:
@@ -52,15 +81,9 @@ consensus <- function(
   if (is.null(weights)) {
     weight <- rep(1, nobs)
   } else {
+    if (!is.numeric(weights)) stop("'weights' must be numeric.", call. = FALSE)
     w_raw <- as.numeric(weights)
-    if (length(w_raw) == nobs) {
-      weight <- w_raw
-    } else if (is.data.frame(data) && length(w_raw) == nrow(data)) {
-      keep_idx <- .model_frame_rows(des$mf, data)
-      weight <- w_raw[keep_idx]
-    } else {
-      stop("'weights' must have length equal to nrow(data) or to the model-frame size.", call. = FALSE)
-    }
+    weight <- .align_model_vector(w_raw, des$mf, "weights")
   }
 
   if (any(!is.finite(weight)) || any(weight < 0)) {
@@ -70,6 +93,9 @@ consensus <- function(
     stop("'weights' cannot be all zero.", call. = FALSE)
   }
   weight_total <- sum(weight)
+  if (!is.finite(weight_total)) stop("The sum of weights must be finite.", call. = FALSE)
+  recession_direction <- .consensus_recession(y, matx, matz, weight)
+  alignment_boundary <- !is.null(recession_direction)
 
   if (!is.null(initkappa) && !is.null(initbeta)) {
     stop("Use only one of 'initkappa' or 'initbeta'.", call. = FALSE)
@@ -113,22 +139,9 @@ consensus <- function(
   }
 
   fisher_step <- function(kappa, long, mui) {
-    A <- .A1_ratio(long)
-    A_over_long <- ifelse(long > .Machine$double.eps, A / long, 0)
-
-    S <- matz * sin(matx - mui)
-    C <- matz * cos(matx - mui)
-
-    matu <- matz * (cos_y_minus_x - C * A)
-    score <- colSums(weight * matu)
-
-    w1 <- pmax(weight * A_over_long, 0)
-    w2 <- pmax(weight * (1 - A_over_long - A^2), 0)
-
-    I1 <- crossprod(S * sqrt(w1), S * sqrt(w1))
-    I2 <- crossprod(C * sqrt(w2), C * sqrt(w2))
-    I <- (I1 + I2)
-    I <- (I + t(I)) / 2
+    deriv <- .consensus_derivatives(y, mui, long, matx, matz, weight)
+    score <- deriv$score
+    I <- deriv$information
 
     qrI <- qr(I)
     if (qrI$rank < ncol(I)) {
@@ -139,7 +152,9 @@ consensus <- function(
     }
 
     dparam <- as.vector(qr.coef(qrI, score))
-    list(kappa1 = kappa + dparam, dparam = dparam, I = I)
+    list(kappa1 = kappa + dparam, dparam = dparam, I = I,
+         scores = deriv$scores, score = score,
+         score_norm = .score_norm(score, I, weight_total))
   }
 
   if (is.null(initkappa)) {
@@ -181,9 +196,13 @@ consensus <- function(
   colnames(iter.detail) <- c(paramname, "LL", "iter", "nitersh")
   iter.detail[1L, ] <- c(kappak, maxLLk, iter, 0)
 
-  if (maxiter > 0) {
+  if (maxiter > 0 && !alignment_boundary) {
     while (!conv && iter < maxiter) {
       step <- fisher_step(kappak, long = long, mui = mui)
+      if (step$score_norm <= mindiff) {
+        conv <- TRUE
+        break
+      }
       kappak1 <- step$kappa1
       dparam <- step$dparam
 
@@ -210,7 +229,11 @@ consensus <- function(
         break
       }
 
-      conv <- is.finite(maxLLk1) && (maxLLk1 - maxLLk) <= mindiff
+      if (identical(kappak1, kappak) ||
+          (maxLLk1 == maxLLk && iter.sh > 20L)) {
+        warning("Consensus iteration stagnated with a nonzero score; convergence was not established.", call. = FALSE)
+        break
+      }
       kappak <- kappak1
       maxLLk <- maxLLk1
       long <- long1
@@ -228,7 +251,12 @@ consensus <- function(
   iter.detail <- iter.detail[seq_len(iter + 1L), , drop = FALSE]
 
   final_step <- fisher_step(kappak, long = long, mui = mui)
+  conv <- !alignment_boundary &&
+    (conv || (maxiter > 0L && final_step$score_norm <= mindiff))
   matI <- final_step$I
+  if (alignment_boundary) {
+    warning("A direction of perfect alignment makes the consensus likelihood unbounded; no finite maximum exists and Wald inference is unavailable.", call. = FALSE)
+  }
 
   invert_information <- function(M) {
     M_sym <- (M + t(M)) / 2
@@ -245,6 +273,14 @@ consensus <- function(
   }
 
   v_kappa <- invert_information(matI)
+  inference_available <- conv && all(is.finite(v_kappa))
+  if (!inference_available) v_kappa[,] <- NA_real_
+  v_robust <- v_kappa %*% crossprod(final_step$scores) %*% v_kappa
+  v_kappa <- .named_covariance(v_kappa, paramname)
+  v_robust <- .named_covariance(v_robust, paramname)
+  fit_status <- if (alignment_boundary) "unbounded_likelihood" else if (!conv) {
+    "not_converged"
+  } else if (!inference_available) "singular_information" else "converged"
   se_kappa <- sqrt(diag(v_kappa))
   zvalue <- kappak / se_kappa
   pvals <- 2 * stats::pnorm(abs(zvalue), lower.tail = FALSE)
@@ -261,6 +297,7 @@ consensus <- function(
   logLik <- as.numeric(maxLLk)
   AIC <- -2 * logLik + 2 * k
   BIC <- -2 * logLik + log(nobs) * k
+  if (!conv) AIC <- BIC <- NA_real_
 
   plain_angles <- des$plain_angles
   reference_scores <- if (length(plain_angles) > 0) {
@@ -277,13 +314,24 @@ consensus <- function(
     kappa = stats::setNames(kappak, paramname),
     varcov_kappa = v_kappa,
     varcov1 = v_kappa,
+    varcov_robust = v_robust,
+    information = matI,
+    score = final_step$score,
+    score_norm = final_step$score_norm,
+    convergence = conv,
+    fit_status = fit_status,
+    inference_available = inference_available,
+    alignment_boundary = alignment_boundary,
+    recession_direction = if (alignment_boundary) stats::setNames(recession_direction, paramname) else NULL,
+    convergence_tolerance = mindiff,
     parambeta = NULL,
     varcovbeta1 = NULL,
     matx = matx,
     matz = matz,
     y = y,
     long = long,
-    mui = mui,
+    mui = ifelse(long == 0, NA_real_, mui),
+    mean_defined = long > 0,
     weights = weight,
     iter.detail = iter.detail,
     call = call,
@@ -296,7 +344,7 @@ consensus <- function(
     angle_data = des$angle_data,
     plain_angles = plain_angles,
     reference_scores = reference_scores,
-    autocorr = stats::acf(residuals.consensus(list(y = y, mui = mui)), plot = FALSE),
+    autocorr = if (all(long > 0)) stats::acf(residuals.consensus(list(y = y, mui = mui)), plot = FALSE) else NULL,
     na.action = attr(des$mf, "na.action")
   )
   class(out) <- "consensus"
@@ -309,21 +357,55 @@ consensus <- function(
 
 #' Methods for Consensus Objects
 #'
+#' @details The \code{plot()} method uses wrapped residuals
+#' \eqn{e_i = \mathrm{atan2}(\sin(y_i-\hat\mu_i),
+#' \cos(y_i-\hat\mu_i))}. It provides a circular rose and density display,
+#' a von Mises probability-integral-transform (PIT) Q-Q plot, and residual
+#' plots against fitted direction and observation order. The consensus model has
+#' observation-specific fitted concentrations \eqn{L_i}; the PIT is therefore
+#' computed with \eqn{\mathrm{VM}(0,L_i)} for each observation. The Q-Q plot is
+#' descriptive rather than a formal goodness-of-fit test because the parameters
+#' were estimated from the displayed observations.
+#' Observations with an undefined fitted direction have no residual. They are
+#' omitted from the rose, fitted-direction and PIT panels, with the matching
+#' concentrations omitted from the PIT calculation. The index panel preserves
+#' their positions as gaps. A note reports their number. Only requested panels
+#' are constructed; no diagnostic is available when every residual is undefined.
+#'
+#' The diagnostic plots require the suggested packages \pkg{ggplot2} and
+#' \pkg{ggcircular}; \code{type = "all"} additionally requires
+#' \pkg{gridExtra}.
+#'
 #' @param object An object of class \code{"consensus"}.
 #' @param x An object of class \code{"consensus"}.
 #' @param type For \code{coef.consensus()}, either \code{"kappa"} or
-#'   \code{"beta"}. The latter returns ratios relative to a selected reference.
+#'   \code{"beta"}. The latter returns orientation-preserving ratios normalized
+#'   by the absolute selected reference coefficient, with the signed reference
+#'   chart and stability diagnostics recorded as attributes.
+#'   For \code{plot()}, select \code{"all"}, \code{"rose"}, \code{"pit"},
+#'   \code{"fitted"}, or \code{"index"}.
+#' @param bins Number of bins in a circular residual rose plot.
 #' @param reference Reference selection rule for \code{type = "beta"}.
 #' @param newdata Optional data frame for prediction.
-#' @param robust Logical; for \code{vcov()}, accepted for consistency and
-#'   currently ignored because the consensus model stores one covariance matrix.
+#' @param robust Logical; return the independent-observation sandwich based on
+#'   weighted scores when \code{TRUE}. Weights are case weights, not cluster
+#'   identifiers; the sandwich uses squared weights in its middle matrix.
 #' @param ... Additional arguments.
 #' @rdname consensus-methods
+#' @examples
+#' data(bison)
+#' fit <- consensus(y.dir ~ y.prec, bison[1:100, ])
+#' summary(fit)
+#' head(predict(fit))
+#' vcov(fit)
+#' vcov(fit, robust = TRUE)
 #' @export
 print.consensus <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
-  cat("\nMaximum log-likelihood:", format(x$MaxLL, digits = 5), "\n")
+  .print_fit_status(x)
+  label <- if (isTRUE(x$convergence)) "Maximum log-likelihood:" else "Log-likelihood at returned coefficients:"
+  cat("\n", label, format(x$MaxLL, digits = 5), "\n", sep = " ")
   cat("AIC:", format(x$AIC, digits = 5), "\n")
   cat("BIC:", format(x$BIC, digits = 5), "\n\n")
   cat("Kappa coefficients:\n")
@@ -359,14 +441,24 @@ coef.consensus <- function(
   ref_name <- ref$ref_name
   ref_idx <- .reference_term_index(object$term_info, ref_name)
 
-  kappa_ref <- object$kappa[ref_idx]
-  if (!is.finite(kappa_ref) || abs(kappa_ref) < .Machine$double.eps) {
-    stop("Cannot derive beta coefficients: selected reference kappa is zero.", call. = FALSE)
+  reference_stability <- .reference_coefficient_stability(
+    kappa = object$kappa,
+    ref_idx = ref_idx
+  )
+  kappa_ref <- reference_stability$coefficient
+  if (!isTRUE(reference_stability$stable)) {
+    stop(
+      "Cannot derive beta coefficients: the selected reference coefficient ",
+      "does not exceed its scale-relative stability threshold.",
+      call. = FALSE
+    )
   }
 
-  beta <- object$kappa[-ref_idx] / kappa_ref
+  beta <- object$kappa[-ref_idx] / abs(kappa_ref)
   names(beta) <- object$paramname[-ref_idx]
   attr(beta, "reference") <- ref_name
+  attr(beta, "reference_sign") <- reference_stability$reference_sign
+  attr(beta, "reference_stability") <- reference_stability
   attr(beta, "reference_scores") <- ref$scores
   beta
 }
@@ -374,19 +466,26 @@ coef.consensus <- function(
 #' @rdname consensus-methods
 #' @export
 vcov.consensus <- function(object, robust = FALSE, ...) {
+  .check_logical_scalar(robust, "robust")
+  if (isTRUE(robust)) {
+    if (is.null(object$varcov_robust)) {
+      stop("Refit this object with CircularRegression >= 0.7.1 to obtain a robust covariance.", call. = FALSE)
+    }
+    return(object$varcov_robust)
+  }
   object$varcov_kappa
 }
 
 #' @rdname consensus-methods
 #' @export
 fitted.consensus <- function(object, ...) {
-  object$mui
+  .restore_excluded(object, object$mui)
 }
 
 #' @rdname consensus-methods
 #' @export
 residuals.consensus <- function(object, ...) {
-  .wrap_angle(object$y - object$mui)
+  .restore_excluded(object, .wrap_angle(object$y - object$mui), residual = TRUE)
 }
 
 #' @rdname consensus-methods
@@ -400,7 +499,7 @@ predict.consensus <- function(
   type <- match.arg(type)
 
   if (is.null(newdata)) {
-    mu <- object$mui
+    mu <- .restore_excluded(object, object$mui)
   } else {
     design <- .new_term_design(
       term_info = object$term_info,
@@ -429,6 +528,9 @@ summary.consensus <- function(object, ...) {
     AIC = object$AIC,
     BIC = object$BIC,
     coefficients = object$parameters,
+    convergence = object$convergence,
+    fit_status = object$fit_status,
+    inference_available = object$inference_available,
     residuals = summary(residuals.consensus(object)),
     nobs = object$nobs
   )
@@ -441,7 +543,9 @@ summary.consensus <- function(object, ...) {
 print.summary.consensus <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
-  cat("\nMaximum log-likelihood:", format(x$MaxLL, digits = 5), "\n")
+  .print_fit_status(x)
+  label <- if (isTRUE(x$convergence)) "Maximum log-likelihood:" else "Log-likelihood at returned coefficients:"
+  cat("\n", label, format(x$MaxLL, digits = 5), "\n", sep = " ")
   cat("AIC:", format(x$AIC, digits = 5), "\n")
   cat("BIC:", format(x$BIC, digits = 5), "\n\n")
   cat("Residuals:\n")
@@ -459,123 +563,46 @@ print.summary.consensus <- function(x, ...) {
 
 #' @rdname consensus-methods
 #' @export
-plot.consensus <- function(x, ...) {
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required for plotting.", call. = FALSE)
-  }
-  if (!requireNamespace("gridExtra", quietly = TRUE)) {
-    stop("Package 'gridExtra' is required for arranging plots.", call. = FALSE)
-  }
-
-  res <- as.numeric(residuals.consensus(x, ...))
-
-  p1 <- ggplot2::ggplot(
-    data = data.frame(Fitted = x$mui, Residual = res),
-    ggplot2::aes(x = Fitted, y = Residual)
-  ) +
-    ggplot2::geom_point(color = "blue") +
-    ggplot2::geom_hline(ggplot2::aes(yintercept = 0), linetype = "dashed") +
-    ggplot2::labs(
-      title = "Residuals vs Fitted",
-      x = "Fitted Values",
-      y = "Residuals"
-    ) +
-    ggplot2::theme_minimal()
-
-  res_mean <- mean(res)
-  res_sd <- stats::sd(res)
-
-  p2 <- ggplot2::ggplot(
-    data = data.frame(Residual = res),
-    ggplot2::aes(x = Residual)
-  ) +
-    ggplot2::geom_histogram(
-      ggplot2::aes(y = ggplot2::after_stat(density)),
-      bins = 12,
-      color = "black",
-      fill = "gray"
-    ) +
-    ggplot2::stat_function(
-      fun = stats::dnorm,
-      args = list(mean = res_mean, sd = res_sd),
-      color = "red",
-      linewidth = 1
-    ) +
-    ggplot2::labs(
-      title = "Histogram of Residuals",
-      x = "Residuals",
-      y = "Density"
-    ) +
-    ggplot2::theme_minimal()
-
-  p3 <- ggplot2::ggplot(
-    data = data.frame(Residual = res),
-    ggplot2::aes(sample = Residual)
-  ) +
-    ggplot2::stat_qq(color = "blue") +
-    ggplot2::stat_qq_line(color = "red") +
-    ggplot2::labs(
-      title = "Normal Q-Q",
-      x = "Theoretical Quantiles",
-      y = "Sample Quantiles"
-    ) +
-    ggplot2::theme_minimal()
-
-  p4 <- ggplot2::ggplot() +
-    ggplot2::annotate(
-      "text",
-      x = 0.5,
-      y = 0.5,
-      label = paste(
-        "Spearman Correlation:\n|residual| vs 1/long =",
-        round(stats::cor(abs(res), 1 / x$long, method = "spearman"), 4)
-      ),
-      size = 5,
-      hjust = 0.5
-    ) +
-    ggplot2::theme_void() +
-    ggplot2::labs(title = "Goodness-of-Fit")
-
-  gridExtra::grid.arrange(
-    p1,
-    p2,
-    p3,
-    p4,
-    ncol = 2,
-    nrow = 2,
-    top = "Diagnostic Plots for Consensus Model"
+plot.consensus <- function(
+  x,
+  type = c("all", "rose", "pit", "fitted", "index"),
+  bins = 24,
+  ...
+) {
+  type <- match.arg(type)
+  .plot_fixed_circular_diagnostics(
+    x = x,
+    residuals = .wrap_angle(x$y - x$mui),
+    fitted = x$mui,
+    kappa = x$long,
+    type = type,
+    bins = bins,
+    title = "Consensus angular model diagnostics"
   )
-
-  invisible(x)
 }
 
 #' @rdname consensus-methods
 #' @param k Numeric penalty for AIC.
 #' @export
 AIC.consensus <- function(object, ..., k = 2) {
-  ll <- object$logLik
-  nparam <- object$k
-  out <- -2 * ll + k * nparam
-  attr(out, "df") <- nparam
-  attr(out, "nobs") <- object$nobs
-  out
+  NextMethod("AIC")
 }
 
 #' @rdname consensus-methods
 #' @export
 BIC.consensus <- function(object, ...) {
-  n <- object$nobs
-  nparam <- object$k
-  ll <- object$logLik
-  out <- -2 * ll + log(n) * nparam
-  attr(out, "df") <- nparam
-  attr(out, "nobs") <- n
-  out
+  NextMethod("BIC")
 }
 
 #' @rdname consensus-methods
 #' @export
 logLik.consensus <- function(object, ...) {
+  if (isTRUE(object$alignment_boundary)) {
+    stop("The consensus likelihood has no finite maximum.", call. = FALSE)
+  }
+  if (identical(object$convergence, FALSE)) {
+    stop("Log-likelihood comparison requires a converged fit.", call. = FALSE)
+  }
   val <- object$logLik
   attr(val, "df") <- object$k
   attr(val, "nobs") <- object$nobs

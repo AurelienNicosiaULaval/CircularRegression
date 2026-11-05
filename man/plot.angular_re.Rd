@@ -8,6 +8,7 @@
   x,
   which = c("both", "fixed", "conditional"),
   breaks = 24,
+  bandwidth = NULL,
   points = TRUE,
   main = "Residuals",
   ...
@@ -18,17 +19,37 @@
 
 \item{which}{one of "both", "fixed", "conditional"}
 
-\item{breaks}{number of bins for rose histogram when using \pkg{circular}}
+\item{breaks}{number of bins for the rose histogram.}
 
-\item{points}{logical; add individual points on the circle}
+\item{bandwidth}{optional finite positive kernel-density bandwidth. If
+\code{NULL}, a common bandwidth is selected from the pooled residuals.}
+
+\item{points}{logical; add individual observations as circular rug marks.}
 
 \item{main}{base title (panel-specific suffixes are added)}
 
 \item{...}{unused}
 }
 \description{
-Draws rose/circular plots of residuals: fixed (y - mu) and conditional
-(y - mu - a_hat[cluster]) as in Rivest & Kato (2019), Fig. 1-2.
-If the 'circular' package is available, uses it; otherwise falls back
-to a simple polar scatter with density ticks.
+Draws circular residual diagnostics for a random-intercept angular model.
+}
+\details{
+The fixed residuals, \eqn{y - \hat\mu}, retain between-cluster variation.
+The conditional residuals, \eqn{y - \hat\mu - \hat a_{g}}, are compared
+with the fitted von Mises bin expectation. The paired rose plots follow the
+diagnostic distinction illustrated by Rivest and Kato (2019, Figures 1--2).
+When \code{bandwidth = NULL}, one kernel-density bandwidth is selected from
+the pooled fixed and conditional residuals. Both panels use that bandwidth,
+identical angular bins, and identical radial limits, including when they are
+requested in separate calls.
+}
+\examples{
+data(Sandhopper)
+sh <- Sandhopper[1:24, ]
+d <- sh[rep(1:24, each = 5), ]
+d$y <- as.vector(t(as.matrix(sh[paste0("LN", 1:5)]))) * pi / 180
+d$ref <- d$Azimuth * pi / 180
+fit <- angular_re(y ~ ref, d, d$Anim)
+if (all(vapply(c("ggplot2", "ggcircular", "gridExtra"),
+               requireNamespace, logical(1), quietly = TRUE))) plot(fit)
 }

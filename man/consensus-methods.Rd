@@ -36,7 +36,7 @@
 
 \method{print}{summary.consensus}(x, ...)
 
-\method{plot}{consensus}(x, ...)
+\method{plot}{consensus}(x, type = c("all", "rose", "pit", "fitted", "index"), bins = 24, ...)
 
 \method{AIC}{consensus}(object, ..., k = 2)
 
@@ -52,17 +52,52 @@
 \item{object}{An object of class \code{"consensus"}.}
 
 \item{type}{For \code{coef.consensus()}, either \code{"kappa"} or
-\code{"beta"}. The latter returns ratios relative to a selected reference.}
+\code{"beta"}. The latter returns orientation-preserving ratios normalized
+by the absolute selected reference coefficient, with the signed reference
+chart and stability diagnostics recorded as attributes.
+For \code{plot()}, select \code{"all"}, \code{"rose"}, \code{"pit"},
+\code{"fitted"}, or \code{"index"}.}
 
 \item{reference}{Reference selection rule for \code{type = "beta"}.}
 
-\item{robust}{Logical; for \code{vcov()}, accepted for consistency and
-currently ignored because the consensus model stores one covariance matrix.}
+\item{robust}{Logical; return the independent-observation sandwich based on
+weighted scores when \code{TRUE}. Weights are case weights, not cluster
+identifiers; the sandwich uses squared weights in its middle matrix.}
 
 \item{newdata}{Optional data frame for prediction.}
+
+\item{bins}{Number of bins in a circular residual rose plot.}
 
 \item{k}{Numeric penalty for AIC.}
 }
 \description{
 Methods for Consensus Objects
+}
+\details{
+The \code{plot()} method uses wrapped residuals
+\eqn{e_i = \mathrm{atan2}(\sin(y_i-\hat\mu_i),
+\cos(y_i-\hat\mu_i))}. It provides a circular rose and density display,
+a von Mises probability-integral-transform (PIT) Q-Q plot, and residual
+plots against fitted direction and observation order. The consensus model has
+observation-specific fitted concentrations \eqn{L_i}; the PIT is therefore
+computed with \eqn{\mathrm{VM}(0,L_i)} for each observation. The Q-Q plot is
+descriptive rather than a formal goodness-of-fit test because the parameters
+were estimated from the displayed observations.
+Observations with an undefined fitted direction have no residual. They are
+omitted from the rose, fitted-direction and PIT panels, with the matching
+concentrations omitted from the PIT calculation. The index panel preserves
+their positions as gaps. A note reports their number. Only requested panels
+are constructed; no diagnostic is available when every residual is undefined.
+
+The diagnostic plots require the suggested packages \pkg{ggplot2} and
+\pkg{ggcircular}; \code{type = "all"} additionally requires
+\pkg{gridExtra}.
+}
+\examples{
+data(bison)
+fit <- consensus(y.dir ~ y.prec, bison[1:100, ])
+summary(fit)
+head(predict(fit))
+vcov(fit)
+vcov(fit, robust = TRUE)
 }

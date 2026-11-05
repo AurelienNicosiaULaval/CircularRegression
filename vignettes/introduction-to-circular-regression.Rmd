@@ -1,6 +1,8 @@
 ---
 title: "Introduction to Circular Regression"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    math_method: mathml
 vignette: >
   %\VignetteIndexEntry{Introduction to Circular Regression}
   %\VignetteEngine{knitr::rmarkdown}
@@ -39,6 +41,10 @@ covariate `x2` weighted by a finite non-negative modifier `z2`.
 
 ## Simulated example
 
+This seeded example uses von Mises errors with concentration eight. It shows
+how to specify a mean direction and fit it through the common interface. The
+applied vignettes use the distributed datasets.
+
 ```{r}
 library(CircularRegression)
 
@@ -55,7 +61,8 @@ mu <- atan2(
   sin(x1) + beta * z2 * sin(x2),
   cos(x1) + beta * z2 * cos(x2)
 )
-y <- wrap_angle(mu + rnorm(n, sd = 0.12))
+error <- as.numeric(circular::rvonmises(n, circular::circular(0), kappa = 8))
+y <- wrap_angle(mu + error)
 
 dat <- data.frame(y = y, x1 = x1, x2 = x2, z2 = z2)
 ```
@@ -110,9 +117,27 @@ summary(fit_cons)
 ## Practical notes
 
 All angles should be supplied in radians. Missing values are handled through
-the `na.action` argument passed to `model.frame()`. Modifiers in `x:z` terms
+the `na.action` argument. With `na.exclude`, omitted rows reappear as `NA`
+in fitted values, residuals and in-sample predictions. Modifiers in `x:z` terms
 must be finite and non-negative, because they act as vector weights in the
 mean-direction construction.
+
+The homogeneous normalization fixes a reference coefficient to either one or
+minus one. The two-step fit records this sign; dividing by a negative
+coefficient without retaining it would reverse the direction. Check convergence
+and access covariance directly from the fitted object:
+
+```{r}
+fit$convergence
+fit$fit_status
+vcov(fit, robust = TRUE)
+```
+
+Both fixed-effect covariance choices assume independent observations. A
+sandwich covariance does not correct serial dependence, and a stationary point
+is not a certificate of a global maximum. Predictors with missing or nonfinite
+values are rejected for new-data prediction; fitting uses the chosen
+`na.action`. A zero resultant has no defined mean direction.
 
 Reference:
 
@@ -120,3 +145,7 @@ Rivest, L.-P., Duchesne, T., Nicosia, A. and Fortin, D. (2016). A general
 angular regression model for the analysis of data on animal movement in
 ecology. Journal of the Royal Statistical Society: Series C (Applied
 Statistics), 65(3), 445-463.
+
+The next guide, [Model checking and comparisons](model-workflow-and-diagnostics.html),
+explains how to compare nested models, read the residual diagnostics, and
+recognize an adjustment for which ordinary inference is unavailable.

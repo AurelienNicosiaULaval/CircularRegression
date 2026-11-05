@@ -20,7 +20,9 @@ consensus(
 
 \item{data}{Data frame, list or environment containing model variables.}
 
-\item{weights}{Optional non-negative weights.}
+\item{weights}{Optional non-negative numeric case weights. The model
+covariance is inverse weighted information; the independent-observation
+sandwich uses the squared weights. These are not cluster weights.}
 
 \item{initkappa}{Optional numeric vector of initial \eqn{\kappa_j} values.}
 
@@ -31,7 +33,10 @@ backward compatibility.}
 \code{mindiff}.}
 
 \item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
-missing values. The default is \code{\link[stats]{na.omit}}.}
+missing values. The default is \code{\link[stats]{na.omit}}.
+\code{na.exclude} restores omitted rows in in-sample fitted values,
+residuals and predictions. Weights may match the original or retained
+rows, including when \code{data} is a list or environment.}
 }
 \value{
 An object of class \code{"consensus"}.
@@ -40,6 +45,33 @@ An object of class \code{"consensus"}.
 Fits the consensus model of Rivest et al. (2016), where each formula term of
 the form \code{x} or \code{x:z} receives a \eqn{\kappa_j} coefficient in the
 log-likelihood parameterization.
+}
+\details{
+The object stores \code{convergence}, \code{score_norm}, model
+  covariance \code{varcov_kappa}, and \code{varcov_robust}. The legacy
+  \code{varcov1} remains the model covariance. Convergence requires a scaled
+  score norm at most \code{control$mindiff}. At zero concentration, the
+  likelihood and its derivatives remain defined but the fitted mean direction
+  is \code{NA}. The weighted BIC uses the number of retained rows, not the sum
+  of weights; information criteria under arbitrary case weighting should not
+  be interpreted as ordinary unweighted likelihood comparisons.
+
+  A recession direction aligns every nonzero directional contribution with
+  its response and has no oppositely aligned contribution. The likelihood
+  then has no finite maximum, including when some modifiers are zero.
+  The object records \code{fit_status = "unbounded_likelihood"}, sets
+  \code{convergence = FALSE}, and returns unavailable Wald covariances.
+  In this case the coefficients are starting values, not maximum likelihood
+  estimates. The numerical check ignores zero-weight rows and verifies the
+  returned direction within floating-point tolerance. It is a boundary
+  diagnostic, not a global convergence certificate for arbitrary data.
+  \code{inference_available} indicates whether the fitted covariance is usable.
+}
+\examples{
+data(bison)
+fit <- consensus(y.dir ~ y.prec, bison[1:100, ])
+coef(fit)
+vcov(fit, robust = TRUE)
 }
 \references{
 Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).

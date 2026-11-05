@@ -1,3 +1,97 @@
+# CircularRegression 0.7.2
+
+* Handle undefined consensus residuals in diagnostic plots. Keep residuals and
+  concentrations aligned in the PIT, preserve gaps in observation order, and
+  construct only requested panels. Report the number of undefined residuals.
+* Check ordered direction/modifier roles when comparing nested models with T2.
+* Detect consensus recession directions, including zero-modifier and zero-weight
+  rows, and flag perfect within-group alignment in random-intercept fits.
+  Unbounded likelihoods no longer appear as regular converged fits.
+* Report fit status and covariance availability. Do not report Wald standard
+  errors when convergence has not been established.
+* Refine grouped fits that stop on objective change before meeting the stated
+  score tolerance.
+* Compare every supplied object in AIC and BIC calls. Add covariance methods
+  for the common interface and the two-step workflow.
+* Keep the public positional argument order of `angular()`; supply
+  `reference_sign` by name. Align case weights and group identifiers after
+  missing-value handling for data frames, lists and environments.
+* Respect `na.exclude` in fitted values, residuals and in-sample predictions.
+  Reject circular objects with degree or hour units, matrix-valued variables,
+  unsupported offsets and formulas without a response.
+* Parse quoted variable names containing colons and reject ambiguous reversed
+  direction/modifier terms.
+* Expose final-fit status through the common interface. Refuse likelihood
+  comparisons for unconverged fits and stop two-step initialization when its
+  consensus likelihood is unbounded.
+* Revise the four vignettes around distinct tasks: first fitting, diagnostics
+  and comparisons, bison movement, and special curves with repeated outcomes.
+  Simulated homogeneous examples now use exact von Mises errors. Standalone
+  HTML vignettes render equations as native MathML without external scripts.
+
+# CircularRegression 0.7.1
+
+* Correct the consensus score for modified directions and its information limit
+  at zero resultant length. Convergence now requires a small scaled score;
+  step-halving stagnation alone is not convergence. Store convergence diagnostics.
+* Correct homogeneous sandwich covariance using the full observed derivative
+  in Rivest et al. (2016), equations 13-14. Recompute natural-parameter robust
+  covariances using this corrected matrix.
+* Implement `vcov.consensus(robust = TRUE)` using the weighted observation
+  scores; preserve the legacy model covariance in `varcov1`.
+* Retain existing affine and harmonic ratios and add `natural_orientation`.
+  Both reconstructed vector components must be multiplied by this sign.
+  Support negative continuous covariates in the affine wrapper.
+* Solve the homogeneous concentration likelihood equation numerically. Report
+  infinite concentration and unavailable Wald inference at perfect alignment.
+* Require compatible, converged, nested fits on identical data for T2 tests.
+* Include the normalizing constant in grouped log-likelihoods, flag boundary
+  inference, and expose cluster scores, observed information and convergence.
+  Replace singleton-group Sandhopper examples by repeated trials.
+* Validate numeric inputs before coercion, long lags, integer controls, ignored
+  arguments, and new prediction groups. Return NA for undefined mean directions.
+* Preserve direction/modifier roles when R reorders interaction labels; share
+  this parser with grouped fitting and new-data prediction.
+* Preserve PIT endpoints and use scaled von Mises quadrature at high concentration.
+* Use the public ggcircular 0.1.0 API; remove the development-revision dependency.
+
+# CircularRegression 0.7.0
+
+* Replace the normal residual histogram and normal Q-Q plot with circular
+  diagnostics for homogeneous and consensus angular models: a residual rose,
+  a fitted von Mises density overlay when appropriate, a probability-integral
+  transform (PIT) Q-Q plot, and residual plots against fitted direction and
+  observation order.
+* Reimplement the fixed and conditional residual roses of `angular_re()` with
+  `ggplot2` and `ggcircular`, while retaining the established S3 `plot()`
+  interface and the distinction documented by Rivest and Kato (2019).
+* Make paired `angular_re()` roses use one pooled kernel bandwidth, identical
+  angular bins, and a common radial limit; expose the optional `bandwidth`
+  argument for reproducible comparisons.
+* Warn when a special-case natural-parameter transformation is numerically
+  singular and return the evaluated threshold in `natural_stability`.
+* Guard the consensus-to-homogeneous normalization with a scale-relative
+  reference-coefficient threshold and expose it in `reference_stability`.
+* Preserve the orientation of a negative consensus reference coefficient by
+  fitting the homogeneous model in a signed reference chart. This prevents an
+  unintended pi shift in two-step fits and special-case wrappers.
+* Apply the same signed, scale-relative normalization to
+  `coef.consensus(type = "beta")` and record the reference sign and stability
+  diagnostics as attributes.
+
+# CircularRegression 0.6.0
+
+* Replace numerical differentiation in the special-case wrappers with exact
+  analytic Jacobians for transformed parameters and their delta-method
+  covariance matrices.
+* Correct the first-harmonic circular-circular wrapper to return named cosine
+  and sine components of the fitted mean curve.
+* Clarify that `presnellModel()` fits an affine resultant-vector mean curve,
+  rather than the projected-normal likelihood of Presnell, Morrison and
+  Littell (1998).
+* Document the baseline interpretation of `meanDirectionModel()` and the
+  non-identification boundary of `decentredPredictorModel()`.
+
 # CircularRegression 0.5.0
 
 * Add `circular_regression()` as the main fixed-effect modeling interface.

@@ -32,4 +32,8 @@
 #' regression. \emph{Biometrika}, 84, 717--726.
 #'
 #' @usage data(noshiro)
+#' @examples
+#' data(noshiro)
+#' head(noshiro)
+#' # Confirm angular units from source documentation before fitting a model.
 "noshiro"

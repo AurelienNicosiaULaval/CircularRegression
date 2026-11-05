@@ -51,10 +51,32 @@ and unit-errors \eqn{e_{ij} \sim \mathrm{VM}(0, \kappa_e)}, following Rivest
 \code{angular()}, where the first term provides the reference direction and
 subsequent terms are written \code{x:z}.
 }
+\details{
+The reported log-likelihood includes all normalizing constants.
+  The object records the projected \code{score_norm}, \code{convergence},
+  \code{boundary}, observed \code{information}, and \code{cluster_scores}.
+  Regular Wald covariances are unavailable at a zero-concentration boundary.
+  Cluster-robust inference assumes independent clusters and sufficiently many
+  clusters; it has no small-sample correction. Singleton-only groups cannot
+  distinguish the two concentrations and are rejected. At very large
+  random-intercept concentration, the fit approaches an independent model.
+  Perfect within-group alignment gives an unbounded likelihood as the error
+  concentration increases. Such fits have
+  \code{fit_status = "unbounded_likelihood"}, \code{convergence = FALSE}, and
+  unavailable covariance matrices. If alignment is detected at the initial
+  coefficients, optimization is not run and those coefficients are returned
+  for diagnosis only. \code{inference_available} records availability of
+  regular Wald inference. After an objective-based optimizer stop, the fit
+  is refined when necessary to meet its reported score tolerance; this is
+  recorded in \code{optimization_polished}.
+}
 \examples{
 data(Sandhopper)
-sh <- Sandhopper[seq_len(24), ]
-sh$y <- sh$LN1 * pi / 180
+columns <- c(paste0("LN", 1:5), "Azimuth", "DirW", "SpeedW")
+wide <- Sandhopper[stats::complete.cases(Sandhopper[columns]), ]
+wide <- wide[seq_len(min(24L, nrow(wide))), ]
+sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
+sh$y <- as.vector(t(as.matrix(wide[paste0("LN", 1:5)]))) * pi / 180
 sh$ref <- sh$Azimuth * pi / 180
 sh$wind <- sh$DirW * pi / 180
 sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
@@ -63,7 +85,7 @@ fit <- angular_re(
   y ~ ref + wind:wind_speed,
   data = sh,
   cluster = sh$Anim,
-  control = list(maxit = 25, reltol = 1e-6)
+  control = list(maxit = 200, reltol = 1e-8)
 )
 coef(fit)
 head(predict(fit))

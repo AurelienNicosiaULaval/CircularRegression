@@ -19,7 +19,8 @@ angular_two_step(
 
 \item{data}{Data frame containing model variables.}
 
-\item{weights}{Optional non-negative weights passed to \code{consensus()}.}
+\item{weights}{Optional non-negative weights passed only to \code{consensus()}
+for initialization. The final homogeneous fit is unweighted.}
 
 \item{reference}{Reference-angle rule for the homogeneous step:
 \code{"auto"}, \code{"first"}, or \code{c("name", "x_ref")}.}
@@ -32,12 +33,24 @@ angular_two_step(
 missing values. The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
-An object of class \code{"angular_two_step"}.
+An object of class \code{"angular_two_step"}. The
+  \code{reference_stability} component records the selected consensus
+  coefficient, its scale-relative threshold, and the signed reference chart
+  used to preserve the orientation of the consensus resultant.
+  \code{convergence}, \code{fit_status}, \code{inference_available} and
+  \code{score_norm} describe the final homogeneous fit. An unbounded
+  consensus initialization stops the two-step procedure.
 }
 \description{
 Implements the strategy recommended by Rivest et al. (2016): fit the
 consensus model first, choose the reference angle, then fit the homogeneous
 model with the reference fixed and initialized from consensus ratios.
+}
+\examples{
+data(bison)
+fit <- angular_two_step(y.dir ~ y.prec + x.meadow:z.meadow, bison[1:100, ])
+fit$homogeneous_fit$convergence
+head(predict(fit))
 }
 \references{
 Rivest, L.-P., Duchesne, T., Nicosia, A., and Fortin, D. (2016).

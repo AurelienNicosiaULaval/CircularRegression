@@ -6,19 +6,17 @@ general angular regression framework of Rivest, Duchesne, Nicosia and Fortin
 (2016), including homogeneous angular regression, consensus regression, a
 two-step workflow, and selected special-case wrappers.
 
-## Part of the research ecosystem
-
-This repository is part of Aurélien Nicosia's open research and teaching ecosystem in computational statistics, scientific R software, reproducible data science and statistical education.
-
-* Research Lab: [https://aureliennicosiaulaval.github.io/web_site/research-lab.html](https://aureliennicosiaulaval.github.io/web_site/research-lab.html)
-* GitHub profile: [https://github.com/AurelienNicosiaULaval](https://github.com/AurelienNicosiaULaval)
-* Related projects: [`ggcircular`](https://github.com/AurelienNicosiaULaval/ggcircular), [`gmov`](https://github.com/AurelienNicosiaULaval/gmov)
-
 ## Installation
 
+The examples below require version 0.7.2 or later.
+
 ```r
-install.packages("remotes")
-remotes::install_github("AurelienNicosiaULaval/CircularRegression")
+install.packages("CircularRegression")
+
+# Development version
+# install.packages("remotes")
+# remotes::install_github("AurelienNicosiaULaval/CircularRegression",
+#                         build_vignettes = TRUE)
 ```
 
 ## Main interface
@@ -37,6 +35,9 @@ fit <- circular_regression(
 summary(fit)
 coef(fit)
 head(predict(fit))
+vcov(fit, robust = TRUE)
+fit$fit_status
+fit$inference_available
 ```
 
 The formula syntax uses angular variables as terms. A term of the form `x`
@@ -58,6 +59,22 @@ The package provides S3 methods for printing, summarising, coefficients,
 fitted values, residuals, predictions, plots, information criteria, and
 log-likelihoods where appropriate.
 
+## Checking a fit
+
+All response and explanatory angles must be in radians. Modifiers must be
+finite and non-negative. The direction in `x:z` is `x`; reversing direction
+and modifier changes the model.
+
+Check `convergence`, `fit_status` and `inference_available` before interpreting
+standard errors. A small score does not establish a finite maximum at a
+concentration boundary. Unbounded likelihoods and unconverged fits do not
+provide ordinary Wald standard errors. Fixed-effect sandwiches assume
+independent observations; grouped sandwiches assume independent groups.
+
+The vignettes cover a first fit, model checking and comparisons, bison movement,
+and special mean curves with repeated observations. Use `browseVignettes()`
+after installing the package to open them.
+
 ## Citation
 
 To cite `CircularRegression` from R, use:
@@ -77,3 +94,10 @@ Statistics), 65(3), 445-463.
 
 Rivest, L.-P. and Kato, S. (2019). A random-effects model for clustered
 circular data. Canadian Journal of Statistics, 47(4), 712-728.
+
+Related software: [ggcircular](https://github.com/AurelienNicosiaULaval/ggcircular)
+for circular graphics and [gmov](https://github.com/AurelienNicosiaULaval/gmov)
+for movement models.
+
+The package is part of Aurélien Nicosia's [research and teaching projects](https://aureliennicosiaulaval.github.io/web_site/research-lab.html).
+Other repositories are listed on his [GitHub profile](https://github.com/AurelienNicosiaULaval).

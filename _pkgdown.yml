@@ -20,9 +20,9 @@ navbar:
         href: articles/introduction-to-circular-regression.html
       - text: Applied bison example
         href: articles/bison-applied-example.html
-      - text: Model workflow and diagnostics
+      - text: Model checking and comparisons
         href: articles/model-workflow-and-diagnostics.html
-      - text: Angular regression workflow
+      - text: Special curves and repeated observations
         href: articles/angular-regression-workflow.html
 
 home:
@@ -86,5 +86,5 @@ articles:
 
 news:
   releases:
-  - text: "Version 0.5.0"
-    href: news/index.html#circularregression-050
+  - text: "Version 0.7.2"
+    href: news/index.html#circularregression-072

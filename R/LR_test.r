@@ -10,10 +10,25 @@
 #'
 #' @param full Object of class \code{"angular"} (full model).
 #' @param reduced Object of class \code{"angular"} (nested reduced model).
-#' @param check Logical; perform consistency checks.
+#' @param check Logical; check that samples, shared variables, term nesting,
+#'   reference directions and signs agree, and both fits have converged.
+#'   Setting this to \code{FALSE} bypasses these structural checks only and
+#'   places responsibility for the test assumptions on the caller.
 #' @return An object of class \code{"htest"}.
+#' @details The chi-squared calibration assumes regular, identifiable nested
+#'   homogeneous models with independent errors and finite positive concentration.
+#'   This is not a serially robust test or a test at singular independence submodels.
+#' @examples
+#' data(bison)
+#' d <- bison[1:150, ]
+#' full <- angular(y.dir ~ y.prec + x.meadow:z.meadow, d, reference = "first")
+#' reduced <- angular(y.dir ~ y.prec, d, reference = "first")
+#' angular_lrtest(full, reduced)
 #' @export
 angular_lrtest <- function(full, reduced, check = TRUE) {
+  if (!is.logical(check) || length(check) != 1L || is.na(check)) {
+    stop("'check' must be TRUE or FALSE.", call. = FALSE)
+  }
   if (!inherits(full, "angular") || !inherits(reduced, "angular")) {
     stop("Both 'full' and 'reduced' must be objects of class 'angular'.", call. = FALSE)
   }
@@ -28,11 +43,42 @@ angular_lrtest <- function(full, reduced, check = TRUE) {
     if (n_f != n_r) {
       stop("Models have different sample sizes.", call. = FALSE)
     }
-    if (!isTRUE(all.equal(full$y, reduced$y))) {
-      warning(
-        "Response vectors differ; assuming models were fitted on comparable data.",
-        call. = FALSE
-      )
+    if (!identical(full$y, reduced$y) || is.null(full$model_data) ||
+        is.null(reduced$model_data) ||
+        !identical(rownames(full$model_data), rownames(reduced$model_data))) {
+      stop("Models must use identical observations in the same order; refit older objects.", call. = FALSE)
+    }
+    if (!all(reduced$term_labels %in% full$term_labels)) {
+      stop("The reduced model must be nested in the full model (a subset of terms).", call. = FALSE)
+    }
+    if (is.null(full$term_info) || is.null(reduced$term_info)) {
+      stop("Refit older objects before checking directional term nesting.", call. = FALSE)
+    }
+    term_index <- match(reduced$term_labels, full$term_labels)
+    roles <- c("angle", "modifier", "has_modifier")
+    if (!isTRUE(all.equal(
+      unname(as.list(full$term_info[term_index, roles])),
+      unname(as.list(reduced$term_info[, roles])),
+      check.attributes = FALSE
+    ))) {
+      stop("Models are not nested: shared terms have different direction/modifier roles.", call. = FALSE)
+    }
+    shared <- names(reduced$model_data)
+    if (!all(shared %in% names(full$model_data)) ||
+        !isTRUE(all.equal(as.list(full$model_data[shared]), as.list(reduced$model_data),
+                          check.attributes = FALSE))) {
+      stop("Models must use identical values for all shared variables.", call. = FALSE)
+    }
+    if (!identical(full$reference, reduced$reference) ||
+        !identical(full$reference_sign, reduced$reference_sign)) {
+      stop("Models must use compatible reference directions and signs.", call. = FALSE)
+    }
+    if (!isTRUE(full$convergence) || !isTRUE(reduced$convergence)) {
+      stop("Both models must have converged before a T2 comparison.", call. = FALSE)
+    }
+    if (identical(full$fit_status, "singular_information") ||
+        identical(reduced$fit_status, "singular_information")) {
+      stop("T2 requires regular fitted models with nonsingular information.", call. = FALSE)
     }
   }
 
@@ -40,8 +86,15 @@ angular_lrtest <- function(full, reduced, check = TRUE) {
   Cbar_full <- as.numeric(full$MaxCosine)
   Cbar_red <- as.numeric(reduced$MaxCosine)
   kappa_full <- as.numeric(full$kappahat)
+  if (!is.finite(kappa_full) || kappa_full <= 0 || !is.finite(Cbar_full) ||
+      !is.finite(Cbar_red)) {
+    stop("T2 requires a finite positive concentration and regular fitted models.", call. = FALSE)
+  }
+  if (Cbar_full < Cbar_red - 1e-10) {
+    stop("The full model fits worse than the reduced model; check optimization.", call. = FALSE)
+  }
 
-  T2 <- 2 * n * kappa_full * (Cbar_full - Cbar_red)
+  T2 <- 2 * n * kappa_full * max(Cbar_full - Cbar_red, 0)
 
   df_full <- nrow(full$parameters)
   df_red <- nrow(reduced$parameters)
@@ -79,6 +132,9 @@ angular_lrtest <- function(full, reduced, check = TRUE) {
   out
 }
 
+#' @rdname angular-methods
+#' @param test For \code{anova()}, either \code{"none"} for a model table or
+#'   \code{"T2"} for the nested homogeneous comparison.
 #' @export
 anova.angular <- function(object, ..., test = c("none", "T2")) {
   test <- match.arg(test)
@@ -112,11 +168,18 @@ anova.angular <- function(object, ..., test = c("none", "T2")) {
   angular_lrtest(full = object, reduced = reduced)
 }
 
+#' @rdname angular-methods
 #' @export
 logLik.angular <- function(object, ...) {
   n <- length(object$y)
   kappa <- as.numeric(object$kappahat)
   Cbar <- as.numeric(object$MaxCosine)
+  if (!is.finite(kappa)) {
+    stop("The homogeneous likelihood has no finite concentration maximum.", call. = FALSE)
+  }
+  if (identical(object$convergence, FALSE)) {
+    stop("Log-likelihood comparison requires a converged regular fit.", call. = FALSE)
+  }
 
   log_i0 <- .logI0(kappa)
   ll <- n * (kappa * Cbar - log(2 * pi) - log_i0)

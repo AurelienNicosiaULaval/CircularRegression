@@ -6,6 +6,10 @@
 #' @param ... Unused.
 #' @return A \code{select_reference_angle} object, with legacy class
 #'   \code{pick_reference_angle} prepended.
+#' @examples
+#' data(bison)
+#' # Prefer select_reference_angle(); the legacy alias emits a deprecation warning.
+#' suppressWarnings(pick_reference_angle(y.dir ~ y.prec, bison[1:20, ]))
 #' @export
 pick_reference_angle <- function(
   formula,
@@ -24,6 +28,10 @@ pick_reference_angle <- function(
 #'
 #' @param x Object returned by \code{pick_reference_angle()}.
 #' @param ... Unused.
+#' @examples
+#' data(bison)
+#' old <- suppressWarnings(pick_reference_angle(y.dir ~ y.prec, bison[1:20, ]))
+#' print(old)
 #' @export
 print.pick_reference_angle <- function(x, ...) {
   NextMethod("print", x)

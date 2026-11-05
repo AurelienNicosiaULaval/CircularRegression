@@ -1,8 +1,10 @@
 ---
-title: "Angular Regression Workflow"
-output: rmarkdown::html_vignette
+title: "Special Mean Curves and Repeated Observations"
+output:
+  rmarkdown::html_vignette:
+    math_method: mathml
 vignette: >
-  %\VignetteIndexEntry{Angular Regression Workflow}
+  %\VignetteIndexEntry{Special Mean Curves and Repeated Observations}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -16,9 +18,10 @@ knitr::opts_chunk$set(
 )
 ```
 
-This vignette gives a compact package workflow using only datasets distributed
-with CircularRegression. It focuses on the package interface rather than on a
-full ecological analysis.
+This guide uses the package datasets to express special mean-direction curves
+and then fit repeated orientations from the same animal. The introductory
+guide covers the common interface; this guide concentrates on parameter
+interpretation and the change of sampling unit in a grouped model.
 
 ```{r}
 library(CircularRegression)
@@ -105,7 +108,7 @@ head(residuals(fit_hom))
 A lightweight base-R residual plot is often sufficient for a first diagnostic
 check.
 
-```{r}
+```{r, fig.alt="Wrapped residuals from a homogeneous bison model against fitted direction, with zero marked."}
 plot(
   fitted(fit_hom),
   residuals(fit_hom),
@@ -153,18 +156,29 @@ pres_fit$natural_parameters
 jam_fit$natural_parameters
 ```
 
+For affine and first-harmonic curves, the ratios alone are not enough:
+`natural_orientation` gives the sign by which both vector components must be
+multiplied before calling `atan2()`. Natural covariances use analytic
+Jacobians and require stable, identifiable parameterizations. Equality of a
+mean curve does not imply equality with a projected-normal probability model.
+
 ## Random-Intercept Fit
 
 The random-intercept model is separate from `circular_regression()` in this
 version. It can be used when clustered circular observations are available. The
-following small example uses the `Sandhopper` data and converts degree variables
-to radians before modeling.
+following small example uses five repeated trials per animal in `Sandhopper`
+and converts degree variables to radians before modeling. A complete-individual
+rule is used for transparency; the fitter also accepts unequal cluster sizes.
 
 ```{r}
 data(Sandhopper)
 
-sh <- Sandhopper[seq_len(24), ]
-sh$y <- sh$LN1 * pi / 180
+trial_columns <- paste0("LN", 1:5)
+required_columns <- c(trial_columns, "Azimuth", "DirW", "SpeedW")
+wide <- Sandhopper[stats::complete.cases(Sandhopper[required_columns]), ]
+wide <- wide[seq_len(min(24L, nrow(wide))), ]
+sh <- wide[rep(seq_len(nrow(wide)), each = 5L), ]
+sh$y <- as.vector(t(as.matrix(wide[trial_columns]))) * pi / 180
 sh$ref <- sh$Azimuth * pi / 180
 sh$wind <- sh$DirW * pi / 180
 sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
@@ -178,8 +192,18 @@ fit_re <- angular_re(
 
 coef(fit_re)
 head(ranef.angular_re(fit_re))
-head(predict(fit_re))
+head(predict(fit_re, type = "marginal"))
+head(predict(fit_re, type = "conditional"))
+fit_re$convergence
+fit_re$fit_status
+fit_re$inference_available
 ```
 
 This example is intentionally small so that it remains suitable for package
 checks and pkgdown builds.
+The two predictions distinguish environmental effects from the estimated
+animal-specific shift. Within-animal and random-intercept concentrations are
+not linear variances. The cluster sandwich assumes independent animals and is
+asymptotic in their number. Fixed-effect sandwiches are neither cluster-robust
+nor serially robust. The residual roses are descriptive, with a common scale
+and bandwidth; conditional residuals are affected by intercept estimation.

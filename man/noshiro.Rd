@@ -38,6 +38,11 @@ notes provided to the maintainer. Raw data and a reconstruction script are not
 present in the repository. The package maintainer has confirmed that this
 processed package dataset may be redistributed with the package.
 }
+\examples{
+data(noshiro)
+head(noshiro)
+# Confirm angular units from source documentation before fitting a model.
+}
 \references{
 Rivest, L.-P. (1997). A decentered predictor for circular-circular
 regression. \emph{Biometrika}, 84, 717--726.

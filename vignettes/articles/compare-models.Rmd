@@ -1,0 +1,36 @@
+---
+title: "Compare fitted models"
+description: "Use T2 for nested homogeneous fits and information criteria for likelihood comparisons."
+---
+
+Use `angular_lrtest()` for nested homogeneous models fitted to the same
+observations with the same reference direction and sign. The example
+generates independent von Mises errors around a known mean direction.
+
+```{r}
+library(CircularRegression)
+
+set.seed(481)
+n <- 120
+d <- data.frame(ref = runif(n, -pi, pi), x = runif(n, -pi, pi))
+mu <- atan2(sin(d$ref) + 0.3 * sin(d$x), cos(d$ref) + 0.3 * cos(d$x))
+d$y <- mu + as.numeric(circular::rvonmises(n, circular::circular(0), kappa = 4))
+
+reduced <- angular(y ~ ref, d, reference = "first")
+full <- angular(y ~ ref + x, d, reference = "first")
+angular_lrtest(full, reduced)
+```
+
+For a comparison of probability models, fit them to the same response
+rows and check that both fits converged. Here the homogeneous model uses
+a common concentration and the consensus model uses observation-specific
+concentrations.
+
+```{r}
+varying <- consensus(y ~ ref + x, d)
+c(homogeneous = full$fit_status, consensus = varying$fit_status)
+AIC(full, varying)
+BIC(full, varying)
+```
+
+[Full guide to model comparisons](model-workflow-and-diagnostics.html).

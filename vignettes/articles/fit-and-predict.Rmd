@@ -1,0 +1,32 @@
+---
+title: "Fit and predict"
+description: "Fit a circular response and predict directions in radians."
+---
+
+In `y ~ ref + x:z`, `ref` and `x` are angles in radians. The term `x:z`
+adds direction `x` with a finite nonnegative modifier `z`. This example
+uses the previous movement direction and the direction toward a meadow.
+
+```{r}
+library(CircularRegression)
+data(bison)
+
+vars <- c("y.dir", "y.prec", "x.meadow", "z.meadow")
+d <- na.omit(bison[seq_len(100), vars])
+form <- y.dir ~ y.prec + x.meadow:z.meadow
+
+ref <- select_reference_angle(form, d)
+fit <- circular_regression(form, d, reference = c("name", ref$ref_name))
+ref$ref_name
+fit$fit_status
+coef(fit)
+predict(fit, newdata = d[1:3, ])
+```
+
+The default method uses `angular_two_step()` to initialize a homogeneous
+fit from a consensus fit. Use `angular()` to fit the homogeneous model
+directly, or `consensus()` to let concentration vary with resultant length.
+Use `select_reference_angle()` in new scripts. `pick_reference_angle()`
+is the older name.
+
+[Full introduction](introduction-to-circular-regression.html).

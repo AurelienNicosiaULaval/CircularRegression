@@ -1,0 +1,25 @@
+---
+title: "Build lagged angles"
+description: "Create angular predictors from previous observations within each subject."
+---
+
+Use `autoregressivedata()` to add lagged response angles. The function
+follows row order within each subject, so sort by time first.
+
+```{r}
+library(CircularRegression)
+
+tracks <- data.frame(
+  animal = rep(c("A", "B"), each = 3),
+  time = rep(1:3, 2),
+  direction = c(0.2, 0.3, 0.5, -0.3, -0.1, 0.2)
+)
+tracks <- tracks[order(tracks$animal, tracks$time), ]
+lagged <- autoregressivedata(tracks, response = "direction", p = 2, ID = "animal")
+lagged
+```
+
+The first row for each animal has no first lag. The first two rows have
+no second lag. Each lag refers to an earlier recorded observation.
+Account for the observation intervals when interpreting a lag from an
+irregular track.

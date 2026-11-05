@@ -1,0 +1,41 @@
+---
+title: "Fit repeated directions"
+description: "Fit an animal-level random intercept and compare marginal and conditional predictions."
+---
+
+In `Sandhopper`, each animal has five trials. Put one trial on each row,
+convert the directions from degrees to radians, and use the animal
+identifier as the cluster.
+
+```{r}
+library(CircularRegression)
+data(Sandhopper)
+
+trials <- paste0("LN", 1:5)
+vars <- c(trials, "Azimuth", "DirW", "SpeedW")
+wide <- Sandhopper[complete.cases(Sandhopper[vars]), ]
+wide <- head(wide, 24)
+d <- wide[rep(seq_len(nrow(wide)), each = length(trials)), ]
+d$y <- as.vector(t(as.matrix(wide[trials]))) * pi / 180
+d$ref <- d$Azimuth * pi / 180
+d$wind <- d$DirW * pi / 180
+d$speed <- d$SpeedW / max(d$SpeedW)
+
+fit <- angular_re(y ~ ref + wind:speed, d, cluster = d$Anim)
+fit$fit_status
+coef(fit)
+```
+
+The conditional prediction includes the estimated shift for the observed
+animal. Compare it with the marginal prediction for the same trial.
+
+```{r}
+c(
+  marginal = predict(fit, type = "marginal")[1],
+  conditional = predict(fit, type = "conditional")[1]
+)
+head(ranef.angular_re(fit), 3)
+```
+
+Use `plot_ranef.angular_re()` to display the estimated shifts.
+[Full grouped example](angular-regression-workflow.html#random-intercept-fit).

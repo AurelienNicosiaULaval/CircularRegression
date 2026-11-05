@@ -12,6 +12,7 @@
 ^cran-readiness\.md$
 ^data-raw$
 ^vignettes/.*\.log$
+^vignettes/articles$
 ^doc$
 ^Meta$
 ^.*\.Rcheck$

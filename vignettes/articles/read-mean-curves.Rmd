@@ -1,0 +1,32 @@
+---
+title: "Read a special mean curve"
+description: "Find natural parameters for constant, decentred, affine and first-harmonic mean curves."
+---
+
+The special-case functions return coefficients on the scale used to
+describe the mean curve. For a constant mean, the natural parameter
+`mu` is a direction in radians.
+
+```{r}
+library(CircularRegression)
+data(bison)
+
+d <- na.omit(bison[seq_len(180), "y.dir", drop = FALSE])
+fit <- meanDirectionModel(d, response = "y.dir")
+fit$natural_parameters
+```
+
+| Mean curve | Function |
+|:--|:--|
+| Constant direction | `meanDirectionModel()` |
+| Decentred curve with an angular predictor | `decentredPredictorModel()` |
+| Affine vector with a continuous predictor | `presnellModel()` |
+| First-harmonic vector with an angular predictor | `jammalamadakaModel()` |
+
+For the affine and first-harmonic forms, use `natural_orientation` when
+reconstructing the two vector components. `natural_stability` records
+whether the ratio parameterization is numerically stable. The standard
+errors shown in the example use independent observation contributions,
+which matters when interpreting results from a single movement track.
+
+[Examples of all four curves](angular-regression-workflow.html#special-case-wrappers).

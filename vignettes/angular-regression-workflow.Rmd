@@ -169,6 +169,7 @@ version. It can be used when clustered circular observations are available. The
 following small example uses five repeated trials per animal in `Sandhopper`
 and converts degree variables to radians before modeling. A complete-individual
 rule is used for transparency; the fitter also accepts unequal cluster sizes.
+The term `(1 | Anim)` gives each animal its own random shift in mean direction.
 
 ```{r}
 data(Sandhopper)
@@ -184,16 +185,16 @@ sh$wind <- sh$DirW * pi / 180
 sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
 
 fit_re <- angular_re(
-  y ~ ref + wind:wind_speed,
+  y ~ ref + wind:wind_speed + (1 | Anim),
   data = sh,
-  cluster = sh$Anim,
   control = list(maxit = 50, reltol = 1e-8)
 )
 
 coef(fit_re)
 head(ranef.angular_re(fit_re))
-head(predict(fit_re, type = "marginal"))
-head(predict(fit_re, type = "conditional"))
+trials <- head(sh)
+predict(fit_re, newdata = trials, type = "marginal")
+predict(fit_re, newdata = trials, type = "conditional")
 fit_re$convergence
 fit_re$fit_status
 fit_re$inference_available
@@ -201,8 +202,9 @@ fit_re$inference_available
 
 This example is intentionally small so that it remains suitable for package
 checks and pkgdown builds.
-The two predictions distinguish environmental effects from the estimated
-animal-specific shift. Within-animal and random-intercept concentrations are
+The marginal prediction uses the fixed effects. The conditional prediction
+reads `Anim` in `newdata` and adds the estimated shift for that animal.
+Within-animal and random-intercept concentrations are
 not linear variances. The cluster sandwich assumes independent animals and is
 asymptotic in their number. Fixed-effect sandwiches are neither cluster-robust
 nor serially robust. The residual roses are descriptive, with a common scale

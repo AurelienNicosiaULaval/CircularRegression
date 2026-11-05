@@ -7,7 +7,7 @@
 angular_re(
   formula,
   data,
-  cluster,
+  cluster = NULL,
   init = list(),
   control = list(),
   na.action = stats::na.omit
@@ -16,13 +16,14 @@ angular_re(
 \arguments{
 \item{formula}{Model formula with a circular response and terms of the form
 \code{x} or \code{x:z}. The first angular covariate supplies the reference
-direction whose coefficient is fixed to one.}
+direction whose coefficient is fixed to one. Add a single \code{(1 | group)}
+term for one random intercept per level of the grouping variable.}
 
 \item{data}{A data frame containing the variables used in \code{formula}.}
 
-\item{cluster}{Factor or vector of cluster identifiers. It must have length
-equal to \code{nrow(data)} or to the model-frame size after missing-value
-handling.}
+\item{cluster}{Optional factor or vector of cluster identifiers, supplied
+in place of a grouping term in \code{formula}. It must have length equal
+to \code{nrow(data)} or to the model-frame size after missing-value handling.}
 
 \item{init}{Optional list with components \code{beta}, \code{kappa_e}, and
 \code{kappa_a} providing starting values. Missing entries are filled with
@@ -35,7 +36,8 @@ indicating whether \code{angular()} should be used to initialise the fixed
 effects.}
 
 \item{na.action}{Function used by \code{\link[stats]{model.frame}} to handle
-missing values. The default is \code{\link[stats]{na.omit}}.}
+missing values, including missing group identifiers in the formula.
+The default is \code{\link[stats]{na.omit}}.}
 }
 \value{
 An object of class \code{"angular_re"} containing fixed-effect
@@ -82,9 +84,8 @@ sh$wind <- sh$DirW * pi / 180
 sh$wind_speed <- sh$SpeedW / max(sh$SpeedW, na.rm = TRUE)
 
 fit <- angular_re(
-  y ~ ref + wind:wind_speed,
+  y ~ ref + wind:wind_speed + (1 | Anim),
   data = sh,
-  cluster = sh$Anim,
   control = list(maxit = 200, reltol = 1e-8)
 )
 coef(fit)

@@ -169,8 +169,18 @@
   chol2inv(ch)
 }
 
-.make_model_frame <- function(formula, data, na.action = stats::na.omit) {
-  mf <- stats::model.frame(formula = formula, data = data, na.action = stats::na.pass)
+.make_model_frame <- function(formula, data, na.action = stats::na.omit, group = NULL) {
+  if (is.null(group)) {
+    mf <- stats::model.frame(formula = formula, data = data, na.action = stats::na.pass)
+  } else {
+    # Add the grouping column before applying the missing-value action.
+    frame_call <- substitute(
+      stats::model.frame(formula = formula, data = data, na.action = stats::na.pass,
+                         cluster = group_column),
+      list(group_column = as.name(group))
+    )
+    mf <- eval(frame_call)
+  }
   model_terms <- attr(mf, "terms")
   if (attr(model_terms, "response") != 1L) {
     stop("'formula' must include a circular response.", call. = FALSE)
@@ -298,8 +308,8 @@
   stop(sprintf("'%s' must have length equal to the original data or to the model-frame size.", name), call. = FALSE)
 }
 
-.circular_design <- function(formula, data, na.action = stats::na.omit) {
-  mf <- .make_model_frame(formula = formula, data = data, na.action = na.action)
+.circular_design <- function(formula, data, na.action = stats::na.omit, group = NULL) {
+  mf <- .make_model_frame(formula = formula, data = data, na.action = na.action, group = group)
   y <- as.numeric(.validate_angle_vector(mf[[1]], names(mf)[1]))
   term_labels <- attr(attr(mf, "terms"), "term.labels")
   term_info <- .parse_term_labels(term_labels, formula)
@@ -443,8 +453,9 @@
   idx[1]
 }
 
-.angular_design <- function(formula, data, reference = "auto", tie_method = "first", na.action = stats::na.omit) {
-  des <- .circular_design(formula = formula, data = data, na.action = na.action)
+.angular_design <- function(formula, data, reference = "auto", tie_method = "first",
+                            na.action = stats::na.omit, group = NULL) {
+  des <- .circular_design(formula = formula, data = data, na.action = na.action, group = group)
 
   ref <- .resolve_reference(
     reference = reference,

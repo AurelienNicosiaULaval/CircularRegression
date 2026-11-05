@@ -1,3 +1,9 @@
+# CircularRegression (development version)
+
+* Accept a single `(1 | group)` term in `angular_re()` formulas. Conditional
+  predictions can read that grouping column from `newdata`. The `cluster`
+  argument is still supported.
+
 # CircularRegression 0.7.2
 
 * Handle undefined consensus residuals in diagnostic plots. Keep residuals and

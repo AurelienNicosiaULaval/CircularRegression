@@ -98,6 +98,3 @@ circular data. Canadian Journal of Statistics, 47(4), 712-728.
 Related software: [ggcircular](https://github.com/AurelienNicosiaULaval/ggcircular)
 for circular graphics and [gmov](https://github.com/AurelienNicosiaULaval/gmov)
 for movement models.
-
-The package is part of Aurélien Nicosia's [research and teaching projects](https://aureliennicosiaulaval.github.io/web_site/research-lab.html).
-Other repositories are listed on his [GitHub profile](https://github.com/AurelienNicosiaULaval).

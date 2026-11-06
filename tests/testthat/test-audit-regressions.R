@@ -15,7 +15,22 @@ test_that("homogeneous inference is withheld when the reference limit improves t
 
 test_that("grouped inference is withheld when the independent limit fits better", {
   d <- data.frame(ref = 0, y = rep(c(-0.3, 0.3), 15), id = rep(1:15, each = 2))
-  expect_warning(fit <- angular_re(y ~ ref + (1 | id), d), "independent limit")
+  information_warning <- paste(
+    "Observed information matrix is not positive definite;",
+    "returning NA variances."
+  )
+  expect_warning(
+    fit <- withCallingHandlers(
+      angular_re(y ~ ref + (1 | id), d),
+      warning = function(cnd) {
+        # The information matrix may also fail the definiteness check at this limit.
+        if (identical(conditionMessage(cnd), information_warning)) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    ),
+    "independent limit"
+  )
   expect_identical(fit$fit_status, "independence_limit")
   expect_gt(fit$independence_logLik, fit$logLik)
   expect_false(fit$convergence)

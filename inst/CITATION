@@ -1,7 +1,10 @@
 bibentry(
   bibtype = "Manual",
   title = "CircularRegression: Circular Regression Models",
-  author = person("Aurelien", "Nicosia"),
+  author = c(
+    person("Aurelien", "Nicosia"),
+    person("Louis-Paul", "Rivest")
+  ),
   year = "2026",
   note = paste("R package version", meta$Version),
   url = "https://github.com/AurelienNicosiaULaval/CircularRegression"

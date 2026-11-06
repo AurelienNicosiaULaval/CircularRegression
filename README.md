@@ -1,4 +1,4 @@
-# CircularRegression
+# CircularRegression <img src="man/figures/logo.png" align="right" width="120" alt="CircularRegression hex logo" />
 
 CircularRegression fits regression models for circular response data, such as
 movement directions or angles measured in radians. The package implements the
@@ -6,17 +6,41 @@ general angular regression framework of Rivest, Duchesne, Nicosia and Fortin
 (2016), including homogeneous angular regression, consensus regression, a
 two-step workflow, and selected special-case wrappers.
 
+[![CRAN version](https://img.shields.io/cran/v/CircularRegression?label=CRAN)](https://cran.r-project.org/package=CircularRegression)
+[![GitHub release](https://img.shields.io/github/v/release/AurelienNicosiaULaval/CircularRegression?label=GitHub%20release)](https://github.com/AurelienNicosiaULaval/CircularRegression/releases/latest)
+[![R-CMD-check](https://github.com/AurelienNicosiaULaval/CircularRegression/actions/workflows/R-CMD-check.yaml/badge.svg?branch=main)](https://github.com/AurelienNicosiaULaval/CircularRegression/actions/workflows/R-CMD-check.yaml?query=branch%3Amain)
+[![Documentation](https://img.shields.io/badge/docs-pkgdown-236660)](https://aureliennicosiaulaval.github.io/CircularRegression/)
+
 ## Installation
 
-The examples below require version 0.7.2 or later.
+### CRAN
+
+[CRAN](https://cran.r-project.org/package=CircularRegression) currently provides
+version 0.5.1. The CRAN page has the reference manual and vignettes for that
+version.
 
 ```r
 install.packages("CircularRegression")
+```
 
-# Development version
-# install.packages("remotes")
-# remotes::install_github("AurelienNicosiaULaval/CircularRegression",
-#                         build_vignettes = TRUE)
+### GitHub release
+
+Use the tagged [0.7.3 release](https://github.com/AurelienNicosiaULaval/CircularRegression/releases/tag/v0.7.3)
+to follow the examples below and the guides on the package website. Install
+`remotes` once with `install.packages("remotes")` before using either GitHub
+command.
+
+```r
+remotes::install_github("AurelienNicosiaULaval/CircularRegression@v0.7.3")
+```
+
+### Development version
+
+Install from the `main` branch to try the latest changes. The code on this
+branch can change between installations.
+
+```r
+remotes::install_github("AurelienNicosiaULaval/CircularRegression@main")
 ```
 
 ## Main interface
@@ -71,9 +95,9 @@ concentration boundary. Unbounded likelihoods and unconverged fits do not
 provide ordinary Wald standard errors. Fixed-effect sandwiches assume
 independent observations; grouped sandwiches assume independent groups.
 
-The vignettes cover a first fit, model checking and comparisons, bison movement,
-and special mean curves with repeated observations. Use `browseVignettes()`
-after installing the package to open them.
+The [vignettes and quick guides](https://aureliennicosiaulaval.github.io/CircularRegression/articles/)
+cover a first fit, model checking and comparisons, bison movement, special mean
+curves, and repeated observations.
 
 ## Citation
 

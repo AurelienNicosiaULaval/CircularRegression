@@ -70,7 +70,7 @@ draw_hex_logo <- function() {
   text(0, -0.62, pkg_name, cex = pkg_cex, col = "#0B2239", font = 2)
 }
 
-png("figure/hex-logo.png", width = 1600, height = 1600, res = 320, bg = "transparent")
+png("man/figures/logo.png", width = 1600, height = 1600, res = 320, bg = "transparent")
 draw_hex_logo()
 dev.off()
 

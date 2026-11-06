@@ -5,7 +5,8 @@ Version: 0.7.3
 Authors@R: c(
     person( "Aurelien", "Nicosia",
            email = "aurelien.nicosia@mat.ulaval.ca",
-           role = c("aut", "cre")))
+           role = c("aut", "cre")),
+    person("Louis-Paul", "Rivest", role = "aut"))
 Description: Implements regression models for circular response data, including
     homogeneous angular regression, consensus angular regression, a two-step
     workflow, selected special-case model wrappers, and a random-intercept
